@@ -308,6 +308,32 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 
 后续使用精简发布链完成推送，远程 `main` 当前为 `3efdd2f9ce6fdbe77ec8d43528973065440df272`。远程文件树与本地 `main` 一致；本地完整分阶段历史仍保存在 `main`，远程发布链保留对应的阶段提交信息但使用新的精简 commit id。
 
+## 2026-08-17：性能优化与 Windows 制品复测
+
+### 诊断结论
+
+- 在首次空白 DSH Home 上，Vision Toolkit 原先会在 Cordis boot 关键路径同步准备 Python 运行时；开发 Electron 计时显示 boot 从约 `2.9 s` 延长到约 `13.4 s`。
+- 正常缓存启动的 packaged BrowserWindow 约 `2.2–3.0 s`；未签名制品的首次启动约 `13.2 s`，第二次启动约 `2.2 s`，说明冷启动额外耗时主要来自 Windows 对 Electron/native 二进制的首次扫描和缓存建立。
+- 当前安装目录包含约 `25,341` 个文件；NSIS 静默安装实测约 `168 s`，主要受物理依赖树写入和 Windows Defender/未签名扫描影响。
+
+### 代码与制品优化
+
+- 为 Vision Toolkit `0.1.24` 增加仓库内 Yarn patch：运行时准备改为后台初始化，Settings/Web 路由先可用，运行时就绪后再注册视觉工具；失败仍保留原有错误状态，不隐藏设置入口。
+- 将构建期 `sharp` 移到根级开发依赖，并在 Electron Builder `files`/`asarUnpack` 中排除 `sharp` 与 `@img`，避免把构建用的全平台图像 native 二进制带给客户。
+- Windows x64 NSIS 复测结果：安装器约 `145.3 MiB`，unpacked 目录约 `530.5 MiB`；相较基线安装器 `150.9 MiB`、unpacked `549.4 MiB`，分别减少约 `5.6 MiB` 和 `18.9 MiB`。
+
+### 验证
+
+- `42` 个包级回归测试通过，类型检查通过，Vision/Sidebar 产品插件门禁通过。
+- Windows-safe package gate：`101` passed、`1` skipped；runtime closure `197` 个 first-party nodes 通过。
+- 真实 packaged Electron BrowserWindow/CDP 截图通过：`Workspace / Sidebar / Details` 控制条存在，Sidebar 与 Details 均为 `aria-pressed=true`，输入区未被遮挡。
+- [最终 Windows 目录报告](./evidence/release/windows-dir.json)、[最终 Windows 安装器报告](./evidence/release/windows-installer.json)、[最终 Electron 截图](./evidence/electron/packaged-advanced-final.png)。
+
+### 发布注意
+
+- 当前 Windows 制品仍未完成 Authenticode 签名；未签名状态会放大首启和安装阶段的 SmartScreen/Defender 延迟。签名、干净机安装/升级/卸载和 SmartScreen 仍是发布前置条件。
+- macOS arm64/x64 原生模块、签名、公证和对应性能矩阵尚未在本 Windows 环境验证，不能据此宣称跨平台发布完成。
+
 ## 2026-08-17：P0-05/P5-05 产品插件版本门禁
 
 ### 范围
