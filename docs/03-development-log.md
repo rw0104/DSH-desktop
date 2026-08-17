@@ -249,7 +249,7 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 - AfterPack packaged-runtime gate：通过，`app.asar`、`app.asar.unpacked`、桌面入口和 `node-pty` 物理条目存在。
 - [Windows unpacked 制品报告](./evidence/release/windows-dir.json)：包含入口、ASAR、unpacked runtime、文件数和总字节数。
 
-一次直接启动 `dist/win-unpacked/DSH Desktop.exe` 的 headless packaged BrowserWindow 只创建了 DevToolsActivePort，没有在观察窗口内产生 page target，因此暂不计为 packaged UI 回归通过；需要下一阶段增加 packaged 启动日志和 profile boot 诊断。
+第一次直接启动 `dist/win-unpacked/DSH Desktop.exe` 在 8 秒观察窗口内只创建了 DevToolsActivePort，没有 page target。增加 Chromium file logging 并延长等待后，packaged BrowserWindow 正常出现，已完成 onboarding、Advanced 控制条和 Sidebar/Details 操作截图；首轮延迟现象保留为启动时序风险。
 
 ### 未完成项
 
