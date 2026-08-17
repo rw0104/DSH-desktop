@@ -1,0 +1,19 @@
+{
+  "platform": "win32",
+  "architecture": "x64",
+  "electron": "43.4.0",
+  "version": "2.0.0",
+  "unsigned": true,
+  "installer": {
+    "exists": true,
+    "bytes": 158274480
+  },
+  "application": {
+    "exists": true,
+    "bytes": 225552384
+  },
+  "blockmap": {
+    "exists": true,
+    "bytes": 164203
+  }
+}
