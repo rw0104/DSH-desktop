@@ -154,6 +154,35 @@ P2-03/P2-05 的 Profile、Loader、CLI、runtime closure 和 renderer manifest s
 - 还没有把 consent 状态接入设置页面或托盘菜单；当前拒绝后会在下一次打包启动再次询问。
 - 还没有验证真实视觉请求、429、Python 缺失和 Chrome 缺失的 UI 恢复路径。
 
+## 2026-08-17：P3/P5 Electron BrowserWindow 截图回归
+
+### 范围
+
+- 启动真实 Electron `43.4.0` BrowserWindow，而不是仅渲染 React 单测。
+- 使用临时 `DSH_HOME`、独立 CDP `9223` 和 `--headless`，不污染用户配置。
+- 通过 CDP 检查页面 URL、DSH boot entries、控制条文本和按钮 pressed 状态，并捕获 PNG。
+
+### 证据
+
+- [Electron 截图目录](./evidence/electron/README.md)
+- compatibility 模式：关闭内测声明后官方 DSH UI 正常渲染，控制条按设计不存在。
+- advanced 模式：控制条显示 `Workspace / Sidebar / Details`。
+- 点击 Sidebar 和 Details 后：CDP 读取两个按钮 `aria-pressed=true`，截图显示左侧工作区展开且中央输入区没有被遮挡。
+
+### 可复现命令
+
+```powershell
+$env:DSH_HOME = 'D:\\Demo\\DHS\\.tmp-electron-dsh-home'
+$electron = (Resolve-Path 'dsh-plugin-desktop/node_modules/electron/dist/electron.exe').Path
+& $electron 'dsh-plugin-desktop/lib/main.js' --headless --no-sandbox --remote-debugging-port=9223
+node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-details.png' --toggle-sidebar --toggle-details
+```
+
+### 未完成项
+
+- 当前证据是在 Windows headless Electron 上采集；macOS arm64/x64 仍需真机截图。
+- 还需要把页面错误、console error、窗口尺寸和主题切换纳入自动化断言。
+
 ## 2026-08-17：P0-05/P5-05 产品插件版本门禁
 
 ### 范围
