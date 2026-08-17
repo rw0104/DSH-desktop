@@ -1,0 +1,21 @@
+{
+  "platform": "win32",
+  "architecture": "x64",
+  "electron": "43.4.0",
+  "version": "2.0.0",
+  "mode": "advanced",
+  "sample": "packaged BrowserWindow after startup and idle wait",
+  "processes": [
+    { "type": "main", "workingSetMiB": 241.8, "privateMiB": 225.5 },
+    { "type": "gpu-process", "workingSetMiB": 124.4, "privateMiB": 85.8 },
+    { "type": "utility", "workingSetMiB": 44.3, "privateMiB": 13.1 },
+    { "type": "renderer", "workingSetMiB": 144.6, "privateMiB": 88.6 }
+  ],
+  "totalWorkingSetMiB": 555.1,
+  "totalPrivateMiB": 413.0,
+  "notes": [
+    "This is an idle startup sample, not a peak workload measurement.",
+    "Vision model requests, large files, terminals, and browser tabs can increase memory.",
+    "User Profile data and runtime caches are separate from the installed application directory."
+  ]
+}

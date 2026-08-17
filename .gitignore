@@ -15,4 +15,5 @@ dsh-plugin-desktop/lib/
 .tmp-electron-dsh-home/
 .tmp-packaged-*/
 .tmp-packaged-*.log
+.tmp-memory-*/
 artifacts/
