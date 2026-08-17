@@ -64,7 +64,7 @@
 - 还没有在真实 DSH Web/Headless Profile 中做插件挂载 E2E。
 - 还没有验证 Better Sidebar 与 Desktop Advanced Shell 的联合布局。
 - Vision 的 Python、Chrome、远程 Endpoint 和数据告知仍属于 P4。
-- 目标仓库尚未完成本阶段 Git 提交和远程推送。
+- 本阶段已完成本地 Git 提交；远程同步状态见文档末尾的“远程提交状态”。
 
 ## 下一阶段
 
