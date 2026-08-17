@@ -2,7 +2,9 @@
 
 面向 DeepSeek Harness 的桌面开发工作台，提供本地 Agent、会话、视觉工具和代码工作区。
 
-本仓库维护 `rw0104/DSH-desktop` 的产品实现。桌面壳基于开源 DSH Desktop v2 的 Electron/DSH 组合边界继续开发，官方 DSH Runtime 作为固定 Git 子模块使用。
+![DSH Desktop 工作台](assets/dsh-desktop-workbench.png)
+
+面向开发者的本地桌面工作区，集中处理会话、代码、终端、Git、子代理和视觉任务。
 
 ## 当前状态
 

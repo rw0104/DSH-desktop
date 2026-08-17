@@ -2,7 +2,9 @@
 
 A desktop development workbench for DeepSeek Harness, combining local Agent sessions, visual tools, and a code workspace.
 
-This repository contains the `rw0104/DSH-desktop` product implementation. The desktop shell continues from the open-source DSH Desktop v2 Electron/DSH composition boundary, while the official DSH runtime remains a pinned Git submodule.
+![DSH Desktop workbench](assets/dsh-desktop-workbench.png)
+
+A local developer workspace for sessions, code, terminals, Git, subagents, and visual tasks.
 
 ## Current status
 
