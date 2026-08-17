@@ -47,7 +47,11 @@ async function promptVisionConsent({ firstRun }: VisionConsentPrompt): Promise<b
     message: firstRun
       ? 'Vision Toolkit can send selected images to its configured vision service.'
       : 'Vision Toolkit is currently disabled for this desktop profile.',
-    detail: 'Enable it only if you accept the configured provider\'s data handling. You can change the provider and API key in DSH Settings. Local crop, pixel diff, color and SVG tools do not require image upload.',
+    detail: [
+      'Enable it only if you accept the configured provider\'s data handling.',
+      'You can change the provider and API key in DSH Settings.',
+      'Local crop, pixel diff, color and SVG tools do not require image upload.',
+    ].join(' '),
     buttons: ['Enable Vision Toolkit', 'Keep Disabled'],
     defaultId: firstRun ? 0 : 1,
     cancelId: 1,
@@ -159,7 +163,10 @@ async function start(): Promise<void> {
         prompt: promptVisionConsent,
       })
     } catch (cause) {
-      process.stderr.write(`${BIN_NAME}: Vision Toolkit consent failed; keeping it disabled: ${cause instanceof Error ? cause.message : String(cause)}\n`)
+      const message = cause instanceof Error ? cause.message : String(cause)
+      process.stderr.write(
+        `${BIN_NAME}: Vision Toolkit consent failed; keeping it disabled: ${message}\n`,
+      )
       visionEnabled = false
     }
     const selectionStatePath = join(app.getPath('userData'), 'profile-selection', 'state.json')
