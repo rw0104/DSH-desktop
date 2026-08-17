@@ -51,6 +51,11 @@
 - `corepack yarn install`：通过，插件依赖成功解析和链接。
 - `corepack yarn workspace dsh-plugin-desktop exec vitest run tests/profile.spec.ts`：12 个测试通过。
 - `corepack yarn workspace dsh-plugin-desktop typecheck`：通过。
+- `corepack yarn workspace dsh-plugin-desktop build`：通过。
+- `corepack yarn workspace dsh-plugin-desktop verify:profile`：通过，Profile/Host/Web 组装 smoke 可运行。
+- `corepack yarn workspace dsh-plugin-desktop verify:loader`：通过，桌面插件和 Profile-local Loader smoke 可运行。
+- `corepack yarn workspace dsh-plugin-desktop verify:cli`：通过，Electron-backed CLI 和 pnpm shim smoke 可运行。
+- `corepack yarn workspace dsh-plugin-desktop verify:closure`：通过，197 个 first-party runtime 节点闭包完整。
 
 ### 未完成项
 
