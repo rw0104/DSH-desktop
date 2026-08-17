@@ -258,7 +258,9 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 
 ## 远程提交状态
 
-本地 `origin` 已确认是 `https://github.com/rw0104/DSH-desktop.git`。当前本地 `main` 保留完整分阶段提交；由于本环境到 GitHub 的 HTTPS 连接持续在 send-pack 阶段被重置，直接 push 尚未成功。另生成了 `publish-main` 精简发布链，最终树与本地 `main` 一致，便于网络恢复后推送，不改写本地开发分支。
+本地 `origin` 已确认是 `https://github.com/rw0104/DSH-desktop.git`。当前本地 `main` 保留完整分阶段提交；由于上游历史较大，本环境对直接完整历史 push 多次重置连接。另生成了 `publish-main` 精简发布链，最终树与本地 `main` 一致，不改写本地开发分支。
+
+后续使用精简发布链完成推送，远程 `main` 当前为 `d55d12bcdb25a235c07fd760d9a0a86eb5ea22ad`。远程文件树与本地 `main` 一致；本地完整分阶段历史仍保存在 `main`，远程发布链保留对应的阶段提交信息但使用新的精简 commit id。
 
 ## 2026-08-17：P0-05/P5-05 产品插件版本门禁
 
