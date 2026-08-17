@@ -97,6 +97,33 @@ P2-03/P2-05 的 Profile、Loader、CLI、runtime closure 和 renderer manifest s
 - 尚未在真实 Electron BrowserWindow 中做多窗口、多显示器和系统主题截图回归。
 - 尚未把布局快照和 DSH Profile/Session 做更细粒度的关联；当前是桌面用户级布局偏好。
 
+## 2026-08-17：P3-01/P3-04 Codex-like 工作区控制条
+
+### 设计决策
+
+采用“安静的开发者工作台”方向：控制条只承担工作区切换，不复制 Codex 品牌资产，不创建嵌套卡片或自定义窗口材质。样式消费 DSH Theme Token，使用系统字体回退，按钮不设置网页式手型光标，焦点和 pressed 状态可见。
+
+### 代码改动
+
+- `dsh-plugin-desktop/src/client/DesktopControlStrip.tsx`：新增 Sidebar/Details 工作区切换控制。
+- `dsh-plugin-desktop/src/client/control-strip-styles.ts`：隔离控制条样式，保持单文件长度和职责边界。
+- `dsh-plugin-desktop/src/client/AdvancedFrame.tsx`：将控制条挂到中央 conversation surface 顶部。
+- `dsh-plugin-desktop/src/client/styles.ts`：组合产品控制条样式，并保留 reduced-motion 规则。
+- `dsh-plugin-desktop/tests/client-environment.spec.ts`：验证样式包含控制条、pressed 状态和原生标题栏约束。
+
+### 验证
+
+- `corepack yarn workspace dsh-plugin-desktop typecheck`：通过。
+- `corepack yarn workspace dsh-plugin-desktop exec vitest run tests/client-environment.spec.ts`：12 个测试通过。
+- `corepack yarn workspace dsh-plugin-desktop build`：通过。
+- `corepack yarn workspace dsh-plugin-desktop verify:profile`：通过。
+- `corepack yarn workspace dsh-plugin-desktop verify:product-plugins`：通过。
+
+### 未完成项
+
+- 尚未通过真实 Electron BrowserWindow/Playwright 截图确认在 macOS 和 Windows 标题栏下不遮挡 DSH Conversation Header。
+- 尚未完成命令搜索、全局快捷键、窄屏抽屉和无障碍端到端检查。
+
 ## 2026-08-17：P0-05/P5-05 产品插件版本门禁
 
 ### 范围

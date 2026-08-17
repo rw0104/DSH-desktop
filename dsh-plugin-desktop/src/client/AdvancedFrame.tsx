@@ -6,6 +6,7 @@ import {
   computeDesktopColumns, DesktopLayoutState, MACOS_SIDEBAR_COLLAPSED,
   SIDEBAR_AUTO_COLLAPSE, SIDEBAR_COLLAPSED, SIDEBAR_DEFAULT,
 } from './layout-state.ts'
+import { DesktopControlStrip } from './DesktopControlStrip.tsx'
 
 /** Private values assembled by the advanced-shell registration. */
 export interface AdvancedFrameInjected {
@@ -77,7 +78,10 @@ export function AdvancedFrame({ layout, platform, renderSlot, useSessions }: Adv
           {renderSlot('sidebar', { collapsed, width: columns.sidebar })}
         </div>
       </aside>
-      <main className="dshDesktopConversationSurface">{renderSlot('conversation', {})}</main>
+      <main className="dshDesktopConversationSurface">
+        <DesktopControlStrip layout={layout} />
+        {renderSlot('conversation', {})}
+      </main>
       <aside className="dshDesktopDetailsSurface">{renderSlot('details', {})}</aside>
       <div className="dshDesktopOverlay" data-shell-overlay>
         {renderSlot('shell.overlay', {})}
