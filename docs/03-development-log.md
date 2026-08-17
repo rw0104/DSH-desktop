@@ -256,6 +256,21 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 - 未签名 NSIS 安装包、Authenticode、干净机安装/升级/卸载和 SmartScreen 仍未验证。
 - macOS arm64/x64 DMG、Developer ID、公证和 universal 原生模块仍需原生 macOS 主机。
 
+## 2026-08-17：P6 Windows x64 NSIS smoke
+
+### 验证
+
+- `corepack yarn workspace dsh-plugin-desktop dist:win`：通过。
+- Windows-safe package gate：101 个测试通过，1 个跳过；runtime closure 197 个 first-party nodes 通过。
+- Electron Builder：生成未签名 `DSH-Desktop-2.0.0-x64-Setup.exe` 和 blockmap。
+- `verify-win-installer.ts`：unpacked application 和 NSIS installer 的 PE header 验证通过。
+- [Windows installer 制品报告](./evidence/release/windows-installer.json)：记录 installer、unpacked executable 和 blockmap 大小。
+
+### 未完成项
+
+- 制品明确未签名，仍需 Authenticode、干净 Windows 安装、升级、卸载和 SmartScreen 验证。
+- macOS arm64/x64 DMG、Developer ID、公证和 universal 原生模块仍需原生 macOS 主机。
+
 ## 远程提交状态
 
 本地 `origin` 已确认是 `https://github.com/rw0104/DSH-desktop.git`。当前本地 `main` 保留完整分阶段提交；由于上游历史较大，本环境对直接完整历史 push 多次重置连接。另生成了 `publish-main` 精简发布链，最终树与本地 `main` 一致，不改写本地开发分支。
