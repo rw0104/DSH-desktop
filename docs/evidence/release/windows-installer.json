@@ -6,14 +6,17 @@
   "unsigned": true,
   "installer": {
     "exists": true,
-    "bytes": 158274480
+    "bytes": 158274480,
+    "sha256": "3ACF1987215957DB530107BAF36CE01F00FD7C141B7115F2289077D9FB97D612"
   },
   "application": {
     "exists": true,
-    "bytes": 225552384
+    "bytes": 225552384,
+    "sha256": "0CA44D354675AA40C964A06AAF05F58D562A39AB8B03AFB6A201446D6CB68F32"
   },
   "blockmap": {
     "exists": true,
-    "bytes": 164203
+    "bytes": 164203,
+    "sha256": "E1A35C38F7776089CEFCAFC87AFD4DDFB828A903FC9B3D361426E5ABB9A9A793"
   }
 }
