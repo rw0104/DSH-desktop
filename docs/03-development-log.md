@@ -183,6 +183,33 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 - 当前证据是在 Windows headless Electron 上采集；macOS arm64/x64 仍需真机截图。
 - 还需要把页面错误、console error、窗口尺寸和主题切换纳入自动化断言。
 
+## 2026-08-17：P4-03/P4-04 Vision Python 和浏览器健康检查
+
+### 范围
+
+- 探测 Python `3.11+`，支持 `DSH_VISION_PYTHON`、`python`、`python3` 和 Windows `py -3`。
+- 探测用户配置路径和常见 Chrome、Chromium、Edge 安装路径。
+- Python 是总体运行前置；浏览器只影响 `vision_html_screenshot`，缺失时返回 warning 而不是误报全部 Vision 不可用。
+- `--require-browser` 可用于发布机或 HTML 截图专用门禁。
+
+### 代码改动
+
+- `dsh-plugin-desktop/scripts/verify-vision-runtime.mjs`：新增跨平台探测和 JSON 报告。
+- `dsh-plugin-desktop/scripts/vision-runtime.spec.mjs`：覆盖版本解析、最低版本、浏览器可选和不支持版本。
+- `dsh-plugin-desktop/package.json`：新增 `verify:vision-runtime` 命令。
+- [Windows 健康报告](./evidence/vision-runtime/windows.json)：不含凭据或业务内容。
+
+### 验证
+
+- `node --test scripts/vision-runtime.spec.mjs`：4 个测试通过。
+- `corepack yarn workspace dsh-plugin-desktop verify:vision-runtime`：Python `3.12.10`、Chrome 可用、总体 OK。
+- `corepack yarn workspace dsh-plugin-desktop exec node scripts/verify-vision-runtime.mjs --require-browser`：通过。
+
+### 未完成项
+
+- 尚未把健康报告接入 Vision Settings 页面或桌面托盘。
+- 尚未在 macOS arm64、macOS x64 和无浏览器环境执行真实机矩阵。
+
 ## 2026-08-17：P0-05/P5-05 产品插件版本门禁
 
 ### 范围
