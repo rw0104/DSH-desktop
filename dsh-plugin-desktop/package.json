@@ -92,6 +92,7 @@
     "verify:loader": "node scripts/verify-loader-boot.mjs",
     "verify:profile": "node scripts/verify-profile-boot.mjs",
     "verify:product-plugins": "node scripts/verify-product-plugins.mjs",
+    "verify:package-footprint": "node scripts/verify-package-footprint.mjs",
     "verify:release-readiness": "node scripts/verify-release-readiness.mjs",
     "verify:vision-runtime": "node scripts/verify-vision-runtime.mjs",
     "check": "yarn run build && yarn run typecheck && yarn run test && yarn run verify:closure && yarn run verify:cli && yarn run verify:loader && yarn run verify:profile && yarn run verify:product-plugins",

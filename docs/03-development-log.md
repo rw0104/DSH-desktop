@@ -282,6 +282,26 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 
 这说明当前 Electron + DSH + 插件组合不是轻量小工具。安装器约 `150.9 MiB`，安装目录约 `548.3 MiB`，其中 `app.asar.unpacked` 约 `194.6 MiB`。后续需要把空闲、对话、终端、浏览器和 Vision 任务分开测量，不能用单一数字宣称最终性能。
 
+## 2026-08-17：P5-07 资源和内存预算门禁
+
+### 范围
+
+- 安装器预算：`220 MiB`。
+- Windows unpacked 目录预算：`650 MiB`。
+- Packaged Private Memory 预算：`512 MiB`。
+- Packaged Working Set 预算：`700 MiB`。
+
+### 代码改动
+
+- `dsh-plugin-desktop/scripts/verify-package-footprint.mjs`：读取 Windows 制品和内存报告并检查预算。
+- `dsh-plugin-desktop/scripts/verify-package-footprint.spec.mjs`：覆盖预算常量和超限失败。
+- `dsh-plugin-desktop/scripts/verify-release-readiness.mjs`：加入 footprint gate；没有制品时允许 headless checkout 跳过，已有制品时必须通过。
+
+### 验证
+
+- `node --test scripts/verify-package-footprint.spec.mjs`：2 个测试通过。
+- `corepack yarn workspace dsh-plugin-desktop verify:package-footprint`：通过，当前 Windows 样本为 installer `150.9 MiB`、unpacked `548.3 MiB`、Private Memory `413 MiB`、Working Set `555.1 MiB`。
+
 ## 远程提交状态
 
 本地 `origin` 已确认是 `https://github.com/rw0104/DSH-desktop.git`。当前本地 `main` 保留完整分阶段提交；由于上游历史较大，本环境对直接完整历史 push 多次重置连接。另生成了 `publish-main` 精简发布链，最终树与本地 `main` 一致，不改写本地开发分支。
