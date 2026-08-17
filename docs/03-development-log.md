@@ -256,6 +256,10 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 - 未签名 NSIS 安装包、Authenticode、干净机安装/升级/卸载和 SmartScreen 仍未验证。
 - macOS arm64/x64 DMG、Developer ID、公证和 universal 原生模块仍需原生 macOS 主机。
 
+## 远程提交状态
+
+本地 `origin` 已确认是 `https://github.com/rw0104/DSH-desktop.git`。当前本地 `main` 保留完整分阶段提交；由于本环境到 GitHub 的 HTTPS 连接持续在 send-pack 阶段被重置，直接 push 尚未成功。另生成了 `publish-main` 精简发布链，最终树与本地 `main` 一致，便于网络恢复后推送，不改写本地开发分支。
+
 ## 2026-08-17：P0-05/P5-05 产品插件版本门禁
 
 ### 范围
