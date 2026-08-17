@@ -65,8 +65,9 @@ function notifyProfileRecovery(runtime: ElectronDesktopRuntime, body: string): v
   try {
     runtime.updates.notify({ title: 'Unable to Open Profile', body })
   } catch (cause) {
+    const message = cause instanceof Error ? cause.message : String(cause)
     process.stderr.write(
-      `${BIN_NAME}: failed to show profile recovery notification: ${cause instanceof Error ? cause.message : String(cause)}\n`,
+      `${BIN_NAME}: failed to show profile recovery notification: ${message}\n`,
     )
   }
 }
@@ -260,7 +261,10 @@ async function start(): Promise<void> {
           )
         }
       } catch (stateCause) {
-        process.stderr.write(`${BIN_NAME}: failed to roll back desktop profile state: ${stateCause instanceof Error ? stateCause.message : String(stateCause)}\n`)
+        const message = stateCause instanceof Error ? stateCause.message : String(stateCause)
+        process.stderr.write(
+          `${BIN_NAME}: failed to roll back desktop profile state: ${message}\n`,
+        )
       }
     }
     await shutdown.request(exitCode)
