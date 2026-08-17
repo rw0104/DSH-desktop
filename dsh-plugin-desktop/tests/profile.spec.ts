@@ -227,6 +227,24 @@ describe('desktop profile composition', () => {
     expect(rows.find(row => row.id === 'ui-conversation')?.disabled).toBe(false)
   })
 
+  it('lets the desktop profile patch disable a product plugin', () => {
+    const home = temporaryHome()
+    writeFileSync(join(home, 'cordis.patch.yml'), [
+      '- id: vision-toolkit',
+      '  disabled: true',
+      '',
+    ].join('\n'))
+
+    const prepared = prepareDesktopProfile(undefined, home, 'darwin')
+    const rows = composeEntries([prepared.patches])
+
+    expect(rows.find(row => row.id === 'vision-toolkit')).toEqual({
+      id: 'vision-toolkit',
+      name: '@anionex/dsh-vision-toolkit',
+      disabled: true,
+    })
+  })
+
   it('reads JSON settings and defaults an absent desktop namespace to compatibility', () => {
     const home = temporaryHome()
     const path = join(home, 'desktop-settings.json')

@@ -43,13 +43,13 @@
 - `dsh-plugin-desktop/src/profile.ts`：新增 `DEFAULT_DESKTOP_PLUGIN_BUNDLES`，并在 `desktopBundleList()` 中统一插入和去重。
 - `dsh-plugin-desktop/package.json`：加入 Vision、Sidebar、React DOM 的精确依赖。
 - `.yarnrc.yml`：只预批准两个已审查的精确插件版本。
-- `dsh-plugin-desktop/tests/profile.spec.ts`：覆盖默认顺序、重复安装和 Profile 修复行为。
+- `dsh-plugin-desktop/tests/profile.spec.ts`：覆盖默认顺序、重复安装、Profile 修复和用户禁用行为。
 - `yarn.lock`：记录新增插件及其依赖闭包。
 
 ### 验证
 
 - `corepack yarn install`：通过，插件依赖成功解析和链接。
-- `corepack yarn workspace dsh-plugin-desktop exec vitest run tests/profile.spec.ts`：11 个测试通过。
+- `corepack yarn workspace dsh-plugin-desktop exec vitest run tests/profile.spec.ts`：12 个测试通过。
 - `corepack yarn workspace dsh-plugin-desktop typecheck`：通过。
 
 ### 未完成项
@@ -62,4 +62,3 @@
 ## 下一阶段
 
 下一阶段进入 P2-03/P2-05：建立真实 Profile 挂载 smoke，验证两个插件的 Host/Client bundle、无重复 Sidebar、Vision 图片入口和 Sidebar 基础文件工作台。由于上游子模块当前未下载，完整 Loader smoke 需要先恢复网络或在可访问 GitHub 的环境运行。
-
