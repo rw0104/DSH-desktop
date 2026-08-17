@@ -14,6 +14,7 @@ const checks = [
     'tests/client-environment.spec.ts',
     'tests/profile.spec.ts',
     'tests/vision-consent.spec.ts',
+    '--testTimeout=20000',
   ]],
   ['runtime closure', ['workspace', 'dsh-plugin-desktop', 'verify:closure']],
   ['CLI smoke', ['workspace', 'dsh-plugin-desktop', 'verify:cli']],
@@ -21,6 +22,7 @@ const checks = [
   ['Profile smoke', ['workspace', 'dsh-plugin-desktop', 'verify:profile']],
   ['product plugin closure', ['workspace', 'dsh-plugin-desktop', 'verify:product-plugins']],
   ['Vision runtime', ['workspace', 'dsh-plugin-desktop', 'verify:vision-runtime']],
+  ['package footprint', ['workspace', 'dsh-plugin-desktop', 'verify:package-footprint']],
 ]
 
 for (const [label, args] of checks) {
