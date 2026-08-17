@@ -271,6 +271,17 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 - 制品明确未签名，仍需 Authenticode、干净 Windows 安装、升级、卸载和 SmartScreen 验证。
 - macOS arm64/x64 DMG、Developer ID、公证和 universal 原生模块仍需原生 macOS 主机。
 
+## 2026-08-17：P6 Windows packaged memory sample
+
+### 结果
+
+- Windows x64 packaged Advanced BrowserWindow 空闲启动样本包含 main、GPU、utility 和 renderer 进程。
+- 总 Working Set：约 `555.1 MiB`。
+- 总 Private Memory：约 `413.0 MiB`。
+- [内存样本报告](./evidence/release/windows-memory.json)。
+
+这说明当前 Electron + DSH + 插件组合不是轻量小工具。安装器约 `150.9 MiB`，安装目录约 `548.3 MiB`，其中 `app.asar.unpacked` 约 `194.6 MiB`。后续需要把空闲、对话、终端、浏览器和 Vision 任务分开测量，不能用单一数字宣称最终性能。
+
 ## 远程提交状态
 
 本地 `origin` 已确认是 `https://github.com/rw0104/DSH-desktop.git`。当前本地 `main` 保留完整分阶段提交；由于上游历史较大，本环境对直接完整历史 push 多次重置连接。另生成了 `publish-main` 精简发布链，最终树与本地 `main` 一致，不改写本地开发分支。
