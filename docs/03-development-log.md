@@ -94,3 +94,24 @@ P2-03/P2-05 的 Profile、Loader、CLI、runtime closure 和 renderer manifest s
 
 - 尚未在真实 Electron BrowserWindow 中做多窗口、多显示器和系统主题截图回归。
 - 尚未把布局快照和 DSH Profile/Session 做更细粒度的关联；当前是桌面用户级布局偏好。
+
+## 2026-08-17：P0-05/P5-05 产品插件版本门禁
+
+### 范围
+
+- 校验 `package.json` 中的 Vision/Sidebar 精确版本。
+- 校验实际解析到的 `node_modules` manifest 版本。
+- 校验两个插件都携带官方 `cordis.patch.yml` bundle patch。
+
+### 代码改动
+
+- `dsh-plugin-desktop/scripts/verify-product-plugins.mjs`：新增产品插件闭包验证脚本。
+- `dsh-plugin-desktop/package.json`：将该脚本加入 `check` 门禁。
+
+### 验证
+
+- `corepack yarn workspace dsh-plugin-desktop verify:product-plugins`：通过，2 个精确版本插件已安装且带 bundle patch。
+
+### 未完成项
+
+- 还没有生成完整的第三方传递依赖许可证清单和 SBOM 制品。
