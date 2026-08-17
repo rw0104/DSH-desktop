@@ -42,6 +42,9 @@
       "built": false
     }
   },
+  "devDependencies": {
+    "sharp": "0.35.3"
+  },
   "scripts": {
     "build": "yarn workspace dsh-plugin-desktop build",
     "typecheck": "yarn workspace dsh-plugin-desktop typecheck",

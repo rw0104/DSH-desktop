@@ -105,7 +105,7 @@
     "prepack": "yarn run check"
   },
   "dependencies": {
-    "@anionex/dsh-vision-toolkit": "0.1.24",
+    "@anionex/dsh-vision-toolkit": "patch:@anionex/dsh-vision-toolkit@npm%3A0.1.24#./../patches/%40anionex-dsh-vision-toolkit-npm-0.1.24.patch",
     "@deepseek-ai/cordis": "4.0.1",
     "@deepseek-ai/cordis-plugin-group": "1.0.1",
     "@deepseek-ai/cordis-plugin-include": "1.0.6",
@@ -225,7 +225,6 @@
     "@types/react": "^18",
     "electron": "43.4.0",
     "electron-builder": "26.15.3",
-    "sharp": "0.35.3",
     "tsdown": "0.22.2",
     "typescript": "6.0.3",
     "vitest": "4.1.8"
@@ -239,7 +238,9 @@
       "cordis.patch.yml",
       "build/**",
       "lib/**",
-      "node_modules/**"
+      "node_modules/**",
+      "!node_modules/sharp/**",
+      "!node_modules/@img/**"
     ],
     "afterPack": "./scripts/verify-packaged-runtime.ts",
     "electronFuses": {
@@ -256,7 +257,9 @@
       "build/tray-icon*.png",
       "cordis.patch.yml",
       "lib/**",
-      "package.json"
+      "package.json",
+      "!node_modules/sharp/**",
+      "!node_modules/@img/**"
     ],
     "mac": {
       "target": [
