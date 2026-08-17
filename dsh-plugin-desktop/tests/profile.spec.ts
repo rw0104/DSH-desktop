@@ -245,6 +245,18 @@ describe('desktop profile composition', () => {
     })
   })
 
+  it('keeps Vision disabled when the desktop consent decision is declined', () => {
+    const home = temporaryHome()
+    const prepared = prepareDesktopProfile(undefined, home, 'darwin', 'desktop', { visionEnabled: false })
+    const rows = composeEntries([prepared.patches])
+
+    expect(rows.find(row => row.id === 'vision-toolkit')).toEqual({
+      id: 'vision-toolkit',
+      name: '@anionex/dsh-vision-toolkit',
+      disabled: true,
+    })
+  })
+
   it('reads JSON settings and defaults an absent desktop namespace to compatibility', () => {
     const home = temporaryHome()
     const path = join(home, 'desktop-settings.json')

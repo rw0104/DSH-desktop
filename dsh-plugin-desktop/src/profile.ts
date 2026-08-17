@@ -146,6 +146,11 @@ export interface PreparedDesktopProfile {
   mode: DesktopShellMode
 }
 
+/** Product-owned runtime choices applied after user profile patches. */
+export interface DesktopProfileOptions {
+  visionEnabled?: boolean
+}
+
 /**
  * Normalize the installation-owned prefix while preserving third-party order.
  * @param current - current persistent bundle list.
@@ -229,6 +234,7 @@ function rowDisabledOnPlatform(row: EntryOptions, platform: NodeJS.Platform): bo
  * @param home - Harness home containing profiles and the machine-wide patch.
  * @param platform - native platform selecting launcher-owned safety overlays.
  * @param profileName - existing or lazily available Web profile to compose.
+ * @param options - product-owned runtime choices.
  * @returns root config, profile metadata, and ordered patches.
  */
 export function prepareDesktopProfile(
@@ -236,6 +242,7 @@ export function prepareDesktopProfile(
   home: string = resolveDshHome(),
   platform: NodeJS.Platform = process.platform,
   profileName: string = DESKTOP_PROFILE_NAME,
+  options: DesktopProfileOptions = {},
 ): PreparedDesktopProfile {
   const profileDir = profileName === DESKTOP_PROFILE_NAME
     ? ensureDesktopProfile(home)
@@ -265,6 +272,9 @@ export function prepareDesktopProfile(
     ...profile.patches,
     ...homePatches,
   ]
+  if (options.visionEnabled === false) {
+    patches.push({ id: 'vision-toolkit', disabled: true })
+  }
   const rows = new Map<string, EntryOptions>()
   for (const row of composeEntries([patches])) {
     if (typeof row.id === 'string') rows.set(row.id, row)
