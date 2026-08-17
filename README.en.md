@@ -1,114 +1,110 @@
-<p align="center">
-  <img src="assets/desktop-hero-en.jpg" alt="DeepSeek Harness Desktop" width="100%">
-</p>
+# DSH Desktop
 
-<p align="center">
-  <a href="https://github.com/anywhere-labs/deepseek-harness-desktop"><img src="https://img.shields.io/github/stars/anywhere-labs/deepseek-harness-desktop?style=flat&amp;label=%E2%98%85&amp;color=08C" alt="GitHub stars"></a>
-  <img src="https://img.shields.io/badge/Desktop-App-47848F?style=flat" alt="Desktop application">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat" alt="MIT License"></a>
-  <a href="https://discord.gg/TJeGqKRNM"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&amp;logo=discord&amp;logoColor=white" alt="Join Discord"></a>
-  <img src="https://img.shields.io/badge/macOS%20%7C%20Windows-4493F8?style=flat-square" alt="Supported platforms: macOS and Windows">
-</p>
+A desktop development workbench for DeepSeek Harness, combining local Agent sessions, visual tools, and a code workspace.
 
-<p align="center"><sub><a href="README.md">中文</a> · English</sub></p>
+This repository contains the `rw0104/DSH-desktop` product implementation. The desktop shell continues from the open-source DSH Desktop v2 Electron/DSH composition boundary, while the official DSH runtime remains a pinned Git submodule.
 
-<h3 align="center">A modern desktop experience for the DeepSeek Harness ecosystem (<a href="#plugin-ecosystem">Plugin</a>)</h3>
+## Current status
 
-<a id="run"></a>
+The project is under active development. It currently includes:
 
-<h3 align="center"><a href="https://www.deepseekdesktop.com"><ins>Download Desktop</ins></a></h3>
+- Electron 43.4.0 shell with single-instance behavior, tray, Profile lifecycle, and a loopback Web carrier;
+- DSH `0.1.0-rc.6` runtime;
+- Vision Toolkit `0.1.24` and Better Sidebar `0.12.3` as the default Profile combination;
+- Advanced Shell Sidebar/Details controls with persisted layout preferences;
+- Vision image-transfer consent and Python/Chrome runtime checks;
+- Electron BrowserWindow CDP screenshot regression and Windows x64 unpacked packaging gates.
 
-<p align="center">
-  <img src="assets/desktop-preview.png" alt="DeepSeek Harness Desktop preview" width="100%">
-</p>
+Release work still pending:
 
-## Features
+- macOS arm64/x64 signing, notarization, and universal DMG;
+- Windows Authenticode, clean-machine install, upgrade, uninstall, and SmartScreen validation;
+- fully offline visual understanding;
+- Pi as a replacement for the DSH runtime.
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>Desktop</h3>
-      <p>Bring the official DeepSeek Harness local Web UI to a native desktop application. The app starts and manages the local Harness service, integrates the system tray and desktop window, and requires no Node.js installation or command-line setup.</p>
-    </td>
-    <td width="50%" valign="top">
-      <h3>Mobile Remote Control <img src="https://img.shields.io/badge/COMING_SOON-F59E0B?style=flat-square" alt="Coming Soon"></h3>
-      <p>Connect to Desktop from iOS and Android to start tasks, monitor Agent progress, and send follow-ups from your phone.</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>Plugin Marketplace <img src="https://img.shields.io/badge/COMING_SOON-F59E0B?style=flat-square" alt="Coming Soon"></h3>
-      <p>Harness follows an “everything is a plugin” architecture. The desktop marketplace will make it easy to discover, install, update, and manage plugins for models, tools, interfaces, and workflows.</p>
-    </td>
-    <td width="50%" valign="top">
-      <h3>Channels <img src="https://img.shields.io/badge/COMING_SOON-F59E0B?style=flat-square" alt="Coming Soon"></h3>
-      <p>Connect WeChat, Feishu, Discord, WhatsApp, and other IM channels to start tasks, receive progress updates, and continue conversations from the apps you already use.</p>
-    </td>
-  </tr>
-</table>
+## Product boundary
 
-## Plugin Ecosystem
+| Layer | Source | Responsibility |
+| --- | --- | --- |
+| DSH runtime | [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) | Agent, Session, Tool, Profile, Credential, and Web runtime |
+| Desktop shell baseline | [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop) | Open-source Electron Host, Profile, plugin Loader, and packaging boundary |
+| This product | [rw0104/DSH-desktop](https://github.com/rw0104/DSH-desktop) | Workbench experience, plugin composition, privacy flow, health checks, and release gates |
+| Product plugins | Community plugins | Pinned Vision Toolkit and Better Sidebar integration |
 
-DeepSeek Harness is built on [Cordis](https://github.com/cordiverse/cordis) and follows an “everything is a plugin” architecture. Core capabilities such as model adapters, the tool registry, the session log, and the Agent Loop participate in the runtime as plugins, so they can be composed or replaced through configuration. External plugins can also join a runtime through profiles and bundles. See the official [architecture overview](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md) and [plugin management documentation](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/reference/README.md#plugin-management).
+`deepseek-harness/` is a pinned, read-only Git submodule. Desktop features do not modify the official DSH source.
 
-We want Desktop to become more than a standalone desktop wrapper: it should serve as a desktop entry point into the DeepSeek Harness plugin ecosystem. We plan to reorganize the desktop capabilities around the official plugin model so service management, system integrations, and the plugin marketplace can follow the same composition model as Harness.
+## Architecture
 
-> **Coming soon:** Desktop is not currently distributed as a DeepSeek Harness plugin. This plugin integration is still in development.
-
-## Relationship to the Official Project
-
-This project is built on [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness).
-
-The core capabilities, plugin system, and Web UI come from the official DeepSeek Harness project. This project primarily provides:
-
-- Desktop application packaging
-- Local service lifecycle management
-- Desktop window and system tray integration
-- macOS and Windows installer builds and releases
-- Interface adaptations for desktop environments
-
-If you prefer to run Harness from the command line or contribute to its core functionality, refer to the official repository first.
-
-<a id="run-from-source"></a>
-
-## Development
-
-The desktop application is located in:
-
-```text
-apps/desktop
+```mermaid
+flowchart LR
+    User[Developer] --> Main[Electron Main]
+    Main --> Profile[Managed DSH Profile]
+    Profile --> Host[DSH Host Cordis]
+    Host --> Carrier[Loopback HTTP/WebSocket]
+    Carrier --> Renderer[Sandboxed Renderer]
+    Host --> Vision[Vision Toolkit]
+    Host --> Sidebar[Better Sidebar]
+    Renderer --> Workbench[DSH Desktop Workbench]
 ```
 
-Install the dependencies and start the desktop application:
+Electron Main owns windows, tray, profiles, updates, and managed processes. The DSH Host owns Agent and plugin lifecycle. The Renderer only uses the same-origin Web carrier and receives no raw Electron API.
 
-```sh
-pnpm install
-pnpm run dev:desktop
+## Getting started
+
+### Development environment
+
+Requirements:
+
+- Windows x64 or macOS;
+- Node.js 22.19+ or 24.x;
+- Corepack;
+- Python 3.11+ for Vision local tools;
+- Chrome, Chromium, or Edge for `vision_html_screenshot`.
+
+```powershell
+git clone https://github.com/rw0104/DSH-desktop.git
+cd DSH-desktop
+git submodule update --init --recursive
+corepack yarn install --immutable
+corepack yarn workspace dsh-plugin-desktop typecheck
 ```
 
-## Community
+Start the desktop development build:
 
-Choose whichever platform you prefer to discuss usage, plugin development, and project updates.
+```powershell
+corepack yarn dev
+```
 
-<table>
-  <thead>
-    <tr>
-      <th align="center">WeChat Group</th>
-      <th align="center">QQ Group</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center"><img src="assets/community-wechat-group.png" alt="DeepSeek Harness Desktop WeChat group QR code" width="180" height="180"></td>
-      <td align="center"><img src="assets/community-qq-group.jpg" alt="DeepSeek Harness Desktop QQ group QR code" width="180" height="180"></td>
-    </tr>
-  </tbody>
-</table>
+### Verify the environment
 
-Discord: [Join the DeepSeek Harness Desktop community](https://discord.gg/TJeGqKRNM)
+```powershell
+corepack yarn workspace dsh-plugin-desktop verify:release-readiness
+corepack yarn workspace dsh-plugin-desktop verify:vision-runtime
+```
 
-## License
+## Product plugins
 
-This project is licensed under the [MIT License](LICENSE).
+### Vision Toolkit
 
-> This is a community desktop edition built on DeepSeek Harness. It is not an official DeepSeek product.
+Vision Toolkit gives text-only models image Q&A, grounding, OCR, UI restoration, pixel diff, and asset extraction capabilities.
+
+Packaged launches explain the image-transfer boundary. Image-understanding requests may be sent to the configured vision service; crop, pixel diff, color analysis, and SVG tracing can run locally. Users can replace the vision endpoint and credentials in DSH Settings.
+
+### Better Sidebar
+
+Better Sidebar provides Explorer, CodeMirror editing, Git, browser, terminal, subagent, and background-task workspaces. It is loaded as a DSH Profile plugin, not copied into the Electron Renderer and not implemented by modifying official DSH source.
+
+## Tests and evidence
+
+- [Feasibility analysis](docs/01-feasibility-analysis.md)
+- [Development plan](docs/02-development-plan.md)
+- [Development log](docs/03-development-log.md)
+- [Electron screenshot evidence](docs/evidence/electron/README.md)
+- [Vision runtime report](docs/evidence/vision-runtime/windows.json)
+- [Windows unpacked artifact report](docs/evidence/release/windows-dir.json)
+
+## License and trademarks
+
+This project is licensed under the MIT License. Upstream DSH Desktop, DeepSeek Harness, Vision Toolkit, Better Sidebar, and transitive dependency notices must be preserved when redistributing the application.
+
+DeepSeek, DeepSeek Harness, and related marks belong to their respective owners. This project does not imply official endorsement or commercial partnership.

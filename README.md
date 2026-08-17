@@ -1,133 +1,110 @@
-<p align="center">
-  <img src="assets/desktop-hero-zh.jpg" alt="DeepSeek Harness 桌面端" width="100%">
-</p>
+# DSH Desktop
 
-<p align="center">
-  <a href="https://github.com/anywhere-labs/deepseek-harness-desktop"><img src="https://img.shields.io/github/stars/anywhere-labs/deepseek-harness-desktop?style=flat&amp;label=%E2%98%85&amp;color=08C" alt="GitHub stars"></a>
-  <img src="https://img.shields.io/badge/Desktop-App-47848F?style=flat" alt="Desktop application">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat" alt="MIT License"></a>
-  <a href="https://discord.gg/TJeGqKRNM"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&amp;logo=discord&amp;logoColor=white" alt="Join Discord"></a>
-  <img src="https://img.shields.io/badge/macOS%20%7C%20Windows-4493F8?style=flat-square" alt="Supported platforms: macOS and Windows">
-</p>
+面向 DeepSeek Harness 的桌面开发工作台，提供本地 Agent、会话、视觉工具和代码工作区。
 
-<p align="center"><sub>中文 · <a href="README.en.md">English</a></sub></p>
+本仓库维护 `rw0104/DSH-desktop` 的产品实现。桌面壳基于开源 DSH Desktop v2 的 Electron/DSH 组合边界继续开发，官方 DSH Runtime 作为固定 Git 子模块使用。
 
-<h3 align="center">为DeepSeek Harness生态打造的现代化桌面端体验（<a href="#插件生态">插件</a>）</h3>
+## 当前状态
 
-<a id="run"></a>
+项目处于开发阶段，当前已经具备：
 
-<h3 align="center"><a href="https://www.deepseekdesktop.com"><ins>立刻下载 MacOS/Windows</ins></a></h3>
+- Electron 43.4.0 桌面壳、单实例、托盘、Profile 生命周期和 loopback Web carrier；
+- DSH `0.1.0-rc.6` Runtime；
+- Vision Toolkit `0.1.24` 和 Better Sidebar `0.12.3` 默认 Profile 组合；
+- Advanced Shell 的 Sidebar/Details 工作区控制和布局持久化；
+- Vision 图片外发同意、Python/Chrome 健康检查；
+- Electron BrowserWindow CDP 截图回归和 Windows x64 unpacked packaging 门禁。
 
-<p align="center">
-  <img src="assets/desktop-preview.png" alt="DeepSeek Harness Desktop 界面预览" width="100%">
-</p>
+尚未完成的发布项：
 
-## 主要功能
+- macOS arm64/x64 签名、公证和 universal DMG；
+- Windows Authenticode、干净机器安装、升级、卸载和 SmartScreen 验证；
+- 完全离线的视觉理解；
+- Pi 作为 DSH 核心运行时。
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>Desktop</h3>
-      <p>把官方 DeepSeek Harness 的本地 Web UI 带到原生桌面。应用自动启动和管理本地 Harness 服务，集成系统托盘与桌面窗口，无需安装 Node.js 或执行命令。</p>
-    </td>
-    <td width="50%" valign="top">
-      <h3>手机远程控制 <img src="https://img.shields.io/badge/%E5%8D%B3%E5%B0%86%E6%8E%A8%E5%87%BA-F59E0B?style=flat-square" alt="即将推出"></h3>
-      <p>通过 iOS 和 Android 远程连接 Desktop，在手机上发起任务、查看 Agent 进度，并在需要时继续跟进。</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>插件市场 <img src="https://img.shields.io/badge/%E5%8D%B3%E5%B0%86%E6%8E%A8%E5%87%BA-F59E0B?style=flat-square" alt="即将推出"></h3>
-      <p>Harness 遵循“一切皆插件”的架构。桌面端插件市场将提供插件的发现、安装、更新和管理，让模型、工具、界面与工作流能力按需组合。</p>
-    </td>
-    <td width="50%" valign="top">
-      <h3>Channels <img src="https://img.shields.io/badge/%E5%8D%B3%E5%B0%86%E6%8E%A8%E5%87%BA-F59E0B?style=flat-square" alt="即将推出"></h3>
-      <p>接入微信、飞书、Discord、WhatsApp 等 IM 通道，直接在日常聊天工具中向 Agent 发起任务、接收进度并继续对话。</p>
-    </td>
-  </tr>
-</table>
+## 产品边界
 
-## 插件生态
-
-DeepSeek Harness 基于 [Cordis](https://github.com/cordiverse/cordis) 构建，并采用“一切皆插件”的架构。模型适配器、工具注册表、会话日志和 Agent Loop 等核心能力都以插件参与运行，可以通过配置自由组合或替换；外部插件也可以通过 profile 与 bundle 接入现有运行时。详见官方的[架构说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md)和[插件管理文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/reference/README.md#plugin-management)。
-
-我们希望 Desktop 不只是一个独立的桌面封装，而是 DeepSeek Harness 插件生态中的桌面入口。后续计划将桌面能力按官方插件机制重新组织，让服务管理、系统集成和插件市场可以沿用 Harness 的组合方式接入。
-
-> **即将推出：** Desktop 目前还不是以 DeepSeek Harness 插件形式交付，上述插件化能力仍在开发中。
-
-## 与官方项目的关系
-
-本项目基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 构建。
-
-DeepSeek Harness 的核心能力、插件系统和 Web UI 来自官方项目。本项目主要负责：
-
-- 桌面应用封装
-- 本地服务生命周期管理
-- 桌面窗口和系统托盘集成
-- macOS、Windows 安装包构建与发布
-- 桌面环境下的界面适配
-
-如果你希望通过命令行运行 Harness，或者参与核心功能开发，请优先查看官方仓库。
-
-<a id="run-from-source"></a>
-
-## 开发
-
-桌面端代码位于：
-
-```text
-apps/desktop
-```
-
-安装依赖并启动桌面应用：
-
-```sh
-pnpm install
-pnpm run dev:desktop
-```
-
-## 社区交流
-
-可选择常用的平台参与讨论，交流使用问题、插件开发和项目进展。
-
-<table>
-  <thead>
-    <tr>
-      <th align="center">微信群</th>
-      <th align="center">QQ群</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center"><img src="assets/community-wechat-group.png" alt="DeepSeek Harness Desktop 微信群二维码" width="180" height="180"></td>
-      <td align="center"><img src="assets/community-qq-group.jpg" alt="DeepSeek Harness Desktop QQ群二维码" width="180" height="180"></td>
-    </tr>
-  </tbody>
-</table>
-
-Discord：[加入 DeepSeek Harness Desktop 社区](https://discord.gg/TJeGqKRNM)
-
-## 友情链接
-
-这里收录 DeepSeek Harness 生态项目及开发者工具。
-
-| 项目 | 简介 | 链接 |
+| 层 | 来源 | 责任 |
 | --- | --- | --- |
-| DeepSeek Harness 橙皮书 | DeepSeek Harness 社区实测手册。 | [GitHub](https://github.com/alchaincyf/deepseek-harness-orange-book) |
-| Awesome DSH Plugin | DeepSeek Harness 社区插件精选列表。 | [GitHub](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) · [官网](https://awesome-dsh-plugin.com) |
-| dsh-web-ui | DeepSeek Harness Web UI 插件与皮肤合集。 | [GitHub](https://github.com/zhu1090093659/dsh-web-ui) · [展示站](https://gallery.dsh-market.com) |
-| dsh-TUI | DeepSeek Harness 全屏交互式终端界面。 | [GitHub](https://github.com/ccch1mneyyy/dsh-TUI) |
-| Agents-Anywhere | 从手机远程控制电脑上的 Coding Agent。 | [GitHub](https://github.com/anywhere-labs/Agents-Anywhere) |
-| DSH-better-sidebar | DeepSeek Harness 侧边栏工作台，集成文件、终端、Git 和子代理。 | [GitHub](https://github.com/omdsh-dev/DSH-better-sidebar) |
-| Awesome DeepSeek Harness | DeepSeek Harness 插件、工具与基础设施精选列表。 | [GitHub](https://github.com/0xsline/awesome-deepseek-harness) · [官网](https://deepseekdocs.com/) |
-| MkSaaS · TanStarter（赞助商） | 面向独立开发者的商业 SaaS 启动模板。MkSaaS 基于 Next.js，TanStarter 基于 TanStack Start 与 Cloudflare，内置 AI、认证、支付和后台等常用能力。 | [MkSaaS](https://mksaas.com) · [TanStarter](https://tanstarter.dev) |
+| DSH Runtime | [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) | Agent、Session、Tool、Profile、Credential 和 Web Runtime |
+| 桌面壳基线 | [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop) | Electron Host、Profile、插件 Loader 和打包边界的开源实现 |
+| 本项目 | [rw0104/DSH-desktop](https://github.com/rw0104/DSH-desktop) | 工作区体验、插件组合、隐私流程、健康检查和发布门禁 |
+| 产品插件 | 社区插件 | Vision Toolkit 和 Better Sidebar 的固定版本组合 |
 
-<sub>如果希望收录您的项目，欢迎加入微信群并私信 @王博升Benson。</sub>
+`deepseek-harness/` 是固定 commit 的只读 Git 子模块，桌面功能不修改官方 DSH 源码。
 
-## License
+## 架构
 
-本项目遵循 [MIT License](LICENSE)。
+```mermaid
+flowchart LR
+    User[开发者] --> Main[Electron Main]
+    Main --> Profile[Managed DSH Profile]
+    Profile --> Host[DSH Host Cordis]
+    Host --> Carrier[Loopback HTTP/WebSocket]
+    Carrier --> Renderer[Sandboxed Renderer]
+    Host --> Vision[Vision Toolkit]
+    Host --> Sidebar[Better Sidebar]
+    Renderer --> Workbench[DSH Desktop Workbench]
+```
 
-> 本项目是基于 DeepSeek Harness 构建的社区桌面版本，并非 DeepSeek 官方产品。
+Electron Main 负责窗口、托盘、Profile、更新和受管进程。DSH Host 负责 Agent 和插件生命周期。Renderer 只访问同源 Web carrier，不接收原始 Electron API。
 
-> 本项目完全开源免费。如果有人向您以任何形式出售此软件，请拒绝交易。
+## 快速开始
+
+### 开发环境
+
+要求：
+
+- Windows x64 或 macOS；
+- Node.js 22.19+ 或 24.x；
+- Corepack；
+- Python 3.11+，Vision 本地工具需要；
+- Chrome、Chromium 或 Edge，`vision_html_screenshot` 需要。
+
+```powershell
+git clone https://github.com/rw0104/DSH-desktop.git
+cd DSH-desktop
+git submodule update --init --recursive
+corepack yarn install --immutable
+corepack yarn workspace dsh-plugin-desktop typecheck
+```
+
+启动桌面开发版：
+
+```powershell
+corepack yarn dev
+```
+
+### 验证开发环境
+
+```powershell
+corepack yarn workspace dsh-plugin-desktop verify:release-readiness
+corepack yarn workspace dsh-plugin-desktop verify:vision-runtime
+```
+
+## 产品插件
+
+### Vision Toolkit
+
+Vision Toolkit 为纯文本模型提供图片问答、Grounding、OCR、UI 还原、像素差异和素材提取。
+
+打包应用首次启动会说明图片外发边界。图片理解请求可能发送到配置的视觉服务；裁剪、像素差异、颜色分析和 SVG 描摹可以在本地运行。用户可以在 DSH Settings 中替换视觉 Endpoint 和凭据。
+
+### Better Sidebar
+
+Better Sidebar 提供 Explorer、CodeMirror 编辑器、Git、浏览器、终端、子代理和后台任务工作区。它作为 DSH Profile 插件加载，不复制进 Electron Renderer，也不修改官方 DSH 源码。
+
+## 测试与证据
+
+- [可行性分析](docs/01-feasibility-analysis.md)
+- [开发任务规划](docs/02-development-plan.md)
+- [阶段开发记录](docs/03-development-log.md)
+- [Electron 截图证据](docs/evidence/electron/README.md)
+- [Vision 运行时报告](docs/evidence/vision-runtime/windows.json)
+- [Windows unpacked 制品报告](docs/evidence/release/windows-dir.json)
+
+## 许可证与商标
+
+本项目使用 MIT License。上游 DSH Desktop、DeepSeek Harness、Vision Toolkit、Better Sidebar 及传递依赖的许可证和版权声明必须在再分发时保留。
+
+DeepSeek、DeepSeek Harness 及相关标识属于各自权利人。本项目不代表官方背书或商业合作关系。
