@@ -14,7 +14,8 @@ const products = [
 ]
 
 for (const product of products) {
-  if (desktopManifest.dependencies?.[product.name] !== product.version) {
+  const dependencySpec = desktopManifest.dependencies?.[product.name]
+  if (!isPinnedDependency(product, dependencySpec)) {
     fail(`${product.name} dependency must be pinned to ${product.version}`)
   }
   const manifestPath = require.resolve(`${product.name}/package.json`)
@@ -24,6 +25,9 @@ for (const product of products) {
   }
   const patchPath = join(dirname(manifestPath), 'cordis.patch.yml')
   if (!existsSync(patchPath)) fail(`${product.name} is missing cordis.patch.yml`)
+  if (product.name === '@anionex/dsh-vision-toolkit' && isPatchedDependency(dependencySpec)) {
+    verifyVisionStartupPatch(dirname(manifestPath))
+  }
 }
 
 process.stdout.write(`verify-product-plugins: ${products.length} pinned plugins are installed\n`)
@@ -34,4 +38,33 @@ function readJson(path) {
 
 function fail(message) {
   throw new Error(`verify-product-plugins: ${message}`)
+}
+
+function isPinnedDependency(product, value) {
+  if (value === product.version) return true
+  if (product.name !== '@anionex/dsh-vision-toolkit' || typeof value !== 'string') return false
+  return value.startsWith(`patch:${product.name}@npm%3A${product.version}#`)
+    && decodeURIComponent(value).includes('../patches/@anionex-dsh-vision-toolkit-npm-0.1.24.patch')
+}
+
+function isPatchedDependency(value) {
+  return typeof value === 'string' && value.startsWith('patch:@anionex/dsh-vision-toolkit@npm%3A0.1.24#')
+}
+
+function verifyVisionStartupPatch(pluginRoot) {
+  const entry = readFileSync(join(pluginRoot, 'lib', 'index.js'), 'utf8')
+  const web = readFileSync(join(pluginRoot, 'lib', 'web.js'), 'utf8')
+  if (!entry.includes('const initialization = manager.initialize(settings.get()).then')) {
+    fail('Vision Toolkit patch must initialize its Python runtime asynchronously')
+  }
+  if (entry.includes('await manager.initialize(settings.get())')) {
+    fail('Vision Toolkit patch must not await Python runtime initialization during boot')
+  }
+  if (!entry.includes('new VisionToolkitWebBackend(ctx, manager, artifacts, ensureOperational, undefined, initialization)')
+    || !entry.includes('await initialization')) {
+    fail('Vision Toolkit Settings updates must wait for the initial runtime generation')
+  }
+  if (!web.includes('waitForInitialRuntime') || !web.includes('await this.waitForInitialRuntime')) {
+    fail('Vision Toolkit Web Settings save must wait for the initial runtime generation')
+  }
 }

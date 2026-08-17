@@ -40,6 +40,41 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@anionex/dsh-vision-toolkit@patch:@anionex/dsh-vision-toolkit@npm%3A0.1.24#./../patches/%40anionex-dsh-vision-toolkit-npm-0.1.24.patch::locator=dsh-plugin-desktop%40workspace%3Adsh-plugin-desktop":
+  version: 0.1.24
+  resolution: "@anionex/dsh-vision-toolkit@patch:@anionex/dsh-vision-toolkit@npm%3A0.1.24#./../patches/@anionex-dsh-vision-toolkit-npm-0.1.24.patch::version=0.1.24&hash=10c0dc&locator=dsh-plugin-desktop%40workspace%3Adsh-plugin-desktop"
+  dependencies:
+    saxes: "npm:6.0.0"
+  peerDependencies:
+    "@deepseek-ai/cordis": ^4.0.1
+    "@deepseek-ai/dsh-agent": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-api-remotes": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-attachment": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-client-locale": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-client-runtime": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-client-ui-conversation": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-client-ui-input-trigger": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-client-ui-primitives": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-client-ui-settings": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-client-ui-slots": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-client-ui-tool": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-credentials": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-host-webserver": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-llm": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-session": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-settings": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-skill": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-subprocess": ^0.1.0-rc.6
+    "@deepseek-ai/dsh-tools": ^0.1.0-rc.6
+    "@deepseek-ai/schemastery": ^3.18.1
+    react: ^18.2.0
+  peerDependenciesMeta:
+    "@deepseek-ai/dsh-host-webserver":
+      optional: true
+  checksum: 10c0/f4c1d0778c367d457e267f79b94a78e3b9c224ff9f9c7e98e5b9a960d7033756536b55b46cf43294260520adfc1eb341678318e2eed9d7c106b7bc98b8c07fa7
+  languageName: node
+  linkType: hard
+
 "@anthropic-ai/sdk@npm:0.91.1":
   version: 0.91.1
   resolution: "@anthropic-ai/sdk@npm:0.91.1"
@@ -6981,6 +7016,8 @@ __metadata:
 "deepseek-harness-desktop@workspace:.":
   version: 0.0.0-use.local
   resolution: "deepseek-harness-desktop@workspace:."
+  dependencies:
+    sharp: "npm:0.35.3"
   dependenciesMeta:
     "@deepseek-ai/dsh-subprocess-local":
       built: true
@@ -7187,7 +7224,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "dsh-plugin-desktop@workspace:dsh-plugin-desktop"
   dependencies:
-    "@anionex/dsh-vision-toolkit": "npm:0.1.24"
+    "@anionex/dsh-vision-toolkit": "patch:@anionex/dsh-vision-toolkit@npm%3A0.1.24#./../patches/%40anionex-dsh-vision-toolkit-npm-0.1.24.patch"
     "@deepseek-ai/cordis": "npm:4.0.1"
     "@deepseek-ai/cordis-plugin-group": "npm:1.0.1"
     "@deepseek-ai/cordis-plugin-include": "npm:1.0.6"
@@ -7301,7 +7338,6 @@ __metadata:
     pnpm: "npm:11.7.0"
     react: "npm:18.3.1"
     react-dom: "npm:18.3.1"
-    sharp: "npm:0.35.3"
     tsdown: "npm:0.22.2"
     typescript: "npm:6.0.3"
     vitest: "npm:4.1.8"

@@ -1,0 +1,70 @@
+diff --git a/lib/index.js b/lib/index.js
+index 63c2383cbe2f5b0c3c7b45d77038bf66f6b7b80f..4fc44dcb30b590baf78702b4f7b32c4868717992 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -60,15 +60,15 @@ export async function apply(ctx, config = {}) {
+             throw error;
+         }
+     };
+-    try {
+-        await manager.initialize(settings.get());
+-        ensureOperational();
+-    }
+-    catch (error) {
++    let disposed = false;
++    const initialization = manager.initialize(settings.get()).then(() => {
++        if (!disposed)
++            ensureOperational();
++    }).catch((error) => {
+         const message = error instanceof Error ? error.message : String(error);
+         ctx.logger.error('dsh-vision-toolkit %s: runtime not ready; the vision-tools skill, activation bootstrap, and Agent-scoped visual tools are NOT registered. Settings remain available for repair. %s', PLUGIN_VERSION, message);
+-    }
+-    const backend = new VisionToolkitWebBackend(ctx, manager, artifacts, ensureOperational);
++    });
++    const backend = new VisionToolkitWebBackend(ctx, manager, artifacts, ensureOperational, undefined, initialization);
+     const pastedImages = new PastedImageBackend(ctx, {
+         maxImageBytes: () => manager.status().activeConfig?.maxImageBytes ?? resolveConfig(settings.get()).maxImageBytes,
+     });
+@@ -80,6 +80,7 @@ export async function apply(ctx, config = {}) {
+     disposers.push(variants.dispose);
+     disposers.push(settings.watch(async (next) => {
+         try {
++            await initialization;
+             await manager.reconfigure(next);
+             ensureOperational();
+             variants.reconcile();
+@@ -90,6 +91,7 @@ export async function apply(ctx, config = {}) {
+         }
+     }));
+     return () => {
++        disposed = true;
+         lifecycle.abort();
+         if (operationalDisposers !== undefined) {
+             operationalDisposers.exposure();
+diff --git a/lib/web.js b/lib/web.js
+index bb1def57339152e5195e59a278ddd81bdf140315..6529ae9f4f2bbdcb3a0cd743a0738f10b006c3a3 100644
+--- a/lib/web.js
++++ b/lib/web.js
+@@ -126,11 +126,13 @@ export class VisionToolkitWebBackend {
+     artifacts;
+     onRuntimeActivated;
+     updater;
+-    constructor(ctx, manager, artifacts, onRuntimeActivated, updater) {
++    waitForInitialRuntime;
++    constructor(ctx, manager, artifacts, onRuntimeActivated, updater, waitForInitialRuntime = Promise.resolve()) {
+         this.ctx = ctx;
+         this.manager = manager;
+         this.artifacts = artifacts;
+         this.onRuntimeActivated = onRuntimeActivated;
++        this.waitForInitialRuntime = waitForInitialRuntime;
+         this.updater = updater ?? new VisionToolkitPluginUpdateService(ctx, PLUGIN_VERSION, {
+             runtimeReady: () => this.manager.status().ready,
+         });
+@@ -180,6 +182,7 @@ export class VisionToolkitWebBackend {
+         };
+     }
+     async save(request) {
++        await this.waitForInitialRuntime;
+         if (!this.ctx.settings.writable)
+             throw new Error('settings provider is read-only');
+         let candidate;
