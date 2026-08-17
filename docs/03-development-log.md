@@ -25,9 +25,11 @@
 - `corepack yarn workspace dsh-plugin-desktop typecheck`：通过。
 - 根级 `corepack yarn check`：暂未通过，原因是上游子模块尚未 checkout。
 
-### 环境限制
+### 环境限制与恢复
 
-`git submodule update --init --recursive` 两次尝试均因当前环境连接 GitHub 失败，未能下载 `deepseek-harness`。子模块索引和 `upstream.json` 未被修改；完成完整根级检查前必须在可访问 GitHub 的环境重新执行该命令。
+首次安装阶段的 `git submodule update --init --recursive` 因 GitHub 连接重置失败；随后重试成功，`deepseek-harness` 已 checkout 到 `47f943859bef60e4160492346772ded9b24f765a`，状态干净。Windows checkout 曾把 `CLAUDE.md` 还原为普通文件，已恢复为仓库要求的 `AGENTS.md` 符号链接。
+
+恢复后 `corepack yarn check:layout` 通过。完整根级 `check` 仍需关注上游现有的 Windows 路径/权限测试差异，不能用它替代本阶段的包级验证。
 
 ## 2026-08-17：P2-01/P2-02 默认插件组合
 
