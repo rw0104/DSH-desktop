@@ -234,6 +234,26 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 - 仍需在 macOS arm64/x64 真机执行签名、公证、DMG 和原生窗口矩阵。
 - 仍需在干净 Windows 环境执行 NSIS 安装、升级、卸载和 SmartScreen 验证。
 
+## 2026-08-17：P6 Windows x64 unpacked packaging
+
+### 过程
+
+- 首次 `package:dir` 因 `node-pty` 被 Electron Builder 重新编译，触发本机缺失 Spectre-mitigated libraries 的 MSB8040。
+- 检查确认 `node-pty@1.1.0` 已携带 `prebuilds/win32-x64` 的 `pty.node`、ConPTY 和 winpty 文件。
+- `package-dir.mjs` 改为显式传递 `--config.npmRebuild=false` 和 `--publish never`，让本地 smoke 使用已审查的预编译模块，不触发源码编译或发布网络。
+
+### 验证
+
+- `corepack yarn workspace dsh-plugin-desktop package:dir`：通过。
+- Electron Builder：Windows x64、Electron `43.4.0`、`win-unpacked` 完成。
+- AfterPack packaged-runtime gate：通过，`app.asar`、`app.asar.unpacked`、桌面入口和 `node-pty` 物理条目存在。
+- [Windows unpacked 制品报告](./evidence/release/windows-dir.json)：包含入口、ASAR、unpacked runtime、文件数和总字节数。
+
+### 未完成项
+
+- 未签名 NSIS 安装包、Authenticode、干净机安装/升级/卸载和 SmartScreen 仍未验证。
+- macOS arm64/x64 DMG、Developer ID、公证和 universal 原生模块仍需原生 macOS 主机。
+
 ## 2026-08-17：P0-05/P5-05 产品插件版本门禁
 
 ### 范围
