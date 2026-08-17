@@ -6,6 +6,7 @@ import {
   WINDOWS_TITLEBAR_HEIGHT,
 } from '../window-chrome.ts'
 import { SIDEBAR_COLLAPSED } from './layout-state.ts'
+import { CONTROL_STRIP_STYLES } from './control-strip-styles.ts'
 
 /** Advanced-shell stylesheet kept as a plain string so the package client bundle stays self-contained. */
 const ADVANCED_STYLES = `
@@ -49,7 +50,7 @@ export function installAdvancedStyles(): () => void {
   const style = document.createElement('style')
   style.dataset.plugin = 'dsh-plugin-desktop'
   style.dataset.pluginCss = 'dsh-plugin-desktop/advanced-shell'
-  style.textContent = ADVANCED_STYLES
+  style.textContent = `${ADVANCED_STYLES}${CONTROL_STRIP_STYLES}`
   document.head.appendChild(style)
   return () => { style.remove() }
 }
