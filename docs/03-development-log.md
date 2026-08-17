@@ -210,6 +210,30 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 - 尚未把健康报告接入 Vision Settings 页面或桌面托盘。
 - 尚未在 macOS arm64、macOS x64 和无浏览器环境执行真实机矩阵。
 
+## 2026-08-17：P5/P6 Headless 发布门禁聚合
+
+### 范围
+
+- 将布局、类型、目标测试、runtime closure、CLI、Loader、Profile、插件闭包和 Vision runtime 组合成一个 headless-safe release gate。
+- Windows 下使用显式 `cmd.exe /d /s /c` 启动 Yarn，不使用带弃用警告的 `shell:true`。
+- 门禁不依赖 GUI，也不把当前上游 Windows 平台路径测试的已知差异混入产品发布阻塞项。
+
+### 代码改动
+
+- `dsh-plugin-desktop/scripts/verify-release-readiness.mjs`：新增发布前检查聚合器。
+- `dsh-plugin-desktop/package.json`：新增 `verify:release-readiness` 命令。
+
+### 验证
+
+- `corepack yarn workspace dsh-plugin-desktop verify:release-readiness`：通过。
+- 通过项：layout、typecheck、29 个目标测试、runtime closure、CLI smoke、Loader smoke、Profile smoke、product plugin closure、Vision runtime。
+- 运行时没有 shell 安全弃用警告。
+
+### 未完成项
+
+- 仍需在 macOS arm64/x64 真机执行签名、公证、DMG 和原生窗口矩阵。
+- 仍需在干净 Windows 环境执行 NSIS 安装、升级、卸载和 SmartScreen 验证。
+
 ## 2026-08-17：P0-05/P5-05 产品插件版本门禁
 
 ### 范围
