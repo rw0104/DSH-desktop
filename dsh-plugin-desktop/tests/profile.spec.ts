@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { composeEntries, initProfile, PROFILE_TEMPLATES } from '@deepseek-ai/dsh-app-boot'
 import {
+  DEFAULT_DESKTOP_PLUGIN_BUNDLES,
   DESKTOP_PACKAGE_NAME,
   desktopShellModeFromSettings,
   desktopBundleList,
@@ -35,6 +36,24 @@ describe('desktop profile composition', () => {
     ])).toEqual([
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
+      ...DEFAULT_DESKTOP_PLUGIN_BUNDLES,
+      'third-party-one',
+      'third-party-two',
+    ])
+  })
+
+  it('keeps the built-in plugin pair unique when users already installed one', () => {
+    expect(desktopBundleList([
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+      'third-party-one',
+      DEFAULT_DESKTOP_PLUGIN_BUNDLES[1],
+      DEFAULT_DESKTOP_PLUGIN_BUNDLES[0],
+      'third-party-two',
+    ])).toEqual([
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+      ...DEFAULT_DESKTOP_PLUGIN_BUNDLES,
       'third-party-one',
       'third-party-two',
     ])
@@ -61,6 +80,7 @@ describe('desktop profile composition', () => {
     expect(repaired.dsh.profile.bundles).toEqual([
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
+      ...DEFAULT_DESKTOP_PLUGIN_BUNDLES,
       'third-party-plugin',
     ])
     expect(repaired.dependencies).toEqual({ 'third-party-plugin': '^1.2.3' })
@@ -143,6 +163,14 @@ describe('desktop profile composition', () => {
     expect(rows.find(row => row.id === 'desktop-profiles')).toEqual(expect.objectContaining({
       name: 'dsh-plugin-desktop/profiles',
     }))
+    expect(rows).toContainEqual({
+      id: 'vision-toolkit',
+      name: '@anionex/dsh-vision-toolkit',
+    })
+    expect(rows).toContainEqual({
+      id: 'better-sidebar',
+      name: 'dsh-better-sidebar',
+    })
   })
 
   it('boots a selected Web profile without overriding its compatibility UI rows', () => {

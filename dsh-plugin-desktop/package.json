@@ -101,6 +101,7 @@
     "prepack": "yarn run check"
   },
   "dependencies": {
+    "@anionex/dsh-vision-toolkit": "0.1.24",
     "@deepseek-ai/cordis": "4.0.1",
     "@deepseek-ai/cordis-plugin-group": "1.0.1",
     "@deepseek-ai/cordis-plugin-include": "1.0.6",
@@ -203,9 +204,11 @@
     "@deepseek-ai/dsh-web-app": "0.1.0-rc.6",
     "@deepseek-ai/dsh-workflow": "0.1.0-rc.6",
     "@deepseek-ai/schemastery": "^3.18.1",
+    "dsh-better-sidebar": "0.12.3",
     "node-addon-require-builtin": "^0.1.4",
     "pnpm": "11.7.0",
     "react": "18.3.1",
+    "react-dom": "18.3.1",
     "yaml": "^2.9.0"
   },
   "peerDependencies": {
