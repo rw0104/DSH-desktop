@@ -123,6 +123,40 @@ describe('advanced desktop layout', () => {
     ])
   })
 
+  it('restores persisted panel preferences without restoring viewport-only state', () => {
+    const values = new Map<string, string>()
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value) },
+    }
+    const first = new DesktopLayoutState({ storage })
+    first.toggleSidebar()
+    first.openDetails()
+    first.setNarrow(true)
+    first.toggleSidebar()
+
+    const restored = new DesktopLayoutState({ storage })
+    expect(restored.getSnapshot()).toEqual({
+      sidebar: 0,
+      details: 360,
+      narrow: false,
+      narrowExpanded: false,
+    })
+  })
+
+  it('ignores malformed persisted panel preferences', () => {
+    const storage = {
+      getItem: () => '{"version":1,"sidebar":"wide","details":-1}',
+      setItem: () => {},
+    }
+    expect(new DesktopLayoutState({ storage }).getSnapshot()).toEqual({
+      sidebar: 280,
+      details: 0,
+      narrow: false,
+      narrowExpanded: false,
+    })
+  })
+
   it('lets the rail re-expand without losing its wide preference on narrow windows', () => {
     const layout = new DesktopLayoutState()
     layout.setNarrow(true)

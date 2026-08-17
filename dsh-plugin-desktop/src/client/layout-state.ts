@@ -1,4 +1,6 @@
 /** Advanced-shell panel state shared by the root slot and layout-service adapter. */
+import type { LayoutStorage } from './layout-storage.ts'
+
 export interface DesktopLayoutSnapshot {
   /** Preferred sidebar width; zero means the compact rail. */
   sidebar: number
@@ -32,6 +34,13 @@ export const DETAILS_DEFAULT = 360
 export const DETAILS_MIN = 300
 export const DETAILS_MAX = 520
 export const CENTER_MIN = 640
+export const DESKTOP_LAYOUT_STORAGE_KEY = 'dsh-desktop:layout:v1'
+
+/** Optional persistence boundary for the desktop workbench state. */
+export interface DesktopLayoutOptions {
+  storage?: LayoutStorage
+  storageKey?: string
+}
 
 /**
  * Resolve three desktop columns without allowing details to squeeze the conversation below its floor.
@@ -64,13 +73,16 @@ function clamp(value: number, min: number, max: number): number {
 
 /** Small observable panel controller used by the advanced root registration. */
 export class DesktopLayoutState {
-  private snapshot: DesktopLayoutSnapshot = Object.freeze({
-    sidebar: SIDEBAR_DEFAULT,
-    details: 0,
-    narrow: false,
-    narrowExpanded: false,
-  })
+  private readonly storage: LayoutStorage | undefined
+  private readonly storageKey: string
+  private snapshot: DesktopLayoutSnapshot
   private readonly listeners = new Set<() => void>()
+
+  constructor(options: DesktopLayoutOptions = {}) {
+    this.storage = options.storage
+    this.storageKey = options.storageKey ?? DESKTOP_LAYOUT_STORAGE_KEY
+    this.snapshot = Object.freeze(readSnapshot(this.storage, this.storageKey))
+  }
 
   /** @returns the immutable current panel snapshot. */
   getSnapshot(): DesktopLayoutSnapshot {
@@ -86,7 +98,7 @@ export class DesktopLayoutState {
   /** Toggle the wide sidebar and the platform-selected compact rail. */
   toggleSidebar(): void {
     if (this.snapshot.narrow) {
-      this.publish({ ...this.snapshot, narrowExpanded: !this.snapshot.narrowExpanded })
+      this.publish({ ...this.snapshot, narrowExpanded: !this.snapshot.narrowExpanded }, false)
       return
     }
     this.publish({ ...this.snapshot, sidebar: this.snapshot.sidebar === 0 ? SIDEBAR_DEFAULT : 0 })
@@ -95,7 +107,7 @@ export class DesktopLayoutState {
   /** @param narrow - whether the frame is below the automatic-collapse breakpoint. */
   setNarrow(narrow: boolean): void {
     if (this.snapshot.narrow === narrow) return
-    this.publish({ ...this.snapshot, narrow, narrowExpanded: false })
+    this.publish({ ...this.snapshot, narrow, narrowExpanded: false }, false)
   }
 
   /** Open details at its default width. */
@@ -118,8 +130,47 @@ export class DesktopLayoutState {
     this.publish({ ...this.snapshot, details: clamp(width, DETAILS_MIN, DETAILS_MAX) })
   }
 
-  private publish(next: DesktopLayoutSnapshot): void {
+  private publish(next: DesktopLayoutSnapshot, persist = true): void {
     this.snapshot = Object.freeze(next)
+    if (persist) writeSnapshot(this.storage, this.storageKey, next)
     for (const listener of this.listeners) listener()
+  }
+}
+
+function readSnapshot(storage: LayoutStorage | undefined, key: string): DesktopLayoutSnapshot {
+  const fallback: DesktopLayoutSnapshot = {
+    sidebar: SIDEBAR_DEFAULT,
+    details: 0,
+    narrow: false,
+    narrowExpanded: false,
+  }
+  if (storage === undefined) return fallback
+  try {
+    const raw = storage.getItem(key)
+    if (raw === null) return fallback
+    const value: unknown = JSON.parse(raw)
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return fallback
+    const record = value as Record<string, unknown>
+    if (record.version !== 1 || typeof record.sidebar !== 'number' || typeof record.details !== 'number') {
+      return fallback
+    }
+    if (!Number.isFinite(record.sidebar) || !Number.isFinite(record.details)) return fallback
+    return {
+      sidebar: record.sidebar === 0 ? 0 : clamp(record.sidebar, SIDEBAR_MIN, SIDEBAR_MAX),
+      details: record.details === 0 ? 0 : clamp(record.details, DETAILS_MIN, DETAILS_MAX),
+      narrow: false,
+      narrowExpanded: false,
+    }
+  } catch {
+    return fallback
+  }
+}
+
+function writeSnapshot(storage: LayoutStorage | undefined, key: string, snapshot: DesktopLayoutSnapshot): void {
+  if (storage === undefined) return
+  try {
+    storage.setItem(key, JSON.stringify({ version: 1, sidebar: snapshot.sidebar, details: snapshot.details }))
+  } catch {
+    // Private browsing and quota errors should not break layout interactions.
   }
 }

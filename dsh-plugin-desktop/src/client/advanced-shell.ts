@@ -4,6 +4,7 @@ import type {} from './contracts.ts'
 import type { DesktopClientEnvironment } from './environment.ts'
 import { AdvancedFrame } from './AdvancedFrame.tsx'
 import { DesktopLayoutState } from './layout-state.ts'
+import { createLayoutStorage } from './layout-storage.ts'
 import { provideDesktopLayout } from './layout-service.ts'
 import { installAdvancedStyles } from './styles.ts'
 import { DesktopThemePresenter } from './theme-presenter.ts'
@@ -18,7 +19,8 @@ export function applyAdvancedShell(ctx: ClientContext, environment: DesktopClien
     throw new Error(`dsh-plugin-desktop: advanced shell received mode ${JSON.stringify(environment.mode)}`)
   }
 
-  const desktopLayout = new DesktopLayoutState()
+  const storage = createLayoutStorage()
+  const desktopLayout = new DesktopLayoutState(storage === undefined ? {} : { storage })
   ctx.effect(
     () => provideDesktopLayout(ctx, desktopLayout),
     'desktop: layout service',

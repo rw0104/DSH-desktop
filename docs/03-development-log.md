@@ -66,4 +66,31 @@
 
 ## 下一阶段
 
-下一阶段进入 P2-03/P2-05：建立真实 Profile 挂载 smoke，验证两个插件的 Host/Client bundle、无重复 Sidebar、Vision 图片入口和 Sidebar 基础文件工作台。由于上游子模块当前未下载，完整 Loader smoke 需要先恢复网络或在可访问 GitHub 的环境运行。
+P2-03/P2-05 的 Profile、Loader、CLI、runtime closure 和 renderer manifest smoke 已经通过。当前进入 P3-07：验证 Advanced Shell 的侧栏/详情宽度偏好跨重启恢复，再继续做 Codex-like 视觉层和截图回归。
+
+## 2026-08-17：P3-07 Advanced Shell 布局持久化
+
+### 范围
+
+- 保存侧栏宽度、详情面板宽度和收起状态。
+- 不保存窄窗口检测结果和临时窄屏展开状态。
+- 让浏览器 `localStorage` 成为可选依赖，存储不可用时布局仍可工作。
+
+### 代码改动
+
+- `dsh-plugin-desktop/src/client/layout-storage.ts`：新增最小存储接口和安全的浏览器存储探测。
+- `dsh-plugin-desktop/src/client/layout-state.ts`：新增版本化布局快照读写、数值校验和持久化边界。
+- `dsh-plugin-desktop/src/client/advanced-shell.ts`：为 Advanced Shell 注入可选布局存储。
+- `dsh-plugin-desktop/tests/client-environment.spec.ts`：覆盖恢复、窄屏状态隔离和损坏快照回退。
+
+### 验证
+
+- `corepack yarn workspace dsh-plugin-desktop exec vitest run tests/client-environment.spec.ts`：12 个测试通过。
+- `corepack yarn workspace dsh-plugin-desktop typecheck`：通过。
+- `corepack yarn workspace dsh-plugin-desktop build`：通过。
+- `corepack yarn workspace dsh-plugin-desktop verify:profile`：通过。
+
+### 未完成项
+
+- 尚未在真实 Electron BrowserWindow 中做多窗口、多显示器和系统主题截图回归。
+- 尚未把布局快照和 DSH Profile/Session 做更细粒度的关联；当前是桌面用户级布局偏好。
