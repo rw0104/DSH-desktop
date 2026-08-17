@@ -13,4 +13,5 @@ dsh-plugin-desktop/dist/
 dsh-plugin-desktop/lib/
 
 .tmp-electron-dsh-home/
+.tmp-packaged-*/
 artifacts/
