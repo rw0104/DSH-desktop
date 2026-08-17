@@ -1,6 +1,6 @@
 /** DSH Desktop executable: minimal Electron bootstrap around the Host Cordis root. */
 
-import { app } from 'electron'
+import { app, dialog } from 'electron'
 import type { Context } from '@deepseek-ai/cordis'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -27,6 +27,7 @@ import {
 } from './profile-manager.ts'
 import { DesktopProfileService } from './profile-service.ts'
 import { prepareDesktopProfile } from './profile.ts'
+import { resolveVisionConsent, type VisionConsentPrompt } from './vision-consent.ts'
 import type { DesktopPnpmBootstrap } from './pnpm.ts'
 import {
   createDesktopExitCoordinator,
@@ -37,6 +38,23 @@ import {
 
 const BIN_NAME = 'dsh-plugin-desktop'
 const PRODUCT_NAME = 'DSH Desktop'
+
+/** Ask for the only product-level decision that changes image data flow. */
+async function promptVisionConsent({ firstRun }: VisionConsentPrompt): Promise<boolean> {
+  const result = await dialog.showMessageBox({
+    type: 'info',
+    title: firstRun ? 'Vision Toolkit privacy' : 'Vision Toolkit is disabled',
+    message: firstRun
+      ? 'Vision Toolkit can send selected images to its configured vision service.'
+      : 'Vision Toolkit is currently disabled for this desktop profile.',
+    detail: 'Enable it only if you accept the configured provider\'s data handling. You can change the provider and API key in DSH Settings. Local crop, pixel diff, color and SVG tools do not require image upload.',
+    buttons: ['Enable Vision Toolkit', 'Keep Disabled'],
+    defaultId: firstRun ? 0 : 1,
+    cancelId: 1,
+    noLink: true,
+  })
+  return result.response === 0
+}
 
 /** Report profile recovery without changing startup or rollback outcomes. */
 function notifyProfileRecovery(runtime: ElectronDesktopRuntime, body: string): void {
@@ -133,6 +151,17 @@ async function start(): Promise<void> {
     const releasePnpmRuntime = (): void => { pnpmRuntime.dispose() }
     disposePnpmRuntime = releasePnpmRuntime
     const homeDir = resolveDshHome()
+    let visionEnabled = true
+    try {
+      visionEnabled = await resolveVisionConsent({
+        isPackaged: app.isPackaged,
+        statePath: join(app.getPath('userData'), 'privacy', 'vision-consent.json'),
+        prompt: promptVisionConsent,
+      })
+    } catch (cause) {
+      process.stderr.write(`${BIN_NAME}: Vision Toolkit consent failed; keeping it disabled: ${cause instanceof Error ? cause.message : String(cause)}\n`)
+      visionEnabled = false
+    }
     const selectionStatePath = join(app.getPath('userData'), 'profile-selection', 'state.json')
     profileStatePath = selectionStatePath
     profileStartup = beginDesktopProfileStartup(selectionStatePath, homeDir)
@@ -142,6 +171,7 @@ async function start(): Promise<void> {
       homeDir,
       process.platform,
       activeProfileName,
+      { visionEnabled },
     )
     const desktopPnpmBootstrap: DesktopPnpmBootstrap = {
       activeProfileName,

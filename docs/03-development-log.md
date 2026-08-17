@@ -124,6 +124,36 @@ P2-03/P2-05 的 Profile、Loader、CLI、runtime closure 和 renderer manifest s
 - 尚未通过真实 Electron BrowserWindow/Playwright 截图确认在 macOS 和 Windows 标题栏下不遮挡 DSH Conversation Header。
 - 尚未完成命令搜索、全局快捷键、窄屏抽屉和无障碍端到端检查。
 
+## 2026-08-17：P4-01/P4-02 Vision 隐私同意和 Profile 停用
+
+### 范围
+
+- 打包应用首次启动前，用原生 Electron dialog 告知 Vision Toolkit 的图片外发边界。
+- 接受后启用 Vision；拒绝后仍启动 DSH 和 Sidebar，但禁用 `vision-toolkit` Loader row。
+- 将决定保存为版本化 JSON，使用原子写入和用户私有目录。
+- 开发模式、headless smoke 和已接受状态不重复阻塞启动；拒绝状态下下一次打包启动可以重新选择。
+
+### 代码改动
+
+- `dsh-plugin-desktop/src/vision-consent.ts`：新增纯 Node 的读取、原子写入和决策解析模块。
+- `dsh-plugin-desktop/src/main.ts`：在 Profile 组装前调用原生隐私 dialog，失败时 fail-closed 禁用 Vision。
+- `dsh-plugin-desktop/src/profile.ts`：增加 `visionEnabled` 产品选项并在最终 patch 层禁用 Vision row。
+- `dsh-plugin-desktop/tests/vision-consent.spec.ts`：覆盖开发模式、首次接受、拒绝后重新选择、损坏状态和版本化写入。
+- `dsh-plugin-desktop/tests/profile.spec.ts`：覆盖 consent declined 的 Profile 结果。
+
+### 验证
+
+- `corepack yarn workspace dsh-plugin-desktop typecheck`：通过。
+- `corepack yarn workspace dsh-plugin-desktop exec vitest run tests/profile.spec.ts tests/vision-consent.spec.ts`：17 个测试通过。
+- `corepack yarn workspace dsh-plugin-desktop build`：通过。
+- `corepack yarn workspace dsh-plugin-desktop verify:profile`：通过。
+- `corepack yarn workspace dsh-plugin-desktop verify:product-plugins`：通过。
+
+### 未完成项
+
+- 还没有把 consent 状态接入设置页面或托盘菜单；当前拒绝后会在下一次打包启动再次询问。
+- 还没有验证真实视觉请求、429、Python 缺失和 Chrome 缺失的 UI 恢复路径。
+
 ## 2026-08-17：P0-05/P5-05 产品插件版本门禁
 
 ### 范围
