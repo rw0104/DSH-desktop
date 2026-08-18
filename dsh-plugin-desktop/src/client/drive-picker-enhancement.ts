@@ -12,6 +12,12 @@ export function normalizeDriveLetters(driveLetters: readonly string[]): string[]
   return [...new Set(driveLetters.map(letter => letter.toUpperCase()).filter(letter => /^[A-Z]$/u.test(letter)))]
 }
 
+/** Capture a valid Windows volume root before the select is reset for the next choice. */
+export function windowsDriveRoot(letter: string): string {
+  const normalized = normalizeDriveLetters([letter])[0]
+  return normalized === undefined ? '' : `${normalized}:\\`
+}
+
 export function installWindowsDrivePickerEnhancement(
   platform: string,
   locale: LocaleFace,
@@ -32,16 +38,15 @@ export function installWindowsDrivePickerEnhancement(
   const label = () => copy() ? '选择盘符' : 'Select drive'
   const optionLabel = (letter: string) => copy() ? `${letter}盘 (${letter}:)` : `Drive ${letter}:`
 
-  const navigate = (dialog: Element, picker: HTMLSelectElement): void => {
+  const navigate = (dialog: Element, path: string): void => {
     const edit = dialog.querySelector<HTMLButtonElement>('button[aria-label="编辑路径"], button[aria-label="Edit path"]')
     if (edit === null) return
     edit.click()
     window.setTimeout(() => {
       const input = dialog.querySelector<HTMLInputElement>('input[aria-label="编辑路径"], input[aria-label="Edit path"]')
       if (input === null) return
-      const value = `${picker.value}:\\`
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
-      setter?.call(input, value)
+      setter?.call(input, path)
       input.dispatchEvent(new Event('input', { bubbles: true }))
       input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }))
     }, 0)
@@ -68,7 +73,8 @@ export function installWindowsDrivePickerEnhancement(
       picker.appendChild(option)
     }
     picker.addEventListener('change', () => {
-      if (picker.value !== '') navigate(dialog, picker)
+      const path = windowsDriveRoot(picker.value)
+      if (path !== '') navigate(dialog, path)
       picker.value = ''
     })
     edit.parentElement?.insertBefore(picker, edit)

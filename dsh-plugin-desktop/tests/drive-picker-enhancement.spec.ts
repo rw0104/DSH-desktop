@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   installWindowsDrivePickerEnhancement,
   normalizeDriveLetters,
+  windowsDriveRoot,
 } from '../src/client/drive-picker-enhancement.ts'
 
 describe('Windows drive picker enhancement', () => {
@@ -32,5 +33,11 @@ describe('Windows drive picker enhancement', () => {
 
   it('keeps only the mounted drive letters supplied by the host', () => {
     expect(normalizeDriveLetters(['c', 'D', 'D', '1', 'zz'])).toEqual(['C', 'D'])
+  })
+
+  it('captures a drive root before the picker value can be reset', () => {
+    expect(windowsDriveRoot('c')).toBe('C:\\')
+    expect(windowsDriveRoot('')).toBe('')
+    expect(windowsDriveRoot('CD')).toBe('')
   })
 })

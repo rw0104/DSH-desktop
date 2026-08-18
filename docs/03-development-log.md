@@ -381,3 +381,16 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 
 - 失败回归测试先复现了缺失依赖，再在修复后通过；包级 sharp/runtime 测试 `36 passed`。
 - 最新真实 packaged Electron 启动成功，stderr 无 `sharp` 或 `ERR_MODULE_NOT_FOUND`；新的 NSIS 安装器约 `151.4 MiB`，未封装目录约 `549.5 MiB`。
+
+## 2026-08-18：Windows 目录选择根路径修复
+
+### 根因与修复
+
+- 盘符下拉的 change handler 在异步 `navigate()` 尚未读取值前就把 `select.value` 清空，导致官方 browse picker 收到 `:\`，并报 `cannot list "\\": not a fully qualified path`。
+- 现在会在清空 select 前捕获规范的 `C:\`/`D:\`/`E:\` 根路径，再驱动官方编辑路径流程；非法盘符不会发起导航。
+- smoke 脚本改为点击真实的“添加工作区…”菜单项，并支持选择盘符和检查路径输入。
+
+### 验证
+
+- 真实 Electron `1.0.1` CDP 回归：盘符选项为 `C盘 (C:)`、`D盘 (D:)`、`E盘 (E:)`；选择 C 后路径为 `C:\`，目录列表正常，错误列表为空。
+- 证据截图：[directory-picker-1.0.1-selected-c.png](./evidence/electron/directory-picker-1.0.1-selected-c.png)。

@@ -8,6 +8,7 @@ const toggleSidebar = process.argv.includes('--toggle-sidebar')
 const toggleDetails = process.argv.includes('--toggle-details')
 const openDirectoryPicker = process.argv.includes('--open-directory-picker')
 const openCurrentDirectory = process.argv.includes('--open-current-directory')
+const selectedDrive = process.argv.find(value => value.startsWith('--select-drive='))?.slice('--select-drive='.length)
 
 const cdpPort = process.env.DSH_CDP_PORT ?? '9223'
 const targets = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json()
@@ -37,6 +38,27 @@ function command(method, params = {}) {
   })
 }
 
+async function clickVisibleButton(labels) {
+  const probe = await command('Runtime.evaluate', {
+    expression: `JSON.stringify((() => {
+      const labels = ${JSON.stringify(labels)}
+      const button = [...document.querySelectorAll('button')].find(node => labels.some(label => [node.textContent, node.getAttribute('aria-label'), node.title].includes(label)) && node.getBoundingClientRect().width > 0)
+      if (button === undefined) return null
+      const rect = button.getBoundingClientRect()
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    })())`,
+    returnByValue: true,
+  })
+  const value = probe.result?.result?.value
+  if (typeof value !== 'string') return false
+  const point = JSON.parse(value)
+  if (point === null) return false
+  await command('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y })
+  await command('Input.dispatchMouseEvent', { type: 'mousePressed', x: point.x, y: point.y, button: 'left', clickCount: 1 })
+  await command('Input.dispatchMouseEvent', { type: 'mouseReleased', x: point.x, y: point.y, button: 'left', clickCount: 1 })
+  return true
+}
+
 await command('Page.enable')
 if (dismissOnboarding) {
   await command('Runtime.evaluate', {
@@ -48,21 +70,11 @@ if (dismissOnboarding) {
   await new Promise(resolve => setTimeout(resolve, 1000))
 }
 if (openDirectoryPicker || openCurrentDirectory) {
-  await command('Runtime.evaluate', {
-    expression: `(() => {
-      const labels = ['新建会话', 'New session']
-      const button = [...document.querySelectorAll('button')].find(node => labels.some(label => [node.textContent, node.getAttribute('aria-label'), node.title].includes(label)) && node.getBoundingClientRect().width > 0)
-      button?.click()
-    })()`,
-  })
+  await clickVisibleButton(['新建会话', 'New session'])
   await new Promise(resolve => setTimeout(resolve, 1000))
-  await command('Runtime.evaluate', {
-    expression: `(() => {
-      const labels = ['选择工作区', 'Select workspace']
-      const button = [...document.querySelectorAll('button')].find(node => labels.some(label => [node.textContent, node.getAttribute('aria-label'), node.title].includes(label)) && node.getBoundingClientRect().width > 0)
-      button?.click()
-    })()`,
-  })
+  await clickVisibleButton(['选择工作区', 'Select workspace'])
+  await new Promise(resolve => setTimeout(resolve, 500))
+  await clickVisibleButton(['添加工作区...', '添加工作区…', 'Add workspace...'])
   await new Promise(resolve => setTimeout(resolve, 1500))
 }
 if (openCurrentDirectory) {
@@ -70,6 +82,17 @@ if (openCurrentDirectory) {
     expression: `([...document.querySelectorAll('[role="dialog"] button')].find(node => /^(打开|Open)$/.test((node.textContent ?? '').trim())))?.click()`,
   })
   await new Promise(resolve => setTimeout(resolve, 2500))
+}
+if (selectedDrive !== undefined) {
+  await command('Runtime.evaluate', {
+    expression: `(() => {
+      const picker = document.querySelector('[data-dsh-desktop-drive-picker]')
+      if (!(picker instanceof HTMLSelectElement)) return
+      picker.value = ${JSON.stringify(selectedDrive.toUpperCase())}
+      picker.dispatchEvent(new Event('change', { bubbles: true }))
+    })()`,
+  })
+  await new Promise(resolve => setTimeout(resolve, 2000))
 }
 for (const label of [toggleSidebar ? 'Sidebar' : null, toggleDetails ? 'Details' : null]) {
   if (label === null) continue
@@ -96,6 +119,13 @@ const inspection = await command('Runtime.evaluate', {
     bootEntries: Array.isArray(window.__DSH_BOOT__?.entries) ? window.__DSH_BOOT__.entries.length : null,
     drivePicker: document.querySelector('[data-dsh-desktop-drive-picker]')?.getAttribute('aria-label') ?? null,
     driveOptions: [...document.querySelectorAll('[data-dsh-desktop-drive-picker] option')].map(option => option.textContent),
+    pathInputs: [...document.querySelectorAll('[role="dialog"] input')].map(input => ({
+      aria: input.getAttribute('aria-label'),
+      value: input.value,
+    })),
+    errors: [...document.querySelectorAll('[role="dialog"] [role="alert"], [role="dialog"] [data-error]')]
+      .map(node => (node.textContent ?? '').trim())
+      .filter(Boolean),
     dialogs: [...document.querySelectorAll('[role="dialog"]')].map(dialog => (dialog.textContent ?? '').trim().slice(0, 120)),
     betterSidebarHost: document.querySelector('[data-dsh-better-sidebar]') !== null,
     betterSidebarPanel: document.querySelector('[data-dsh-better-sidebar] [class*="panel"]') !== null,
