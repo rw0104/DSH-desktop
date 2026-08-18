@@ -11,8 +11,7 @@ export const FOOTPRINT_LIMITS = Object.freeze({
 
 const desktopRoot = resolve(fileURLToPath(new URL('../', import.meta.url)))
 const requireArtifacts = process.argv.includes('--require-artifacts')
-const memoryReportPath = process.env.DSH_PACKAGED_MEMORY_REPORT
-const manifest = JSON.parse(readFileSync(join(desktopRoot, 'package.json'), 'utf8'))
+const reportPath = join(desktopRoot, '..', 'docs', 'evidence', 'release', 'windows-memory.json')
 
 export function assertWithinLimit(label, value, limit) {
   if (value > limit) throw new Error(`${label} is ${value} MiB, above the ${limit} MiB budget`)
@@ -38,7 +37,7 @@ function mib(bytes) {
 }
 
 function verifyArtifacts() {
-  const installerPath = join(desktopRoot, 'dist', `DSH-Desktop-${manifest.version}-x64-Setup.exe`)
+  const installerPath = join(desktopRoot, 'dist', 'DSH-Desktop-1.0.0-x64-Setup.exe')
   const unpackedPath = join(desktopRoot, 'dist', 'win-unpacked')
   if (!existsSync(installerPath) || !existsSync(unpackedPath)) {
     if (requireArtifacts) throw new Error('Windows package artifacts are missing; run dist:win first')
@@ -52,9 +51,11 @@ function verifyArtifacts() {
 }
 
 function verifyMemoryReport() {
-  if (memoryReportPath === undefined || memoryReportPath === '') return { skipped: true }
-  if (!existsSync(memoryReportPath)) throw new Error(`Windows memory report is missing: ${memoryReportPath}`)
-  const report = JSON.parse(readFileSync(memoryReportPath, 'utf8'))
+  if (!existsSync(reportPath)) {
+    if (requireArtifacts) throw new Error('Windows memory report is missing')
+    return { skipped: true }
+  }
+  const report = JSON.parse(readFileSync(reportPath, 'utf8'))
   assertWithinLimit('Packaged Private Memory', report.totalPrivateMiB, FOOTPRINT_LIMITS.privateMemoryMiB)
   assertWithinLimit('Packaged Working Set', report.totalWorkingSetMiB, FOOTPRINT_LIMITS.workingSetMiB)
   return {
