@@ -68,6 +68,8 @@ export const REQUIRED_UNPACKED_RUNTIME_ENTRIES = [
   'node_modules/@deepseek-ai/dsh-app-boot/lib/index.js',
   'node_modules/@deepseek-ai/dsh-web-frontend/dist/index.html',
   'node_modules/pnpm/bin/pnpm.mjs',
+  'node_modules/sharp/package.json',
+  'node_modules/sharp/dist/index.cjs',
 ] as const
 
 /** Prebuilt Node-API modules required when the Windows package skips native source rebuilds. */
@@ -77,6 +79,11 @@ export const REQUIRED_WINDOWS_X64_NODE_PTY_ENTRIES = [
   'node_modules/node-pty/prebuilds/win32-x64/pty.node',
   'node_modules/node-pty/prebuilds/win32-x64/winpty-agent.exe',
   'node_modules/node-pty/prebuilds/win32-x64/winpty.dll',
+] as const
+
+/** Windows x64 native image runtime required by @deepseek-ai/dsh-attachment-local. */
+export const REQUIRED_WINDOWS_X64_SHARP_ENTRIES = [
+  'node_modules/@img/sharp-win32-x64/index.cjs',
 ] as const
 
 /** Package exports that profile fallback links must resolve from the physical application tree. */
@@ -91,6 +98,7 @@ export const REQUIRED_UNPACKED_PACKAGE_SPECIFIERS = [
   'dsh-plugin-desktop/updates',
   'dsh-plugin-desktop/windows-pwsh-sandbox',
   'dsh-plugin-desktop/package.json',
+  'sharp',
   '@deepseek-ai/dsh-base/package.json',
   '@deepseek-ai/dsh-web-app/package.json',
 ] as const
@@ -222,7 +230,11 @@ export function verifyPackagedRuntime(
   verifyPackagedAsar(resolvePackagedAsarPath(context), list)
   const unpackedRoot = resolvePackagedUnpackedRoot(context)
   const requiredPhysicalEntries = context.electronPlatformName === 'win32'
-    ? [...REQUIRED_UNPACKED_RUNTIME_ENTRIES, ...REQUIRED_WINDOWS_X64_NODE_PTY_ENTRIES]
+    ? [
+      ...REQUIRED_UNPACKED_RUNTIME_ENTRIES,
+      ...REQUIRED_WINDOWS_X64_NODE_PTY_ENTRIES,
+      ...REQUIRED_WINDOWS_X64_SHARP_ENTRIES,
+    ]
     : REQUIRED_UNPACKED_RUNTIME_ENTRIES
   const missing = requiredPhysicalEntries.filter(entry => !exists(join(unpackedRoot, entry)))
   if (missing.length > 0) {

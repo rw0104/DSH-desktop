@@ -213,6 +213,7 @@
     "pnpm": "11.7.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "sharp": "0.35.3",
     "yaml": "^2.9.0"
   },
   "peerDependencies": {
@@ -238,9 +239,7 @@
       "cordis.patch.yml",
       "build/**",
       "lib/**",
-      "node_modules/**",
-      "!node_modules/sharp/**",
-      "!node_modules/@img/**"
+      "node_modules/**"
     ],
     "afterPack": "./scripts/verify-packaged-runtime.ts",
     "electronFuses": {
@@ -257,9 +256,7 @@
       "build/tray-icon*.png",
       "cordis.patch.yml",
       "lib/**",
-      "package.json",
-      "!node_modules/sharp/**",
-      "!node_modules/@img/**"
+      "package.json"
     ],
     "mac": {
       "target": [

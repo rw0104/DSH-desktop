@@ -7016,8 +7016,6 @@ __metadata:
 "deepseek-harness-desktop@workspace:.":
   version: 0.0.0-use.local
   resolution: "deepseek-harness-desktop@workspace:."
-  dependencies:
-    sharp: "npm:0.35.3"
   dependenciesMeta:
     "@deepseek-ai/dsh-subprocess-local":
       built: true
@@ -7338,6 +7336,7 @@ __metadata:
     pnpm: "npm:11.7.0"
     react: "npm:18.3.1"
     react-dom: "npm:18.3.1"
+    sharp: "npm:0.35.3"
     tsdown: "npm:0.22.2"
     typescript: "npm:6.0.3"
     vitest: "npm:4.1.8"

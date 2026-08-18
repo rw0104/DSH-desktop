@@ -319,7 +319,7 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 ### 代码与制品优化
 
 - 为 Vision Toolkit `0.1.24` 增加仓库内 Yarn patch：运行时准备改为后台初始化，Settings/Web 路由先可用，运行时就绪后再注册视觉工具；失败仍保留原有错误状态，不隐藏设置入口。
-- 将构建期 `sharp` 移到根级开发依赖，并在 Electron Builder `files`/`asarUnpack` 中排除 `sharp` 与 `@img`，避免把构建用的全平台图像 native 二进制带给客户。
+- 初次优化尝试将构建期 `sharp` 移到根级开发依赖，并在 Electron Builder `files`/`asarUnpack` 中排除 `sharp` 与 `@img`；该方案随后因 `dsh-attachment-local` 的运行时导入被回滚，最终修复见本文末尾的 sharp 缺失记录。
 - Windows x64 NSIS 复测结果：安装器约 `145.3 MiB`，unpacked 目录约 `530.5 MiB`；相较基线安装器 `150.9 MiB`、unpacked `549.4 MiB`，分别减少约 `5.6 MiB` 和 `18.9 MiB`。
 
 ### 验证
@@ -368,3 +368,16 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 - 真实 packaged Electron 页面 URL：`dsh-desktop-mode=advanced&dsh-desktop-platform=win32&dsh-desktop-drives=CDE`。
 - 启动反馈窗口与主窗口的冷启动观测已通过；缓存启动约 `2–6 s`，未签名安装器仍可能受 Defender/SmartScreen 扫描影响。
 - `verify:release-readiness` 全部 headless gate 通过；最新安装器为 `dist/DSH-Desktop-1.0.0-x64-Setup.exe`，约 `145.3 MiB`。
+
+## 2026-08-17：安装后 sharp 缺失修复与 GitHub 构建
+
+### 根因与修复
+
+- 安装后 Loader 错误来自 `@deepseek-ai/dsh-attachment-local` 对 `sharp` 的运行时导入；之前的体积优化把 `sharp` 与 `@img` 从 Electron 产物排除，导致 `ERR_MODULE_NOT_FOUND`。
+- `sharp@0.35.3` 已移入 `dsh-plugin-desktop` 运行时 dependencies，Electron Builder 不再排除 `sharp`/`@img`；Windows afterPack gate 强制检查 `sharp/dist/index.cjs` 与 `@img/sharp-win32-x64/index.cjs`。
+- 新增 `.github/workflows/desktop-release.yml`：手动触发和 `v*` tag 都构建 Windows x64 安装器，上传 installer/blockmap/`latest.yml`，tag 构建同步创建 GitHub Release 资产。
+
+### 验证
+
+- 失败回归测试先复现了缺失依赖，再在修复后通过；包级 sharp/runtime 测试 `36 passed`。
+- 最新真实 packaged Electron 启动成功，stderr 无 `sharp` 或 `ERR_MODULE_NOT_FOUND`；新的 NSIS 安装器约 `151.4 MiB`，未封装目录约 `549.5 MiB`。

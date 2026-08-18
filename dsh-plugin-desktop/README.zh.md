@@ -159,6 +159,8 @@ corepack.cmd yarn dist:win
 
 `dist:win` 会拒绝非 Windows 或非 x64 宿主，先执行一组 Windows 可运行的 gate，其中包括 build、全部 TypeScript compiler face、打包与原生 shell 聚焦测试，以及 runtime-closure verifier；随后再构建 NSIS 安装向导，并校验生成的两个 PE 文件。完整跨平台 suite 仍由 CI 持有，因为其中部分 POSIX 执行测试不是 Windows 程序。安装向导支持当前用户安装或提升权限后的所有用户安装，可更改安装目录，会创建开始菜单与桌面快捷方式，并且卸载应用时保留 DSH 用户数据。版本 `1.0.0` 会输出到 `dsh-plugin-desktop\dist\DSH-Desktop-1.0.0-x64-Setup.exe`；用于 smoke 测试的未封装程序仍位于 `dsh-plugin-desktop\dist\win-unpacked\DSH Desktop.exe`。
 
+GitHub Actions 的 `DSH Desktop Windows Release` workflow 会在手动触发或推送 `v*` tag 时执行同一套 Windows x64 构建。它上传 NSIS 安装器、blockmap 与 `latest.yml`；tag 构建还会把这些文件附加到 GitHub Release。Vision 的本地附件后端运行时需要 `sharp`，因此 Windows 安装包会保留 `sharp` 与当前架构的 `@img/sharp-win32-x64` native entry，不得在 Electron Builder 配置中排除。
+
 该本地命令会主动移除 Windows 证书变量，并设置 `signExecutable=false`。产物可以安装测试，但没有 Authenticode publisher，因此 Windows 可能显示 Unknown publisher 或 SmartScreen 警告。签名后的 Windows release、证书校验、安装器升级与卸载测试，以及原生 UI 和 sandbox smoke 仍是独立的发布 gate。
 
 ## 模型体验

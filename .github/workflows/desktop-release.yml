@@ -1,0 +1,77 @@
+name: DSH Desktop Windows Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  DSH_TELEMETRY_DISABLED: '1'
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+
+jobs:
+  build-windows:
+    name: Build Windows x64 installer
+    runs-on: windows-latest
+    steps:
+      - name: Check out desktop and pinned upstream
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+          cache: yarn
+
+      - name: Enable Corepack
+        shell: pwsh
+        run: corepack enable
+
+      - name: Install locked dependencies
+        shell: pwsh
+        run: yarn install --immutable
+
+      - name: Build and verify unsigned installer
+        shell: pwsh
+        run: yarn dist:win
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DSH-Desktop-windows-x64-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Setup.exe
+            dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Setup.exe.blockmap
+            dsh-plugin-desktop/dist/latest.yml
+
+  publish-release:
+    name: Publish GitHub Release assets
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-windows
+    runs-on: windows-latest
+    steps:
+      - name: Download installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: DSH-Desktop-windows-x64-${{ github.sha }}
+          path: release-assets
+
+      - name: Create or update GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ github.ref_name }}'
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --title "DSH Desktop $tag" --generate-notes --verify-tag
+          }
+          gh release upload $tag (Get-ChildItem -LiteralPath release-assets -File).FullName --clobber
