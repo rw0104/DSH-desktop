@@ -132,6 +132,25 @@ describe('published package surface', () => {
     expect(main).toContain('disposePnpmRuntime?.()')
   })
 
+  it('surfaces visible startup failures outside headless smoke mode', () => {
+    const main = readFileSync(new URL('src/main.ts', packageRoot), 'utf8')
+    expect(main).toContain("dialog.showErrorBox('Unable to Open DSH Desktop', detail)")
+    expect(main).toContain("process.argv.includes('--headless')")
+  })
+
+  it('creates startup feedback before the DSH Boot boundary', () => {
+    const main = readFileSync(new URL('src/main.ts', packageRoot), 'utf8')
+    const startup = main.indexOf('createStartupWindow')
+    const boot = main.indexOf('const ctx = await boot')
+    expect(startup).toBeGreaterThanOrEqual(0)
+    expect(boot).toBeGreaterThan(startup)
+  })
+
+  it('injects the locale service before rendering localized desktop controls', () => {
+    const client = readFileSync(new URL('src/client/index.ts', packageRoot), 'utf8')
+    expect(client).toContain("  'locale',")
+  })
+
   it('fixes the installed application identity', () => {
     expect(manifest.version).toBe(workspaceManifest.version)
     expect(manifest.build?.productName).toBe('DSH Desktop')

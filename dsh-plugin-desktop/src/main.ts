@@ -28,6 +28,8 @@ import {
 import { DesktopProfileService } from './profile-service.ts'
 import { prepareDesktopProfile } from './profile.ts'
 import { resolveVisionConsent, type VisionConsentPrompt } from './vision-consent.ts'
+import { getVisionConsentCopy } from './vision-consent-dialog.ts'
+import { closeStartupWindow, createStartupWindow } from './startup-window.ts'
 import type { DesktopPnpmBootstrap } from './pnpm.ts'
 import {
   createDesktopExitCoordinator,
@@ -41,18 +43,13 @@ const PRODUCT_NAME = 'DSH Desktop'
 
 /** Ask for the only product-level decision that changes image data flow. */
 async function promptVisionConsent({ firstRun }: VisionConsentPrompt): Promise<boolean> {
+  const copy = getVisionConsentCopy(app.getLocale(), firstRun)
   const result = await dialog.showMessageBox({
     type: 'info',
-    title: firstRun ? 'Vision Toolkit privacy' : 'Vision Toolkit is disabled',
-    message: firstRun
-      ? 'Vision Toolkit can send selected images to its configured vision service.'
-      : 'Vision Toolkit is currently disabled for this desktop profile.',
-    detail: [
-      'Enable it only if you accept the configured provider\'s data handling.',
-      'You can change the provider and API key in DSH Settings.',
-      'Local crop, pixel diff, color and SVG tools do not require image upload.',
-    ].join(' '),
-    buttons: ['Enable Vision Toolkit', 'Keep Disabled'],
+    title: copy.title,
+    message: copy.message,
+    detail: copy.detail,
+    buttons: copy.buttons,
     defaultId: firstRun ? 0 : 1,
     cancelId: 1,
     noLink: true,
@@ -86,6 +83,7 @@ async function start(): Promise<void> {
   let shutdown: DesktopShutdown | undefined
   let removeShutdownRequests: (() => void) | undefined
   let disposePnpmRuntime: (() => void) | undefined
+  let startupWindow: ReturnType<typeof createStartupWindow> | undefined
   let runtime!: ElectronDesktopRuntime
   const nativeExit = createDesktopExitCoordinator(
     {
@@ -121,6 +119,7 @@ async function start(): Promise<void> {
 
   app.on('second-instance', () => { runtime.show() })
   await app.whenReady()
+  if (!process.argv.includes('--headless')) startupWindow = createStartupWindow(app.getLocale())
   if (process.platform === 'win32') app.setAppUserModelId('ai.deepseek.dsh.desktop')
   if (app.isPackaged && process.cwd() === '/') process.chdir(app.getPath('home'))
 
@@ -239,6 +238,8 @@ async function start(): Promise<void> {
     await runtime.mountScheduled(() => {
       markDesktopProfileHealthy(selectionStatePath, activeProfileName)
     })
+    closeStartupWindow(startupWindow)
+    startupWindow = undefined
     if (profileStartup.rolledBackFrom !== undefined) {
       notifyProfileRecovery(
         runtime,
@@ -246,7 +247,19 @@ async function start(): Promise<void> {
       )
     }
   } catch (cause) {
-    process.stderr.write(`${BIN_NAME}: ${cause instanceof Error ? cause.stack ?? cause.message : String(cause)}\n`)
+    closeStartupWindow(startupWindow)
+    startupWindow = undefined
+    const detail = cause instanceof Error ? cause.stack ?? cause.message : String(cause)
+    process.stderr.write(`${BIN_NAME}: ${detail}\n`)
+    if (!process.argv.includes('--headless')) {
+      try {
+        dialog.showErrorBox('Unable to Open DSH Desktop', detail)
+      } catch (dialogCause) {
+        process.stderr.write(
+          `${BIN_NAME}: failed to show startup error dialog: ${dialogCause instanceof Error ? dialogCause.message : String(dialogCause)}\n`,
+        )
+      }
+    }
     let exitCode = 1
     if (profileStartup !== undefined && profileStatePath !== undefined) {
       const retryLastKnownGood = profileStartup.profileName !== profileStartup.state.lastKnownGood

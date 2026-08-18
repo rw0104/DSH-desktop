@@ -10,10 +10,18 @@ export interface DesktopClientEnvironment {
   mode: DesktopClientMode
   /** Electron Host platform used for native spacing and drag regions. */
   platform: DesktopClientPlatform
+  /** Windows drive letters detected by the Electron Host. */
+  driveLetters: readonly string[]
 }
 
 const MODES = new Set<DesktopClientMode>(['compatibility', 'advanced'])
 const PLATFORMS = new Set<DesktopClientPlatform>(['darwin', 'win32', 'linux'])
+
+/** Accept only one-letter Windows volume identifiers from the Host URL. */
+function parseDriveLetters(value: string | null): string[] {
+  if (value === null) return []
+  return [...new Set(value.toUpperCase().split('').filter(letter => /^[A-Z]$/u.test(letter)))]
+}
 
 /**
  * Validate the Electron-owned query marker before any desktop client effects run.
@@ -30,5 +38,9 @@ export function parseDesktopClientEnvironment(search: string): DesktopClientEnvi
   if (!PLATFORMS.has(platform as DesktopClientPlatform)) {
     throw new Error(`dsh-plugin-desktop: invalid or missing dsh-desktop-platform ${JSON.stringify(platform)}`)
   }
-  return { mode: mode as DesktopClientMode, platform: platform as DesktopClientPlatform }
+  return {
+    mode: mode as DesktopClientMode,
+    platform: platform as DesktopClientPlatform,
+    driveLetters: platform === 'win32' ? parseDriveLetters(params.get('dsh-desktop-drives')) : [],
+  }
 }

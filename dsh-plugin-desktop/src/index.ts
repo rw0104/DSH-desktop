@@ -1,6 +1,7 @@
 /** DSH Desktop Host plugin: owns the selected native shell generation. */
 
 import { fileURLToPath } from 'node:url'
+import { existsSync } from 'node:fs'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-cmdline'
@@ -10,7 +11,7 @@ import {
   type ThemeSettings,
 } from '@deepseek-ai/dsh-client-ui-theme'
 import { settingsNamespace } from '@deepseek-ai/dsh-settings'
-import type { DesktopShellMode } from './runtime.ts'
+import type { DesktopPlatform, DesktopShellMode } from './runtime.ts'
 import type {} from './runtime.ts'
 
 /** Stable Cordis plugin name. */
@@ -21,6 +22,25 @@ export const inject = ['desktopRuntime', 'webServer', 'webRuntime', 'appExit', '
 
 /** Standard settings namespace shared by tray and configuration surfaces. */
 export const DESKTOP_SETTINGS_NAMESPACE = settingsNamespace('dsh-desktop')
+
+/** Probe one filesystem path when resolving the Windows drive list. */
+export type WindowsDriveProbe = (path: string) => boolean
+
+/** Return mounted Windows drive letters visible to this desktop process. */
+export function detectWindowsDriveLetters(
+  platform: DesktopPlatform,
+  exists: WindowsDriveProbe = existsSync,
+): string[] {
+  if (platform !== 'win32') return []
+  return Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index))
+    .filter(letter => {
+      try {
+        return exists(`${letter}:\\`)
+      } catch {
+        return false
+      }
+    })
+}
 
 const UI_THEME_SETTINGS_NAMESPACE = settingsNamespace(THEME_SETTINGS_NAMESPACE)
 
@@ -73,6 +93,8 @@ export function desktopRendererUrl(
   const url = new URL(`http://127.0.0.1:${String(port)}/`)
   url.searchParams.set('dsh-desktop-mode', mode)
   url.searchParams.set('dsh-desktop-platform', platform)
+  const drives = detectWindowsDriveLetters(platform)
+  if (drives.length > 0) url.searchParams.set('dsh-desktop-drives', drives.join(''))
   return url.href
 }
 

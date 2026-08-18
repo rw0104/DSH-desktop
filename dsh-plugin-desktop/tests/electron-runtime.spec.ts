@@ -342,6 +342,25 @@ describe('Electron compatibility runtime', () => {
     await release()
   })
 
+  it('shows the native frame when a cold Web boot exceeds the feedback budget', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
+    let finishLoad!: () => void
+    electron.loadURL.mockImplementationOnce(() => new Promise<void>(resolve => { finishLoad = resolve }))
+    const { ElectronDesktopRuntime, WINDOW_SHOW_FALLBACK_MS } = await import('../src/electron-runtime.ts')
+    const runtime = new ElectronDesktopRuntime(async () => {})
+    const release = runtime.schedule(spec)
+    const mounted = runtime.mountScheduled()
+
+    await vi.waitFor(() => { expect(electron.loadURL).toHaveBeenCalledOnce() })
+    await vi.advanceTimersByTimeAsync(WINDOW_SHOW_FALLBACK_MS)
+    expect(electron.browserWindows[0]?.show).toHaveBeenCalledOnce()
+
+    finishLoad()
+    await mounted
+    await release()
+  })
+
   it('persists the opposite mode when its tray command is clicked', async () => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin')
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
@@ -470,14 +489,14 @@ describe('Electron compatibility runtime', () => {
       expect(terminal.open).toHaveBeenCalledWith(expect.objectContaining({
         platform: 'darwin',
         appExecutable: process.execPath,
-        dshBootstrapPath: expect.stringMatching(/\/src\/desktop-cli\.js$/u),
-        pnpmBinPath: expect.stringMatching(/\/node_modules\/pnpm\/bin\/pnpm\.mjs$/u),
+        dshBootstrapPath: expect.stringMatching(/[\\/]src[\\/]desktop-cli\.js$/u),
+        pnpmBinPath: expect.stringMatching(/[\\/]node_modules[\\/]pnpm[\\/]bin[\\/]pnpm\.mjs$/u),
         electronVersion: '43.4.0',
         profileName: 'desktop',
-        productVersion: '2.0.0',
+        productVersion: '1.0.0',
         profileDir: '/tmp/dsh-home/profiles/desktop',
         homeDir: '/tmp/dsh-home',
-        stateDir: expect.stringMatching(/^\/tmp\/dsh-desktop-user-data\/cli\/[a-f0-9]{64}$/u),
+        stateDir: expect.stringMatching(/^[\\/]tmp[\\/]dsh-desktop-user-data[\\/]cli[\\/][a-f0-9]{64}$/u),
         spawn: expect.any(Function),
         onLaunchError: expect.any(Function),
       }))
@@ -541,20 +560,20 @@ describe('Electron compatibility runtime', () => {
     expect(runtime.updates).toMatchObject({
       isPackaged: false,
       canDownload: false,
-      currentVersion: '2.0.0',
-      statePath: '/tmp/dsh-desktop-user-data/updates/state.json',
+      currentVersion: '1.0.0',
+      statePath: expect.stringMatching(/[\\/]tmp[\\/]dsh-desktop-user-data[\\/]updates[\\/]state\.json$/u),
     })
     electron.app.isPackaged = true
     expect(runtime.updates).toMatchObject({ isPackaged: true, canDownload: true })
 
     await runtime.updates.showManualCheckResult({
       status: 'up-to-date',
-      currentVersion: '2.0.0',
-      latestVersion: '2.0.0',
+      currentVersion: '1.0.0',
+      latestVersion: '1.0.0',
     })
     expect(electron.dialog.showMessageBox).toHaveBeenLastCalledWith(expect.objectContaining({
       title: 'DSH Desktop Is Up to Date',
-      detail: 'Installed version: 2.0.0',
+      detail: 'Installed version: 1.0.0',
       buttons: ['OK'],
     }))
 

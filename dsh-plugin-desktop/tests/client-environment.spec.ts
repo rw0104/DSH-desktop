@@ -4,6 +4,7 @@ import { provideDesktopLayout } from '../src/client/layout-service.ts'
 import { parseDesktopClientEnvironment } from '../src/client/environment.ts'
 import {
   computeDesktopColumns, DesktopLayoutState, MACOS_SIDEBAR_COLLAPSED, SIDEBAR_COLLAPSED,
+  SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN,
 } from '../src/client/layout-state.ts'
 import { installAdvancedStyles } from '../src/client/styles.ts'
 import {
@@ -17,9 +18,11 @@ import {
 describe('desktop client environment', () => {
   it('accepts the Electron-owned kebab query markers', () => {
     expect(parseDesktopClientEnvironment('?dsh-desktop-mode=advanced&dsh-desktop-platform=darwin'))
-      .toEqual({ mode: 'advanced', platform: 'darwin' })
+      .toEqual({ mode: 'advanced', platform: 'darwin', driveLetters: [] })
     expect(parseDesktopClientEnvironment('?dsh-desktop-platform=win32&dsh-desktop-mode=compatibility'))
-      .toEqual({ mode: 'compatibility', platform: 'win32' })
+      .toEqual({ mode: 'compatibility', platform: 'win32', driveLetters: [] })
+    expect(parseDesktopClientEnvironment('?dsh-desktop-platform=win32&dsh-desktop-mode=compatibility&dsh-desktop-drives=cDdc'))
+      .toEqual({ mode: 'compatibility', platform: 'win32', driveLetters: ['C', 'D'] })
   })
 
   it.each([
@@ -73,8 +76,7 @@ describe('advanced desktop layout', () => {
       expect(css).toMatch(/\.dshDesktopFrame\[data-desktop-platform="win32"\] \.dshDesktopConversationSurface,\s*\.dshDesktopFrame\[data-desktop-platform="win32"\] \.dshDesktopDetailsSurface \{ grid-row: 2; \}/)
       expect(css).toMatch(/\.dshDesktopWindowsCaptionRow \{[^}]*grid-column: 2 \/ -1;[^}]*grid-row: 1;/)
       expect(css).toMatch(new RegExp(`\\.dshDesktopWindowsCaptionRow::before \\{[^}]*inset: 0 ${WINDOWS_CAPTION_CONTROLS_WIDTH}px 0 0;[^}]*-webkit-app-region: drag;`))
-      expect(css).toContain('.dshDesktopControlStrip')
-      expect(css).toContain('.dshDesktopControlButton[aria-pressed="true"]')
+      expect(css).not.toContain('.dshDesktopControlStrip')
       expect(css).not.toMatch(/data-desktop-platform="win32"[^{}]*header[^{}]*\{[^}]*padding-right/)
       expect(appendChild).toHaveBeenCalledWith(style)
       dispose()
@@ -109,6 +111,12 @@ describe('advanced desktop layout', () => {
       .toEqual({ sidebar: MACOS_SIDEBAR_COLLAPSED, center: 1350, details: 0 })
     expect(SIDEBAR_COLLAPSED).toBe(56)
     expect(MACOS_SIDEBAR_COLLAPSED).toBe(90)
+  })
+
+  it('uses a compact initial sidebar width with bounded resizing', () => {
+    expect(SIDEBAR_DEFAULT).toBe(240)
+    expect(SIDEBAR_MIN).toBe(220)
+    expect(SIDEBAR_MAX).toBe(360)
   })
 
   it('publishes mirrored panel transitions', () => {
@@ -152,7 +160,7 @@ describe('advanced desktop layout', () => {
       setItem: () => {},
     }
     expect(new DesktopLayoutState({ storage }).getSnapshot()).toEqual({
-      sidebar: 280,
+      sidebar: 240,
       details: 0,
       narrow: false,
       narrowExpanded: false,
@@ -162,10 +170,10 @@ describe('advanced desktop layout', () => {
   it('lets the rail re-expand without losing its wide preference on narrow windows', () => {
     const layout = new DesktopLayoutState()
     layout.setNarrow(true)
-    expect(layout.getSnapshot()).toMatchObject({ sidebar: 280, narrow: true, narrowExpanded: false })
+    expect(layout.getSnapshot()).toMatchObject({ sidebar: 240, narrow: true, narrowExpanded: false })
     layout.toggleSidebar()
-    expect(layout.getSnapshot()).toMatchObject({ sidebar: 280, narrow: true, narrowExpanded: true })
+    expect(layout.getSnapshot()).toMatchObject({ sidebar: 240, narrow: true, narrowExpanded: true })
     layout.setNarrow(false)
-    expect(layout.getSnapshot()).toMatchObject({ sidebar: 280, narrow: false, narrowExpanded: false })
+    expect(layout.getSnapshot()).toMatchObject({ sidebar: 240, narrow: false, narrowExpanded: false })
   })
 })

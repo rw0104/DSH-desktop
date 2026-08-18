@@ -7,6 +7,7 @@ import {
   Config,
   DESKTOP_SETTINGS_NAMESPACE,
   desktopRendererUrl,
+  detectWindowsDriveLetters,
   DesktopSettingsSchema,
   inject,
   type Config as DesktopConfig,
@@ -131,6 +132,18 @@ describe('desktop Host plugin', () => {
     })
   })
 
+  it('detects only existing Windows volumes before publishing the renderer marker', () => {
+    const seen: string[] = []
+    const drives = detectWindowsDriveLetters('win32', path => {
+      seen.push(path)
+      return path === 'C:\\' || path === 'E:\\'
+    })
+    expect(drives).toEqual(['C', 'E'])
+    expect(seen).toHaveLength(26)
+    expect(new URL(desktopRendererUrl(43120, 'compatibility', 'darwin')).searchParams.has('dsh-desktop-drives'))
+      .toBe(false)
+  })
+
   it('registers settings and the active Web port without re-entering Loader settlement', async () => {
     const harness = createHarness()
     const loaderAwait = vi.fn(() => new Promise<void>(() => {}))
@@ -149,10 +162,10 @@ describe('desktop Host plugin', () => {
       url: 'http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin',
       productName: 'DSH Desktop',
       windowTitle: 'DeepSeek Harness Desktop',
-      iconPath: expect.stringMatching(/\/build\/app-icon-mac\.png$/u),
+      iconPath: expect.stringMatching(/[\\/]build[\\/]app-icon-mac\.png$/u),
       trayIcons: {
-        templatePath: expect.stringMatching(/\/build\/tray-iconTemplate\.png$/u),
-        bluePath: expect.stringMatching(/\/build\/tray-icon-blue\.png$/u),
+        templatePath: expect.stringMatching(/[\\/]build[\\/]tray-iconTemplate\.png$/u),
+        bluePath: expect.stringMatching(/[\\/]build[\\/]tray-icon-blue\.png$/u),
       },
       readThemeSource: expect.any(Function),
     }))
@@ -171,7 +184,7 @@ describe('desktop Host plugin', () => {
 
       apply(harness.ctx, config)
 
-      expect(harness.shell()?.iconPath).toMatch(/\/build\/app-icon\.png$/u)
+      expect(harness.shell()?.iconPath).toMatch(/[\\/]build[\\/]app-icon\.png$/u)
     },
   )
 

@@ -51,7 +51,7 @@ desktop Client module 会校验模式与平台 marker，随后在兼容模式下
 
 Cordis row 会在 profile 激活期间登记原生窗口参数。Launcher 只在 `app-boot` 完成并审计整个 profile 后创建窗口，因此首个 renderer manifest 会包含所有已激活的官方、desktop 与第三方 client plugin，同时插件自身不会在 Loader entry 内等待整棵 Loader tree。
 
-在 Windows 上，Launcher 会固定使用现有 browse 目录选择 backend 与 client surface，而不使用自适应 native chooser。因此 workspace 选择始终在 Web UI 内完成，也不会在 Electron main 进程中加载原生 N-API 对话框 worker。macOS 与 Linux 仍使用上游自适应 chooser。
+在 Windows 上，Launcher 会固定使用现有 browse 目录选择 backend 与 client surface，而不使用自适应 native chooser。因此 workspace 选择始终在 Web UI 内完成，也不会在 Electron main 进程中加载原生 N-API 对话框 worker。目录选择器中的盘符下拉由 Electron 在启动时探测本机实际存在的卷，只显示可用盘符；运行期间新挂载的卷会在重启应用后刷新。macOS 与 Linux 仍使用上游自适应 chooser。
 
 在两种呈现模式下，Windows PowerShell 都会保留上游 `pwsh-sandbox` 行为与 Windows ACL confinement。Launcher generation 只会把该 Host provider 替换为同一 package 中的 `dsh-plugin-desktop/windows-pwsh-sandbox` 子路径。对于与上游 ACL runner 完全匹配的 argv，adapter 会让打包后的 Electron executable 通过私有 trampoline 以 Node 模式启动，在创建受限 PowerShell 进程前移除 Node-mode 环境变量，然后把全部 policy 与失败处理重新委托给上游 runner。Desktop deploy root 还会固定一个 Yarn patch，在两条原生受限进程路径上把 `STARTF_USESHOWWINDOW`、现有的 `STARTF_USESTDHANDLES` 与 `SW_HIDE` 组合起来。这会保留已捕获的 stdio 而不抑制 console 分配，并在 Windows 为 GUI Host 启动的 PowerShell 进程创建首个 console 窗口时，请求使用隐藏的初始显示状态。它不会使用与上游实现不兼容的 `CREATE_NO_WINDOW` 或 `CREATE_NEW_CONSOLE` flag。直接使用 `danger-full-access` 的 PowerShell、macOS 与 Linux 执行路径保持不变；Windows confinement 失败时不会自动回退到不受限执行。
 
@@ -147,7 +147,7 @@ Release operator 必须先发布两个平台产物，再让版本可被发现。
 
 ### Windows x64 本地安装包
 
-请使用原生 Windows x64 电脑，并安装 Git 与 x64 Node `22.23.2`（与 CI 使用的版本相同）。打包命令接受官方发行版仍包含所需 Corepack 命令的 Node `22.19+` 与 Node `24.x`。在一个最新的 `v2` checkout 中打开 PowerShell，然后执行：
+请使用原生 Windows x64 电脑，并安装 Git 与 x64 Node `22.23.2`（与 CI 使用的版本相同）。打包命令接受官方发行版仍包含所需 Corepack 命令的 Node `22.19+` 与 Node `24.x`。在一个最新的 checkout 中打开 PowerShell，然后执行：
 
 ```powershell
 git submodule update --init --recursive
@@ -157,7 +157,7 @@ corepack.cmd yarn dist:win
 
 该流程不要求 Python 或 Visual Studio C++ Build Tools。Windows 命令会直接使用 `node-pty` 内置的 x64 Node-API 二进制，而不会让 Electron Builder 从源码重新编译；如果安装包 staging tree 缺少这些二进制，packaged-runtime gate 会直接拒绝产物。
 
-`dist:win` 会拒绝非 Windows 或非 x64 宿主，先执行一组 Windows 可运行的 gate，其中包括 build、全部 TypeScript compiler face、打包与原生 shell 聚焦测试，以及 runtime-closure verifier；随后再构建 NSIS 安装向导，并校验生成的两个 PE 文件。完整跨平台 suite 仍由 CI 持有，因为其中部分 POSIX 执行测试不是 Windows 程序。安装向导支持当前用户安装或提升权限后的所有用户安装，可更改安装目录，会创建开始菜单与桌面快捷方式，并且卸载应用时保留 DSH 用户数据。版本 `2.0.0` 会输出到 `dsh-plugin-desktop\dist\DSH-Desktop-2.0.0-x64-Setup.exe`；用于 smoke 测试的未封装程序仍位于 `dsh-plugin-desktop\dist\win-unpacked\DSH Desktop.exe`。
+`dist:win` 会拒绝非 Windows 或非 x64 宿主，先执行一组 Windows 可运行的 gate，其中包括 build、全部 TypeScript compiler face、打包与原生 shell 聚焦测试，以及 runtime-closure verifier；随后再构建 NSIS 安装向导，并校验生成的两个 PE 文件。完整跨平台 suite 仍由 CI 持有，因为其中部分 POSIX 执行测试不是 Windows 程序。安装向导支持当前用户安装或提升权限后的所有用户安装，可更改安装目录，会创建开始菜单与桌面快捷方式，并且卸载应用时保留 DSH 用户数据。版本 `1.0.0` 会输出到 `dsh-plugin-desktop\dist\DSH-Desktop-1.0.0-x64-Setup.exe`；用于 smoke 测试的未封装程序仍位于 `dsh-plugin-desktop\dist\win-unpacked\DSH Desktop.exe`。
 
 该本地命令会主动移除 Windows 证书变量，并设置 `signExecutable=false`。产物可以安装测试，但没有 Authenticode publisher，因此 Windows 可能显示 Unknown publisher 或 SmartScreen 警告。签名后的 Windows release、证书校验、安装器升级与卸载测试，以及原生 UI 和 sandbox smoke 仍是独立的发布 gate。
 

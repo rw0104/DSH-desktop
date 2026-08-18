@@ -47,6 +47,9 @@ export function modeToggleLabel(mode: DesktopShellSpec['mode']): string {
     : 'Switch to Compatibility Mode'
 }
 
+/** Show the native frame if a cold Web boot takes longer than the feedback budget. */
+export const WINDOW_SHOW_FALLBACK_MS = 1_500
+
 /**
  * Read the desktop package version instead of Electron's development-app version.
  * @param moduleUrl - module below the package's `src` or `lib` directory.
@@ -454,7 +457,12 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
     if (this.platform === 'win32') window.removeMenu()
     this.window = window
 
-    const show = (): void => { this.show() }
+    let fallbackShowTimer: ReturnType<typeof setTimeout> | undefined
+    const show = (): void => {
+      if (fallbackShowTimer !== undefined) clearTimeout(fallbackShowTimer)
+      fallbackShowTimer = undefined
+      this.show()
+    }
     const close = (event: Electron.Event): void => {
       if (this.quitting) return
       event.preventDefault()
@@ -490,6 +498,7 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
       return { action: 'deny' }
     })
 
+    fallbackShowTimer = setTimeout(show, WINDOW_SHOW_FALLBACK_MS)
     window.once('ready-to-show', show)
     let tray: Tray | undefined
     try {
@@ -504,6 +513,7 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
       app.off('activate', show)
       window.off('page-title-updated', preserveBlankTitle)
       tray?.off('click', show)
+      if (fallbackShowTimer !== undefined) clearTimeout(fallbackShowTimer)
       tray?.destroy()
       window.destroy()
       this.tray = undefined
@@ -526,6 +536,7 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
       window.webContents.off('will-frame-navigate', navigate)
       window.webContents.off('will-redirect', navigate)
       mountedTray.off('click', show)
+      if (fallbackShowTimer !== undefined) clearTimeout(fallbackShowTimer)
       mountedTray.destroy()
       if (!window.isDestroyed()) window.destroy()
       if (this.tray === mountedTray) this.tray = undefined

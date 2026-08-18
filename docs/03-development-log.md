@@ -354,3 +354,17 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 ### 未完成项
 
 - 还没有生成完整的第三方传递依赖许可证清单和 SBOM 制品。
+
+## 2026-08-17：启动反馈与 Windows 真实盘符回归
+
+### 修复
+
+- Electron 在 `whenReady` 后、DSH Boot 前创建原生“正在启动 DSH Desktop”反馈窗口；主 BrowserWindow 完成挂载后关闭，失败时改为显示原生错误框。
+- Windows 盘符下拉不再生成固定的 `C:` 到 `Z:` 列表。Host 启动时通过 `fs.existsSync("X:\\")` 探测当前用户可见卷，并将去重后的盘符通过 renderer URL 传入；本机实测为 `CDE`。
+- CDP smoke 支持可配置端口、目录选择器操作和下拉选项输出；Profile smoke 改为解析 URL 并验证新增 marker，不再因合法查询参数误报失败。
+
+### 验证
+
+- 真实 packaged Electron 页面 URL：`dsh-desktop-mode=advanced&dsh-desktop-platform=win32&dsh-desktop-drives=CDE`。
+- 启动反馈窗口与主窗口的冷启动观测已通过；缓存启动约 `2–6 s`，未签名安装器仍可能受 Defender/SmartScreen 扫描影响。
+- `verify:release-readiness` 全部 headless gate 通过；最新安装器为 `dist/DSH-Desktop-1.0.0-x64-Setup.exe`，约 `145.3 MiB`。

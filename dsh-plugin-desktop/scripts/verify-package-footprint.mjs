@@ -37,7 +37,7 @@ function mib(bytes) {
 }
 
 function verifyArtifacts() {
-  const installerPath = join(desktopRoot, 'dist', 'DSH-Desktop-2.0.0-x64-Setup.exe')
+  const installerPath = join(desktopRoot, 'dist', 'DSH-Desktop-1.0.0-x64-Setup.exe')
   const unpackedPath = join(desktopRoot, 'dist', 'win-unpacked')
   if (!existsSync(installerPath) || !existsSync(unpackedPath)) {
     if (requireArtifacts) throw new Error('Windows package artifacts are missing; run dist:win first')

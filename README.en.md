@@ -1,19 +1,19 @@
 # DSH Desktop
 
-A desktop development workbench for DeepSeek Harness, combining local Agent sessions, visual tools, and a code workspace.
+A standalone desktop development workbench for DeepSeek Harness, combining local Agent sessions, visual tools, and a code workspace.
 
 ![DSH Desktop workbench](assets/dsh-desktop-workbench.png)
 
-A local developer workspace for sessions, code, terminals, Git, subagents, and visual tasks.
+First product release `1.0.0`, for developers working locally with sessions, code, terminals, Git, subagents, and visual tasks.
 
 ## Current status
 
-The project is under active development. It currently includes:
+The first product release currently includes:
 
 - Electron 43.4.0 shell with single-instance behavior, tray, Profile lifecycle, and a loopback Web carrier;
 - DSH `0.1.0-rc.6` runtime;
 - Vision Toolkit `0.1.24` and Better Sidebar `0.12.3` as the default Profile combination;
-- Advanced Shell Sidebar/Details controls with persisted layout preferences;
+- Advanced Shell native window frame with persisted layout preferences;
 - Vision image-transfer consent and Python/Chrome runtime checks;
 - Electron BrowserWindow CDP screenshot regression and Windows x64 unpacked packaging gates.
 
@@ -24,16 +24,29 @@ Release work still pending:
 - fully offline visual understanding;
 - Pi as a replacement for the DSH runtime.
 
+## What this product adds to DSH Runtime
+
+The official [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) provides the Agent, Session, Tool, Profile, Credential, and Web Runtime. Without modifying the official DSH source, this repository adds the complete desktop product layer:
+
+- Electron native shell: single-instance behavior, system tray, native windows, update handoff, and a managed terminal;
+- Advanced Shell: Windows Mica/macOS vibrancy framing while preserving the official left sidebar and Better Sidebar right panel in their original positions;
+- Pinned product plugins: Vision Toolkit `0.1.24` and Better Sidebar `0.12.3`;
+- Vision privacy consent: explicit image-transfer boundary, localized for Chinese system locales;
+- Vision runtime health checks: Python `3.11+` and Chrome/Chromium/Edge detection for HTML screenshots;
+- Profile and release engineering: plugin deduplication, user disable support, runtime closure, real Electron screenshots, and Windows footprint/memory gates;
+- Windows x64 installer: NSIS setup, desktop/Start Menu shortcuts, and update handoff.
+
+These are DSH Desktop product features, not a replacement for the official DSH Runtime. Pi is intentionally outside the first release core runtime.
+
 ## Product boundary
 
 | Layer | Source | Responsibility |
 | --- | --- | --- |
 | DSH runtime | [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) | Agent, Session, Tool, Profile, Credential, and Web runtime |
-| Desktop shell baseline | [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop) | Open-source Electron Host, Profile, plugin Loader, and packaging boundary |
-| This product | [rw0104/DSH-desktop](https://github.com/rw0104/DSH-desktop) | Workbench experience, plugin composition, privacy flow, health checks, and release gates |
+| This product | [rw0104/DSH-desktop](https://github.com/rw0104/DSH-desktop) | Independent Electron desktop product, workbench experience, plugin composition, privacy flow, health checks, and release gates |
 | Product plugins | Community plugins | Pinned Vision Toolkit and Better Sidebar integration |
 
-`deepseek-harness/` is a pinned, read-only Git submodule. Desktop features do not modify the official DSH source.
+`deepseek-harness/` is a pinned, read-only Git submodule. Desktop features do not modify the official DSH source; the product implementation, packaging, and added desktop capabilities live in this repository.
 
 ## Architecture
 

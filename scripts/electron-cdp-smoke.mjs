@@ -6,8 +6,11 @@ if (output === undefined) throw new Error('screenshot output path is required')
 const dismissOnboarding = process.argv.includes('--dismiss-onboarding')
 const toggleSidebar = process.argv.includes('--toggle-sidebar')
 const toggleDetails = process.argv.includes('--toggle-details')
+const openDirectoryPicker = process.argv.includes('--open-directory-picker')
+const openCurrentDirectory = process.argv.includes('--open-current-directory')
 
-const targets = await (await fetch('http://127.0.0.1:9223/json/list')).json()
+const cdpPort = process.env.DSH_CDP_PORT ?? '9223'
+const targets = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json()
 const target = targets.find(value => value.type === 'page')
 if (target?.webSocketDebuggerUrl === undefined) throw new Error('Electron page target not found')
 
@@ -44,10 +47,39 @@ if (dismissOnboarding) {
   })
   await new Promise(resolve => setTimeout(resolve, 1000))
 }
+if (openDirectoryPicker || openCurrentDirectory) {
+  await command('Runtime.evaluate', {
+    expression: `(() => {
+      const labels = ['新建会话', 'New session']
+      const button = [...document.querySelectorAll('button')].find(node => labels.some(label => [node.textContent, node.getAttribute('aria-label'), node.title].includes(label)) && node.getBoundingClientRect().width > 0)
+      button?.click()
+    })()`,
+  })
+  await new Promise(resolve => setTimeout(resolve, 1000))
+  await command('Runtime.evaluate', {
+    expression: `(() => {
+      const labels = ['选择工作区', 'Select workspace']
+      const button = [...document.querySelectorAll('button')].find(node => labels.some(label => [node.textContent, node.getAttribute('aria-label'), node.title].includes(label)) && node.getBoundingClientRect().width > 0)
+      button?.click()
+    })()`,
+  })
+  await new Promise(resolve => setTimeout(resolve, 1500))
+}
+if (openCurrentDirectory) {
+  await command('Runtime.evaluate', {
+    expression: `([...document.querySelectorAll('[role="dialog"] button')].find(node => /^(打开|Open)$/.test((node.textContent ?? '').trim())))?.click()`,
+  })
+  await new Promise(resolve => setTimeout(resolve, 2500))
+}
 for (const label of [toggleSidebar ? 'Sidebar' : null, toggleDetails ? 'Details' : null]) {
   if (label === null) continue
   await command('Runtime.evaluate', {
-    expression: `([...document.querySelectorAll('.dshDesktopControlButton')].find(node => node.textContent === ${JSON.stringify(label)}))?.click()`,
+    expression: `(() => {
+      const direct = document.querySelector('[data-control="${label.toLowerCase()}"]')
+      if (direct instanceof HTMLElement) { direct.click(); return }
+      const labels = ${JSON.stringify(label === 'Sidebar' ? ['Sidebar', '侧栏'] : ['Details', '详情'])}
+      [...document.querySelectorAll('.dshDesktopControlButton')].find(node => labels.includes(node.textContent ?? ''))?.click()
+    })()`,
   })
   await new Promise(resolve => setTimeout(resolve, 500))
 }
@@ -62,6 +94,16 @@ const inspection = await command('Runtime.evaluate', {
       pressed: button.getAttribute('aria-pressed'),
     })),
     bootEntries: Array.isArray(window.__DSH_BOOT__?.entries) ? window.__DSH_BOOT__.entries.length : null,
+    drivePicker: document.querySelector('[data-dsh-desktop-drive-picker]')?.getAttribute('aria-label') ?? null,
+    driveOptions: [...document.querySelectorAll('[data-dsh-desktop-drive-picker] option')].map(option => option.textContent),
+    dialogs: [...document.querySelectorAll('[role="dialog"]')].map(dialog => (dialog.textContent ?? '').trim().slice(0, 120)),
+    betterSidebarHost: document.querySelector('[data-dsh-better-sidebar]') !== null,
+    betterSidebarPanel: document.querySelector('[data-dsh-better-sidebar] [class*="panel"]') !== null,
+    buttonLabels: [...document.querySelectorAll('button')].slice(0, 40).map(node => ({
+      text: (node.textContent ?? '').trim(),
+      aria: node.getAttribute('aria-label'),
+      title: node.title || null,
+    })),
   })`,
   returnByValue: true,
 })

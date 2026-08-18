@@ -174,9 +174,22 @@ try {
     throw new Error(`assembled Windows browse picker listed ${listing.path} instead of ${home}`)
   }
 
-  const expectedUrl = `http://127.0.0.1:${String(ctx.webServer.port)}/?dsh-desktop-mode=advanced&dsh-desktop-platform=win32`
-  if (mountedSpec?.url !== expectedUrl) {
+  let rendererUrl
+  try {
+    rendererUrl = new URL(String(mountedSpec?.url))
+  } catch {
+    rendererUrl = undefined
+  }
+  if (rendererUrl === undefined
+    || rendererUrl.origin !== `http://127.0.0.1:${String(ctx.webServer.port)}`
+    || rendererUrl.pathname !== '/'
+    || rendererUrl.searchParams.get('dsh-desktop-mode') !== 'advanced'
+    || rendererUrl.searchParams.get('dsh-desktop-platform') !== 'win32') {
     throw new Error(`desktop plugin produced an unexpected renderer URL: ${String(mountedSpec?.url)}`)
+  }
+  const driveMarker = rendererUrl.searchParams.get('dsh-desktop-drives')
+  if (driveMarker !== null && !/^[A-Z]+$/u.test(driveMarker)) {
+    throw new Error(`desktop plugin produced an invalid Windows drive marker: ${driveMarker}`)
   }
   if (mountedSpec?.mode !== 'advanced') {
     throw new Error(`desktop plugin produced an unexpected shell mode: ${String(mountedSpec?.mode)}`)
@@ -199,7 +212,7 @@ try {
   if (profileMenu?.submenu?.()[0]?.label() !== 'desktop') {
     throw new Error('assembled desktop profile is missing the active profile tray submenu')
   }
-  const response = await fetch(expectedUrl)
+  const response = await fetch(rendererUrl.href)
   const html = await response.text()
   if (response.status !== 200) {
     throw new Error(`assembled Web root returned HTTP ${String(response.status)}`)
