@@ -57,18 +57,18 @@ jobs:
     needs: build-windows
     runs-on: windows-latest
     steps:
-      - name: Download installer artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: DSH-Desktop-windows-x64-${{ github.sha }}
-          path: release-assets
-
       - name: Check out tag metadata
         uses: actions/checkout@v6
         with:
           persist-credentials: false
           fetch-depth: 0
           submodules: false
+
+      - name: Download installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: DSH-Desktop-windows-x64-${{ github.sha }}
+          path: release-assets
 
       - name: Create or update GitHub Release
         shell: pwsh
