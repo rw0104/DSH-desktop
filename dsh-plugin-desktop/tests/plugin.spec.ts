@@ -14,6 +14,7 @@ import {
   type DesktopSettings,
 } from '../src/index.ts'
 import type { DesktopRuntime, DesktopShellSpec } from '../src/runtime.ts'
+import { desktopSidebarDefaultPatch } from '../src/sidebar-defaults.ts'
 
 const config: DesktopConfig = {
   mode: 'compatibility',
@@ -114,6 +115,17 @@ function createHarness(platform: DesktopRuntime['platform'] = 'darwin'): PluginH
 }
 
 describe('desktop Host plugin', () => {
+  it('defaults Better Sidebar to manual expansion without overriding user settings', () => {
+    expect(desktopSidebarDefaultPatch(undefined, 'win32')).toEqual({
+      openByDefault: false,
+      titleBarCompat: true,
+    })
+    expect(desktopSidebarDefaultPatch({ openByDefault: true }, 'win32')).toEqual({
+      titleBarCompat: true,
+    })
+    expect(desktopSidebarDefaultPatch({ openByDefault: false, titleBarCompat: false }, 'darwin')).toEqual({})
+  })
+
   it('defaults to compatibility mode and validates both schemas', () => {
     expect(Config({} as DesktopConfig)).toEqual(config)
     expect(Config({ mode: 'advanced' } as DesktopConfig)).toEqual({ ...config, mode: 'advanced' })

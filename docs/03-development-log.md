@@ -394,3 +394,15 @@ node scripts/electron-cdp-smoke.mjs 'docs/evidence/electron/advanced-sidebar-det
 
 - 真实 Electron `1.0.1` CDP 回归：盘符选项为 `C盘 (C:)`、`D盘 (D:)`、`E盘 (E:)`；选择 C 后路径为 `C:\`，目录列表正常，错误列表为空。
 - 证据截图：[directory-picker-1.0.1-selected-c.png](./evidence/electron/directory-picker-1.0.1-selected-c.png)。
+
+## 2026-08-18：Better Sidebar 默认收起与 Windows 标题栏避让
+
+### 修复
+
+- 桌面 Host 只为未显式配置的 Better Sidebar 用户设置写入产品默认：`openByDefault: false`；已有用户的开关选择不被覆盖。
+- Windows 未显式配置时写入 `titleBarCompat: true`，将 Better Sidebar 右上角两个控制按钮及面板内容避开原生最小化、最大化和关闭按钮；macOS 不改变该设置。
+
+### 验证
+
+- 新鲜 DSH Home 实测 settings 写入 `openByDefault: false` 与 `titleBarCompat: true`。
+- 真实 Electron 截图确认右侧面板默认隐藏，页面仍保留“展开侧边栏”按钮；Better Sidebar Host/Panel 挂载正常。

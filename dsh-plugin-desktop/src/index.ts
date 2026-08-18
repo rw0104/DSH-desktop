@@ -13,6 +13,7 @@ import {
 import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import type { DesktopPlatform, DesktopShellMode } from './runtime.ts'
 import type {} from './runtime.ts'
+import { installDesktopSidebarDefaults } from './sidebar-defaults.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'desktop-shell'
@@ -111,6 +112,7 @@ export function apply(ctx: Context, config: Config): void {
   if (ctx.webServer.host !== '127.0.0.1') {
     throw new Error('dsh-plugin-desktop: desktop shell requires a loopback Web server')
   }
+  installDesktopSidebarDefaults(ctx)
   const iconFilename = ctx.desktopRuntime.platform === 'darwin'
     ? 'app-icon-mac.png'
     : 'app-icon.png'
