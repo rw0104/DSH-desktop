@@ -1,8 +1,9 @@
 /** Build an unsigned Windows x64 NSIS installer on a native Windows host. */
 
 import { spawnSync } from 'node:child_process'
+import { readFileSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join, resolve, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const WINDOWS_SIGNING_KEYS = [
@@ -24,6 +25,8 @@ export interface WindowsPackageOptions {
   readonly arch: string
   /** Node version executing the package build. */
   readonly nodeVersion: string
+  /** Product version used to remove exact stale release artifacts. */
+  readonly version: string
   /** Repository root containing the Yarn workspace. */
   readonly workspaceRoot: string
   /** Desktop package root containing electron-builder configuration. */
@@ -36,6 +39,8 @@ export interface WindowsPackageOptions {
   readonly verifier: string
   /** Node executable used to run package-local scripts. */
   readonly nodeExecutable: string
+  /** Remove one exact versioned artifact before packaging. */
+  readonly removeArtifact: (path: string) => void
   /** Execute one packaging command. */
   readonly run: (
     command: string,
@@ -80,12 +85,19 @@ function defaultOptions(): WindowsPackageOptions {
   const desktopRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
   const workspaceRoot = resolve(desktopRoot, '..')
   const require = createRequire(import.meta.url)
+  const manifest = JSON.parse(readFileSync(join(desktopRoot, 'package.json'), 'utf8')) as {
+    version?: unknown
+  }
+  if (typeof manifest.version !== 'string' || manifest.version.length === 0) {
+    throw new Error(`desktop package at ${desktopRoot} has no valid version`)
+  }
   const windowsRoot = process.env.SystemRoot ?? process.env.WINDIR
   return {
     env: process.env,
     platform: process.platform,
     arch: process.arch,
     nodeVersion: process.versions.node,
+    version: manifest.version,
     workspaceRoot,
     desktopRoot,
     commandShell: windowsRoot === undefined || windowsRoot.length === 0
@@ -94,13 +106,14 @@ function defaultOptions(): WindowsPackageOptions {
     builderCli: require.resolve('electron-builder/cli.js'),
     verifier: fileURLToPath(new URL('./verify-win-installer.ts', import.meta.url)),
     nodeExecutable: process.execPath,
+    removeArtifact: path => { rmSync(path, { force: true }) },
     run,
     log: message => console.log(message),
   }
 }
 
 /**
- * Run the headless release gates and package one unsigned x64 NSIS installer.
+ * Run the headless release gates and package fast Setup plus differential Update installers.
  * @param options - Injectable process and command boundaries.
  */
 export function packageWindowsInstaller(
@@ -122,7 +135,18 @@ export function packageWindowsInstaller(
   }
 
   const cleanEnvironment = withoutWindowsSigningSecrets(options.env)
-  options.log('Building an unsigned Windows x64 installer; Authenticode is a separate release step.')
+  const distDir = win32.join(options.desktopRoot, 'dist')
+  for (const artifact of [
+    `DSH-Desktop-${options.version}-x64-Setup.exe`,
+    `DSH-Desktop-${options.version}-x64-Setup.exe.blockmap`,
+    `DSH-Desktop-${options.version}-x64-Update.exe`,
+    `DSH-Desktop-${options.version}-x64-Update.exe.blockmap`,
+    'latest.yml',
+  ]) options.removeArtifact(win32.join(distDir, artifact))
+
+  options.log(
+    'Building unsigned Windows x64 Setup and Update installers; Authenticode is a separate release step.',
+  )
   options.run(
     options.commandShell,
     [
@@ -145,6 +169,29 @@ export function packageWindowsInstaller(
       'never',
       '--config.win.signExecutable=false',
       '--config.npmRebuild=false',
+    ],
+    options.desktopRoot,
+    {
+      ...cleanEnvironment,
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false',
+    },
+  )
+  options.run(
+    options.nodeExecutable,
+    [
+      options.builderCli,
+      '--win',
+      'nsis',
+      '--x64',
+      '--publish',
+      'never',
+      '--prepackaged',
+      win32.join(options.desktopRoot, 'dist', 'win-unpacked'),
+      '--config.win.signExecutable=false',
+      '--config.npmRebuild=false',
+      '--config.nsis.differentialPackage=true',
+      '--config.nsis.useZip=false',
+      '--config.nsis.artifactName=DSH-Desktop-${version}-${arch}-Update.${ext}',
     ],
     options.desktopRoot,
     {

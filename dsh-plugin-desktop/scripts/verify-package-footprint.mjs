@@ -38,17 +38,20 @@ function mib(bytes) {
 }
 
 function verifyArtifacts() {
-  const installerPath = join(desktopRoot, 'dist', `DSH-Desktop-${manifest.version}-x64-Setup.exe`)
+  const setupInstallerPath = join(desktopRoot, 'dist', `DSH-Desktop-${manifest.version}-x64-Setup.exe`)
+  const updateInstallerPath = join(desktopRoot, 'dist', `DSH-Desktop-${manifest.version}-x64-Update.exe`)
   const unpackedPath = join(desktopRoot, 'dist', 'win-unpacked')
-  if (!existsSync(installerPath) || !existsSync(unpackedPath)) {
+  if (!existsSync(setupInstallerPath) || !existsSync(updateInstallerPath) || !existsSync(unpackedPath)) {
     if (requireArtifacts) throw new Error('Windows package artifacts are missing; run dist:win first')
     return { skipped: true }
   }
-  const installerMiB = mib(statSync(installerPath).size)
+  const setupInstallerMiB = mib(statSync(setupInstallerPath).size)
+  const updateInstallerMiB = mib(statSync(updateInstallerPath).size)
   const unpackedMiB = mib(directoryBytes(unpackedPath))
-  assertWithinLimit('Windows installer', installerMiB, FOOTPRINT_LIMITS.installerMiB)
+  assertWithinLimit('Windows Setup installer', setupInstallerMiB, FOOTPRINT_LIMITS.installerMiB)
+  assertWithinLimit('Windows Update installer', updateInstallerMiB, FOOTPRINT_LIMITS.installerMiB)
   assertWithinLimit('Windows unpacked directory', unpackedMiB, FOOTPRINT_LIMITS.unpackedMiB)
-  return { installerMiB, unpackedMiB }
+  return { setupInstallerMiB, updateInstallerMiB, unpackedMiB }
 }
 
 function verifyMemoryReport() {

@@ -24,12 +24,14 @@ function options(calls: CommandCall[], logs: string[] = []): WindowsPackageOptio
     platform: 'win32',
     arch: 'x64',
     nodeVersion: '22.23.2',
+    version: '2.0.0',
     workspaceRoot: 'C:\\repo',
     desktopRoot: 'C:\\repo\\dsh-plugin-desktop',
     commandShell: 'C:\\Windows\\System32\\cmd.exe',
     builderCli: 'C:\\repo\\node_modules\\electron-builder\\cli.js',
     verifier: 'C:\\repo\\dsh-plugin-desktop\\scripts\\verify-win-installer.ts',
     nodeExecutable: 'C:\\Program Files\\nodejs\\node.exe',
+    removeArtifact: () => {},
     run: (command, args, cwd, env) => {
       calls.push({ command, args: [...args], cwd, env: { ...env } })
     },
@@ -38,13 +40,24 @@ function options(calls: CommandCall[], logs: string[] = []): WindowsPackageOptio
 }
 
 describe('Windows x64 installer packaging', () => {
-  it('checks without credentials, builds an unsigned NSIS target, then verifies it', () => {
+  it('checks without credentials, builds fast Setup and differential Update targets, then verifies them', () => {
     const calls: CommandCall[] = []
     const logs: string[] = []
+    const removed: string[] = []
 
-    packageWindowsInstaller(options(calls, logs))
+    packageWindowsInstaller({
+      ...options(calls, logs),
+      removeArtifact: path => { removed.push(path) },
+    })
 
-    expect(calls).toHaveLength(3)
+    expect(removed).toEqual([
+      'C:\\repo\\dsh-plugin-desktop\\dist\\DSH-Desktop-2.0.0-x64-Setup.exe',
+      'C:\\repo\\dsh-plugin-desktop\\dist\\DSH-Desktop-2.0.0-x64-Setup.exe.blockmap',
+      'C:\\repo\\dsh-plugin-desktop\\dist\\DSH-Desktop-2.0.0-x64-Update.exe',
+      'C:\\repo\\dsh-plugin-desktop\\dist\\DSH-Desktop-2.0.0-x64-Update.exe.blockmap',
+      'C:\\repo\\dsh-plugin-desktop\\dist\\latest.yml',
+    ])
+    expect(calls).toHaveLength(4)
     expect(calls[0]).toEqual({
       command: 'C:\\Windows\\System32\\cmd.exe',
       args: [
@@ -77,12 +90,36 @@ describe('Windows x64 installer packaging', () => {
     })
     expect(calls[2]).toEqual({
       command: 'C:\\Program Files\\nodejs\\node.exe',
+      args: [
+        'C:\\repo\\node_modules\\electron-builder\\cli.js',
+        '--win',
+        'nsis',
+        '--x64',
+        '--publish',
+        'never',
+        '--prepackaged',
+        'C:\\repo\\dsh-plugin-desktop\\dist\\win-unpacked',
+        '--config.win.signExecutable=false',
+        '--config.npmRebuild=false',
+        '--config.nsis.differentialPackage=true',
+        '--config.nsis.useZip=false',
+        '--config.nsis.artifactName=DSH-Desktop-${version}-${arch}-Update.${ext}',
+      ],
+      cwd: 'C:\\repo\\dsh-plugin-desktop',
+      env: {
+        PATH: 'C:\\Windows\\System32',
+        SAFE_VALUE: 'kept',
+        CSC_IDENTITY_AUTO_DISCOVERY: 'false',
+      },
+    })
+    expect(calls[3]).toEqual({
+      command: 'C:\\Program Files\\nodejs\\node.exe',
       args: ['C:\\repo\\dsh-plugin-desktop\\scripts\\verify-win-installer.ts'],
       cwd: 'C:\\repo\\dsh-plugin-desktop',
       env: { PATH: 'C:\\Windows\\System32', SAFE_VALUE: 'kept' },
     })
     expect(logs).toEqual([
-      'Building an unsigned Windows x64 installer; Authenticode is a separate release step.',
+      'Building unsigned Windows x64 Setup and Update installers; Authenticode is a separate release step.',
     ])
   })
 

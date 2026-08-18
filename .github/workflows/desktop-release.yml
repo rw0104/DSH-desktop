@@ -15,7 +15,7 @@ env:
 
 jobs:
   build-windows:
-    name: Build Windows x64 installer
+    name: Build Windows x64 Setup and Update installers
     runs-on: windows-latest
     steps:
       - name: Check out desktop and pinned upstream
@@ -37,18 +37,19 @@ jobs:
         shell: pwsh
         run: yarn install --immutable
 
-      - name: Build and verify unsigned installer
+      - name: Build and verify unsigned Setup and Update installers
         shell: pwsh
         run: yarn dist:win
 
-      - name: Upload installer artifact
+      - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: DSH-Desktop-windows-x64-${{ github.sha }}
           if-no-files-found: error
           path: |
             dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Setup.exe
-            dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Setup.exe.blockmap
+            dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Update.exe
+            dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Update.exe.blockmap
             dsh-plugin-desktop/dist/latest.yml
 
   publish-release:

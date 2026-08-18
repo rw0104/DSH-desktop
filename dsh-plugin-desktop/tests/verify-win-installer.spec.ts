@@ -16,7 +16,10 @@ function portableExecutable(): Buffer {
 
 function fixture(version = '2.0.0'): {
   readonly root: string
-  readonly installer: string
+  readonly setupInstaller: string
+  readonly updateInstaller: string
+  readonly updateBlockmap: string
+  readonly latestMetadata: string
   readonly application: string
 } {
   const root = mkdtempSync(join(tmpdir(), 'dsh-win-installer-'))
@@ -24,11 +27,34 @@ function fixture(version = '2.0.0'): {
   const dist = join(root, 'dist')
   const unpacked = join(dist, 'win-unpacked')
   mkdirSync(unpacked, { recursive: true })
-  const installer = join(dist, `DSH-Desktop-${version}-x64-Setup.exe`)
+  const setupInstaller = join(dist, `DSH-Desktop-${version}-x64-Setup.exe`)
+  const updateInstaller = join(dist, `DSH-Desktop-${version}-x64-Update.exe`)
+  const updateBlockmap = `${updateInstaller}.blockmap`
+  const latestMetadata = join(dist, 'latest.yml')
   const application = join(unpacked, 'DSH Desktop.exe')
-  writeFileSync(installer, portableExecutable())
+  writeFileSync(setupInstaller, portableExecutable())
+  writeFileSync(updateInstaller, portableExecutable())
+  writeFileSync(updateBlockmap, Buffer.from('blockmap'))
+  writeFileSync(latestMetadata, [
+    `version: ${version}`,
+    'files:',
+    `  - url: DSH-Desktop-${version}-x64-Update.exe`,
+    '    sha512: fixture',
+    '    size: 132',
+    `path: DSH-Desktop-${version}-x64-Update.exe`,
+    'sha512: fixture',
+    'releaseDate: 2026-08-18T00:00:00.000Z',
+    '',
+  ].join('\n'))
   writeFileSync(application, portableExecutable())
-  return { root, installer, application }
+  return {
+    root,
+    setupInstaller,
+    updateInstaller,
+    updateBlockmap,
+    latestMetadata,
+    application,
+  }
 }
 
 afterEach(() => {
@@ -36,11 +62,14 @@ afterEach(() => {
 })
 
 describe('Windows installer artifact verification', () => {
-  it('accepts the exact versioned NSIS installer and unpacked application', () => {
+  it('accepts fast Setup, differential Update metadata, and the unpacked application', () => {
     const value = fixture()
 
     expect(verifyWindowsInstaller({ desktopRoot: value.root, version: '2.0.0' })).toEqual({
-      installerPath: value.installer,
+      setupInstallerPath: value.setupInstaller,
+      updateInstallerPath: value.updateInstaller,
+      updateBlockmapPath: value.updateBlockmap,
+      latestMetadataPath: value.latestMetadata,
       applicationPath: value.application,
     })
   })
@@ -56,10 +85,38 @@ describe('Windows installer artifact verification', () => {
     const value = fixture()
     const invalid = portableExecutable()
     invalid.write('NO', 0, 'ascii')
-    writeFileSync(value.installer, invalid)
+    writeFileSync(value.setupInstaller, invalid)
 
     expect(() => verifyWindowsInstaller({ desktopRoot: value.root, version: '2.0.0' }))
       .toThrow('does not have a Windows PE header')
+  })
+
+  it('rejects a stale Setup blockmap because only Update may be differential', () => {
+    const value = fixture()
+    writeFileSync(`${value.setupInstaller}.blockmap`, Buffer.from('stale'))
+
+    expect(() => verifyWindowsInstaller({ desktopRoot: value.root, version: '2.0.0' }))
+      .toThrow('fast Setup installer unexpectedly has a blockmap')
+  })
+
+  it('rejects a missing Update blockmap', () => {
+    const value = fixture()
+    rmSync(value.updateBlockmap)
+
+    expect(() => verifyWindowsInstaller({ desktopRoot: value.root, version: '2.0.0' }))
+      .toThrow('Update blockmap')
+  })
+
+  it('rejects latest.yml when it points users at Setup instead of Update', () => {
+    const value = fixture()
+    writeFileSync(value.latestMetadata, [
+      'version: 2.0.0',
+      'path: DSH-Desktop-2.0.0-x64-Setup.exe',
+      '',
+    ].join('\n'))
+
+    expect(() => verifyWindowsInstaller({ desktopRoot: value.root, version: '2.0.0' }))
+      .toThrow('latest.yml must point to DSH-Desktop-2.0.0-x64-Update.exe')
   })
 
   it('rejects an unpacked application without a Windows PE signature', () => {
