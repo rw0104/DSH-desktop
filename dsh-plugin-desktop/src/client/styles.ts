@@ -7,6 +7,13 @@ import {
 } from '../window-chrome.ts'
 import { SIDEBAR_COLLAPSED } from './layout-state.ts'
 
+/** Windows integration that applies in both compatibility and advanced presentation. */
+const DESKTOP_INTEGRATION_STYLES = `
+body[data-dsh-title-bar-compat] [data-dsh-better-sidebar] > div:first-child {
+  top: calc(var(--dsh-title-bar-strip, 40px) - 12px);
+}
+`
+
 /** Advanced-shell stylesheet kept as a plain string so the package client bundle stays self-contained. */
 const ADVANCED_STYLES = `
 html, body, #root { width: 100%; height: 100%; }
@@ -43,6 +50,16 @@ html:has([aria-modal="true"]) .dshDesktopSidebarSurface,
 html:has([aria-modal="true"]) .dshDesktopSidebarSurface::before { -webkit-app-region: no-drag !important; }
 @media (prefers-reduced-motion: reduce) { .dshDesktopFrame { transition: none !important; } }
 `
+
+/** Install desktop-to-plugin chrome alignment shared by every Windows presentation mode. */
+export function installDesktopIntegrationStyles(): () => void {
+  const style = document.createElement('style')
+  style.dataset.plugin = 'dsh-plugin-desktop'
+  style.dataset.pluginCss = 'dsh-plugin-desktop/integration'
+  style.textContent = DESKTOP_INTEGRATION_STYLES
+  document.head.appendChild(style)
+  return () => { style.remove() }
+}
 
 /** Install and remove the advanced shell's global native-window styles. @returns the style disposer. */
 export function installAdvancedStyles(): () => void {

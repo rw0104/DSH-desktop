@@ -217,6 +217,7 @@ describe('published package surface', () => {
     expect(manifest.scripts?.['check:win-package']).toContain('tests/package-win.spec.ts')
     expect(manifest.scripts?.['check:win-package']).toContain('tests/update-checker.spec.ts')
     expect(manifest.scripts?.['check:win-package']).toContain('tests/update-download.spec.ts')
+    expect(manifest.scripts?.['check:win-package']).toContain('tests/electron-runtime.spec.ts')
     expect(manifest.scripts?.['check:win-package']).toContain('yarn run verify:closure')
     expect(manifest.scripts?.['verify:cli']).toBe('node scripts/verify-cli-runtime.mjs')
     expect(manifest.scripts?.check).toContain('yarn run verify:cli')

@@ -469,7 +469,12 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
       window.hide()
     }
     const preserveBlankTitle = (event: Electron.Event): void => { event.preventDefault() }
-    const navigate = (event: Electron.Event<{ url: string }>): void => {
+    const navigate = (event: Electron.Event<{ url: string, isMainFrame: boolean }>): void => {
+      // Keep the application shell on its loopback origin, but do not cancel
+      // deliberate child-frame navigation such as Better Sidebar's browser.
+      // The child surface owns its URL policy and sandbox; this guard owns
+      // only the top-level BrowserWindow boundary.
+      if (!event.isMainFrame) return
       let targetOrigin: string | undefined
       try {
         targetOrigin = new URL(event.url).origin

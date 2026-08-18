@@ -1,5 +1,10 @@
+import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DesktopShellSpec } from '../src/runtime.ts'
+
+const PRODUCT_VERSION = (JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+) as { version: string }).version
 
 const terminal = vi.hoisted(() => ({ open: vi.fn() }))
 const updater = vi.hoisted(() => ({ download: vi.fn() }))
@@ -211,6 +216,8 @@ describe('Electron compatibility runtime', () => {
     electron.notifications.length = 0
     childProcess.reset()
     vi.clearAllMocks()
+    terminal.open.mockReset()
+    updater.download.mockReset()
     electron.loadURL.mockReset()
     electron.loadURL.mockResolvedValue(undefined)
     electron.dialog.showMessageBox.mockResolvedValue({ response: 0, checkboxChecked: false })
@@ -302,6 +309,47 @@ describe('Electron compatibility runtime', () => {
 
     await release()
     expect(electron.trays[0]?.off).toHaveBeenCalledWith('click', expect.any(Function))
+  })
+
+  it('blocks external main-frame navigation while allowing sidebar browser child frames', async () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
+    const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
+    const runtime = new ElectronDesktopRuntime(async () => {})
+    const release = runtime.schedule(spec)
+
+    await runtime.mountScheduled()
+
+    const webContents = electron.browserWindows[0]?.webContents
+    const navigate = webContents?.on.mock.calls
+      .find(([event]) => event === 'will-frame-navigate')?.[1]
+    expect(navigate).toEqual(expect.any(Function))
+
+    const externalMain = {
+      url: 'https://example.com/',
+      isMainFrame: true,
+      preventDefault: vi.fn(),
+    }
+    const externalChild = {
+      url: 'https://example.com/',
+      isMainFrame: false,
+      preventDefault: vi.fn(),
+    }
+    const internalMain = {
+      url: 'http://127.0.0.1:43120/sessions',
+      isMainFrame: true,
+      preventDefault: vi.fn(),
+    }
+
+    navigate(externalMain)
+    navigate(externalChild)
+    navigate(internalMain)
+
+    expect(externalMain.preventDefault).toHaveBeenCalledOnce()
+    expect(externalChild.preventDefault).not.toHaveBeenCalled()
+    expect(internalMain.preventDefault).not.toHaveBeenCalled()
+
+    await release()
+    expect(webContents?.off).toHaveBeenCalledWith('will-frame-navigate', navigate)
   })
 
   it('does not mount a registration disposed before Host boot settles', async () => {
@@ -493,7 +541,7 @@ describe('Electron compatibility runtime', () => {
         pnpmBinPath: expect.stringMatching(/[\\/]node_modules[\\/]pnpm[\\/]bin[\\/]pnpm\.mjs$/u),
         electronVersion: '43.4.0',
         profileName: 'desktop',
-        productVersion: '1.0.0',
+        productVersion: PRODUCT_VERSION,
         profileDir: '/tmp/dsh-home/profiles/desktop',
         homeDir: '/tmp/dsh-home',
         stateDir: expect.stringMatching(/^[\\/]tmp[\\/]dsh-desktop-user-data[\\/]cli[\\/][a-f0-9]{64}$/u),
@@ -560,7 +608,7 @@ describe('Electron compatibility runtime', () => {
     expect(runtime.updates).toMatchObject({
       isPackaged: false,
       canDownload: false,
-      currentVersion: '1.0.0',
+      currentVersion: PRODUCT_VERSION,
       statePath: expect.stringMatching(/[\\/]tmp[\\/]dsh-desktop-user-data[\\/]updates[\\/]state\.json$/u),
     })
     electron.app.isPackaged = true
@@ -568,12 +616,12 @@ describe('Electron compatibility runtime', () => {
 
     await runtime.updates.showManualCheckResult({
       status: 'up-to-date',
-      currentVersion: '1.0.0',
-      latestVersion: '1.0.0',
+      currentVersion: PRODUCT_VERSION,
+      latestVersion: PRODUCT_VERSION,
     })
     expect(electron.dialog.showMessageBox).toHaveBeenLastCalledWith(expect.objectContaining({
       title: 'DSH Desktop Is Up to Date',
-      detail: 'Installed version: 1.0.0',
+      detail: `Installed version: ${PRODUCT_VERSION}`,
       buttons: ['OK'],
     }))
 

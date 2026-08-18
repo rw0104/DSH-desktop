@@ -8,6 +8,10 @@ const toggleSidebar = process.argv.includes('--toggle-sidebar')
 const toggleDetails = process.argv.includes('--toggle-details')
 const openDirectoryPicker = process.argv.includes('--open-directory-picker')
 const openCurrentDirectory = process.argv.includes('--open-current-directory')
+const openBetterSidebar = process.argv.includes('--open-better-sidebar')
+const openBetterBrowser = process.argv.includes('--open-better-browser')
+const unlockBetterBrowser = process.argv.includes('--unlock-better-browser')
+const browserUrl = process.argv.find(value => value.startsWith('--browser-url='))?.slice('--browser-url='.length)
 const selectedDrive = process.argv.find(value => value.startsWith('--select-drive='))?.slice('--select-drive='.length)
 
 const cdpPort = process.env.DSH_CDP_PORT ?? '9223'
@@ -18,10 +22,23 @@ if (target?.webSocketDebuggerUrl === undefined) throw new Error('Electron page t
 const socket = new WebSocket(target.webSocketDebuggerUrl)
 let nextId = 1
 const pending = new Map()
+const events = []
+const requestUrls = new Map()
 socket.addEventListener('message', event => {
   const message = JSON.parse(event.data)
   const resolve = pending.get(message.id)
-  if (resolve === undefined) return
+  if (resolve === undefined) {
+    if (message.method === 'Network.requestWillBeSent') {
+      requestUrls.set(message.params.requestId, message.params.request.url)
+      if (message.params.type === 'Document') events.push(message)
+    } else if (
+      ['Log.entryAdded', 'Runtime.consoleAPICalled', 'Network.loadingFailed'].includes(message.method)
+      || (message.method === 'Network.responseReceived' && message.params.type === 'Document')
+    ) {
+      events.push(message)
+    }
+    return
+  }
   pending.delete(message.id)
   resolve(message)
 })
@@ -42,7 +59,7 @@ async function clickVisibleButton(labels) {
   const probe = await command('Runtime.evaluate', {
     expression: `JSON.stringify((() => {
       const labels = ${JSON.stringify(labels)}
-      const button = [...document.querySelectorAll('button')].find(node => labels.some(label => [node.textContent, node.getAttribute('aria-label'), node.title].includes(label)) && node.getBoundingClientRect().width > 0)
+      const button = [...document.querySelectorAll('button, [role="menuitem"]')].find(node => labels.some(label => [node.textContent?.trim(), node.getAttribute('aria-label'), node.title].includes(label)) && node.getBoundingClientRect().width > 0)
       if (button === undefined) return null
       const rect = button.getBoundingClientRect()
       return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
@@ -60,6 +77,9 @@ async function clickVisibleButton(labels) {
 }
 
 await command('Page.enable')
+await command('Runtime.enable')
+await command('Log.enable')
+await command('Network.enable')
 if (dismissOnboarding) {
   await command('Runtime.evaluate', {
     expression: `(() => {
@@ -106,6 +126,44 @@ for (const label of [toggleSidebar ? 'Sidebar' : null, toggleDetails ? 'Details'
   })
   await new Promise(resolve => setTimeout(resolve, 500))
 }
+if (openBetterSidebar || openBetterBrowser) {
+  await clickVisibleButton(['展开侧边栏', 'Expand sidebar'])
+  await new Promise(resolve => setTimeout(resolve, 750))
+}
+if (openBetterBrowser) {
+  await clickVisibleButton(['新建标签页', 'New tab'])
+  await new Promise(resolve => setTimeout(resolve, 400))
+  await command('Runtime.evaluate', {
+    expression: `(() => {
+      const labels = ['浏览器', 'Browser']
+      const item = [...document.querySelectorAll('[role="menuitem"]')]
+        .find(node => labels.includes((node.textContent ?? '').trim()))
+      if (!(item instanceof HTMLElement)) return false
+      item.click()
+      return true
+    })()`,
+  })
+  await new Promise(resolve => setTimeout(resolve, 600))
+}
+if (browserUrl !== undefined) {
+  await command('Runtime.evaluate', {
+    expression: `(() => {
+      const input = [...document.querySelectorAll('input')].find(node => node.className.includes('browserInput'))
+      if (!(input instanceof HTMLInputElement)) return false
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+      setter?.call(input, ${JSON.stringify(browserUrl)})
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }))
+      return true
+    })()`,
+  })
+  await new Promise(resolve => setTimeout(resolve, 3500))
+}
+if (unlockBetterBrowser) {
+  await clickVisibleButton(['临时解锁（不安全）', 'Unlock temporarily (unsafe)'])
+  await new Promise(resolve => setTimeout(resolve, 3500))
+}
 
 const inspection = await command('Runtime.evaluate', {
   expression: `JSON.stringify({
@@ -129,6 +187,33 @@ const inspection = await command('Runtime.evaluate', {
     dialogs: [...document.querySelectorAll('[role="dialog"]')].map(dialog => (dialog.textContent ?? '').trim().slice(0, 120)),
     betterSidebarHost: document.querySelector('[data-dsh-better-sidebar]') !== null,
     betterSidebarPanel: document.querySelector('[data-dsh-better-sidebar] [class*="panel"]') !== null,
+    titleBarCompat: document.body.hasAttribute('data-dsh-title-bar-compat'),
+    titleBarStrip: getComputedStyle(document.body).getPropertyValue('--dsh-title-bar-strip').trim(),
+    betterSidebarToggles: [...document.querySelectorAll('button')]
+      .filter(node => /(?:底部面板|侧边栏|bottom panel|sidebar)/iu.test(node.getAttribute('aria-label') ?? ''))
+      .map(node => {
+        const rect = node.getBoundingClientRect()
+        return {
+          aria: node.getAttribute('aria-label'),
+          top: rect.top,
+          bottom: rect.bottom,
+          centerY: rect.top + rect.height / 2,
+          width: rect.width,
+          height: rect.height,
+        }
+      }),
+    browserInputs: [...document.querySelectorAll('input')]
+      .filter(node => node.className.includes('browserInput'))
+      .map(node => ({ value: node.value, placeholder: node.placeholder })),
+    browserFrames: [...document.querySelectorAll('iframe')]
+      .filter(node => node.className.includes('browserFrame'))
+      .map(node => ({ src: node.src, sandbox: node.getAttribute('sandbox'), title: node.title })),
+    browserMessages: [...document.querySelectorAll('[class*="browserMessage"], [class*="browserBlocked"]')]
+      .map(node => (node.textContent ?? '').trim())
+      .filter(Boolean),
+    menuItems: [...document.querySelectorAll('[role="menuitem"]')]
+      .map(node => (node.textContent ?? '').trim())
+      .filter(Boolean),
     buttonLabels: [...document.querySelectorAll('button')].slice(0, 40).map(node => ({
       text: (node.textContent ?? '').trim(),
       aria: node.getAttribute('aria-label'),
@@ -137,11 +222,42 @@ const inspection = await command('Runtime.evaluate', {
   })`,
   returnByValue: true,
 })
+const frameTree = await command('Page.getFrameTree')
+const flattenFrames = (node, depth = 0) => [
+  {
+    depth,
+    id: node.frame.id,
+    parentId: node.frame.parentId ?? null,
+    url: node.frame.url,
+    mimeType: node.frame.mimeType,
+    unreachableUrl: node.frame.unreachableUrl ?? null,
+  },
+  ...(node.childFrames ?? []).flatMap(child => flattenFrames(child, depth + 1)),
+]
+const eventSummary = events.map(event => ({
+  method: event.method,
+  text: event.params?.entry?.text
+    ?? event.params?.args?.map(arg => arg.value ?? arg.description).join(' ')
+    ?? event.params?.errorText
+    ?? null,
+  url: event.params?.entry?.url
+    ?? event.params?.request?.url
+    ?? event.params?.response?.url
+    ?? requestUrls.get(event.params?.requestId)
+    ?? null,
+  status: event.params?.response?.status ?? null,
+  type: event.params?.type ?? null,
+})).filter(event => event.text !== null || event.url !== null)
 const screenshot = await command('Page.captureScreenshot', { format: 'png' })
 if (inspection.result?.result?.value === undefined || screenshot.result?.data === undefined) {
   throw new Error('Electron CDP inspection did not return page data')
 }
 mkdirSync(dirname(output), { recursive: true })
 writeFileSync(output, Buffer.from(screenshot.result.data, 'base64'))
-process.stdout.write(`${inspection.result.result.value}\n`)
+const inspectionValue = JSON.parse(inspection.result.result.value)
+inspectionValue.cdpEvents = eventSummary
+inspectionValue.frameTree = frameTree.result?.frameTree === undefined
+  ? []
+  : flattenFrames(frameTree.result.frameTree)
+process.stdout.write(`${JSON.stringify(inspectionValue)}\n`)
 socket.close()

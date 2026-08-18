@@ -6,7 +6,7 @@ import {
   computeDesktopColumns, DesktopLayoutState, MACOS_SIDEBAR_COLLAPSED, SIDEBAR_COLLAPSED,
   SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN,
 } from '../src/client/layout-state.ts'
-import { installAdvancedStyles } from '../src/client/styles.ts'
+import { installAdvancedStyles, installDesktopIntegrationStyles } from '../src/client/styles.ts'
 import {
   MACOS_DRAG_REGION_HEIGHT,
   MACOS_TITLEBAR_HEIGHT,
@@ -36,6 +36,34 @@ describe('desktop client environment', () => {
 })
 
 describe('advanced desktop layout', () => {
+  it('lifts Better Sidebar rail toggles onto the reference toolbar centerline', () => {
+    let css = ''
+    const remove = vi.fn()
+    const style = {
+      dataset: {},
+      get textContent() { return css },
+      set textContent(value: string) { css = value },
+      remove,
+    }
+    const appendChild = vi.fn()
+    vi.stubGlobal('document', {
+      createElement: () => style,
+      head: { appendChild },
+    })
+
+    try {
+      const dispose = installDesktopIntegrationStyles()
+      expect(css).toContain('body[data-dsh-title-bar-compat] [data-dsh-better-sidebar] > div:first-child')
+      expect(css).toContain('top: calc(var(--dsh-title-bar-strip, 40px) - 12px)')
+      expect(appendChild).toHaveBeenCalledWith(style)
+      dispose()
+      expect(remove).toHaveBeenCalledOnce()
+    }
+    finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('owns native caption geometry without targeting feature headers', () => {
     expect(MACOS_TITLEBAR_HEIGHT).toBe(20)
     expect(MACOS_DRAG_REGION_HEIGHT).toBe(32)
