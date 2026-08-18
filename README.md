@@ -1,125 +1,64 @@
 # DSH Desktop
 
-面向 DeepSeek Harness 的独立桌面开发工作台，提供本地 Agent、会话、视觉工具和代码工作区。
+面向 DeepSeek Harness 的原生桌面工作台。把 Agent 会话、代码、终端、Git、子代理和视觉工具放在一个可直接使用的桌面应用中。
 
 ![DSH Desktop 工作台](assets/dsh-desktop-workbench.png)
 
-首发版本 `1.0.0`，面向需要在本地处理会话、代码、终端、Git、子代理和视觉任务的开发者。
+## 下载
 
-## 当前状态
+当前 Windows x64 安装包：
 
-当前首发版本已经具备：
+[下载 DSH Desktop v1.0.2](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.2) · [直接下载 Windows 安装器](https://github.com/rw0104/DSH-desktop/releases/download/v1.0.2/DSH-Desktop-1.0.2-x64-Setup.exe)
 
-- Electron 43.4.0 桌面壳、单实例、托盘、Profile 生命周期和 loopback Web carrier；
-- DSH `0.1.0-rc.6` Runtime；
-- Vision Toolkit `0.1.24` 和 Better Sidebar `0.12.3` 默认 Profile 组合；
-- Advanced Shell 的原生窗口框架和布局持久化；
-- Vision 图片外发同意、Python/Chrome 健康检查；
-- Electron BrowserWindow CDP 截图回归和 Windows x64 unpacked packaging 门禁。
+安装包支持当前用户安装、选择安装目录、开始菜单和桌面快捷方式。当前安装包未进行 Authenticode 签名，Windows 可能显示 SmartScreen 或 Unknown Publisher 提示。
 
-尚未完成的发布项：
+## 产品能力
 
-- macOS arm64/x64 签名、公证和 universal DMG；
-- Windows Authenticode、干净机器安装、升级、卸载和 SmartScreen 验证；
-- 完全离线的视觉理解；
-- Pi 作为 DSH 核心运行时。
+- **桌面工作台**：原生 Electron 窗口、单实例、托盘、启动反馈和受管 DSH Profile。
+- **会话与 Agent**：沿用 DSH 的会话、Agent、Tool、Credential 和 Profile 能力。
+- **代码工作区**：Explorer、编辑器、Git、浏览器、终端、子代理和后台任务集中在工作台中。
+- **Vision Toolkit**：图片问答、Grounding、OCR、UI 还原、像素差异和素材提取；首次使用会说明图片外发边界。
+- **Better Sidebar**：右侧 Explorer、编辑器、Git、浏览器、终端和任务面板；新用户默认收起，用户手动展开。
+- **原生窗口体验**：Windows Mica、macOS vibrancy、持久化布局和 Windows 标题栏控件避让。
+- **工作区选择**：Windows 目录选择器只显示当前机器真实存在的盘符，并支持从盘符根目录开始浏览。
+- **系统语言**：中文系统显示中文隐私提示和界面文案，其他系统语言使用对应的英文文案。
 
-## 基于 DSH Runtime 的新增功能
+## 基于 DeepSeek Harness 的新增内容
 
-官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 提供 Agent、Session、Tool、Profile、Credential 和 Web Runtime。本项目在不修改官方 DSH 源码的前提下，增加了完整的桌面产品层：
+DSH Desktop 使用官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 作为 Agent 和 Web Runtime，在不修改官方 DSH 源码的前提下增加桌面产品层：
 
-- Electron 原生桌面壳：单实例、系统托盘、原生窗口、更新交接和受管终端；
-- Advanced Shell：Windows Mica/macOS vibrancy 原生窗口框架，官方左侧栏与 Better Sidebar 右侧面板保持各自原有位置；
-- 默认产品插件组合：Vision Toolkit `0.1.24` 与 Better Sidebar `0.12.3`；
-- Vision 隐私同意流程：首次启动明确图片外发边界，中文系统显示中文提示；
-- Vision 运行时健康检查：Python `3.11+` 探测、Chrome/Chromium/Edge 探测和 HTML 截图前置检查；
-- Profile 与发布工程：插件去重、用户停用、runtime closure、真实 Electron 截图、Windows 安装器和内存/体积预算门禁；
-- Windows x64 安装包：NSIS 安装、桌面/开始菜单快捷方式和升级交接。
+- Electron 原生桌面壳、托盘、窗口生命周期和安装更新交接；
+- Windows Mica/macOS vibrancy 的 Advanced Shell，以及官方左侧栏和 Better Sidebar 右侧工作区的布局组合；
+- Vision Toolkit `0.1.24` 与 Better Sidebar `0.12.3` 的固定产品组合；
+- Vision 隐私同意、Python/Chrome 运行时健康检查和失败时的可见反馈；
+- Profile 管理、受管终端、Windows 目录选择增强和发布体积/内存门禁；
+- Windows x64 NSIS 安装包和 GitHub Release 发布流程。
 
-这些是 DSH Desktop 的产品实现，不是官方 DSH Runtime 的替代品，也不要求把 Pi 放进首发核心运行时。
+官方 Runtime 继续负责 Agent、Session、Tool、Profile、Credential 和 Web Runtime；DSH Desktop 负责桌面窗口、工作区体验和产品插件组合。
 
-## 产品边界
+## 安装与首次启动
 
-| 层 | 来源 | 责任 |
-| --- | --- | --- |
-| DSH Runtime | [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) | Agent、Session、Tool、Profile、Credential 和 Web Runtime |
-| 本项目 | [rw0104/DSH-desktop](https://github.com/rw0104/DSH-desktop) | 独立 Electron 桌面产品、工作区体验、插件组合、隐私流程、健康检查和发布门禁 |
-| 产品插件 | 社区插件 | Vision Toolkit 和 Better Sidebar 的固定版本组合 |
+1. 从 [v1.0.2 Release](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.2) 下载 Windows x64 安装器。
+2. 选择安装目录并完成安装。
+3. 启动 DSH Desktop。首次启动会显示 Vision Toolkit 隐私提示；中文 Windows 会显示中文提示。
+4. 在 DSH Settings 中配置模型、凭据和视觉服务。Python 是 Vision 本地工具的前置条件；Chrome、Chromium 或 Edge 只在使用 HTML 截图时需要。
 
-`deepseek-harness/` 是固定 commit 的只读 Git 子模块，桌面功能不修改官方 DSH 源码。桌面产品代码、打包配置和新增功能均维护在本仓库。
+安装器已经包含 DSH Runtime、Vision Toolkit 和 Better Sidebar，不要求客户电脑预装 Node.js 才能启动桌面应用。
 
-## 架构
+## 从源码运行
 
-```mermaid
-flowchart LR
-    User[开发者] --> Main[Electron Main]
-    Main --> Profile[Managed DSH Profile]
-    Profile --> Host[DSH Host Cordis]
-    Host --> Carrier[Loopback HTTP/WebSocket]
-    Carrier --> Renderer[Sandboxed Renderer]
-    Host --> Vision[Vision Toolkit]
-    Host --> Sidebar[Better Sidebar]
-    Renderer --> Workbench[DSH Desktop Workbench]
-```
-
-Electron Main 负责窗口、托盘、Profile、更新和受管进程。DSH Host 负责 Agent 和插件生命周期。Renderer 只访问同源 Web carrier，不接收原始 Electron API。
-
-## 快速开始
-
-### 开发环境
-
-要求：
-
-- Windows x64 或 macOS；
-- Node.js 22.19+ 或 24.x；
-- Corepack；
-- Python 3.11+，Vision 本地工具需要；
-- Chrome、Chromium 或 Edge，`vision_html_screenshot` 需要。
+源码开发需要 Node.js 22.19+ 或 24.x，以及 Corepack：
 
 ```powershell
 git clone https://github.com/rw0104/DSH-desktop.git
 cd DSH-desktop
 git submodule update --init --recursive
 corepack yarn install --immutable
-corepack yarn workspace dsh-plugin-desktop typecheck
-```
-
-启动桌面开发版：
-
-```powershell
 corepack yarn dev
 ```
 
-### 验证开发环境
+`deepseek-harness/` 是固定版本的上游 Git 子模块；桌面产品代码和打包配置维护在本仓库。
 
-```powershell
-corepack yarn workspace dsh-plugin-desktop verify:release-readiness
-corepack yarn workspace dsh-plugin-desktop verify:vision-runtime
-```
+## 许可证
 
-## 产品插件
-
-### Vision Toolkit
-
-Vision Toolkit 为纯文本模型提供图片问答、Grounding、OCR、UI 还原、像素差异和素材提取。
-
-打包应用首次启动会说明图片外发边界。图片理解请求可能发送到配置的视觉服务；裁剪、像素差异、颜色分析和 SVG 描摹可以在本地运行。用户可以在 DSH Settings 中替换视觉 Endpoint 和凭据。
-
-### Better Sidebar
-
-Better Sidebar 提供 Explorer、CodeMirror 编辑器、Git、浏览器、终端、子代理和后台任务工作区。它作为 DSH Profile 插件加载，不复制进 Electron Renderer，也不修改官方 DSH 源码。
-
-## 测试与证据
-
-- [可行性分析](docs/01-feasibility-analysis.md)
-- [开发任务规划](docs/02-development-plan.md)
-- [阶段开发记录](docs/03-development-log.md)
-- [Electron 截图证据](docs/evidence/electron/README.md)
-- [Vision 运行时报告](docs/evidence/vision-runtime/windows.json)
-- [Windows unpacked 制品报告](docs/evidence/release/windows-dir.json)
-
-## 许可证与商标
-
-本项目使用 MIT License。上游 DSH Desktop、DeepSeek Harness、Vision Toolkit、Better Sidebar 及传递依赖的许可证和版权声明必须在再分发时保留。
-
-DeepSeek、DeepSeek Harness 及相关标识属于各自权利人。本项目不代表官方背书或商业合作关系。
+本项目使用 MIT License。再分发时请保留 DeepSeek Harness、Vision Toolkit、Better Sidebar 及传递依赖的许可证和版权声明。DeepSeek、DeepSeek Harness 及相关标识属于各自权利人，本项目不代表官方背书或商业合作关系。
