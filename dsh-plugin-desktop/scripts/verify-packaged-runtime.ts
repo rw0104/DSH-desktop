@@ -72,13 +72,25 @@ export const REQUIRED_UNPACKED_RUNTIME_ENTRIES = [
   'node_modules/sharp/dist/index.cjs',
 ] as const
 
-/** Prebuilt Node-API modules required when the Windows package skips native source rebuilds. */
+/** Core rc7 node-pty 1.2 ConPTY runtime used by @deepseek-ai/dsh-subprocess-local. */
 export const REQUIRED_WINDOWS_X64_NODE_PTY_ENTRIES = [
+  'node_modules/node-pty/package.json',
   'node_modules/node-pty/prebuilds/win32-x64/conpty.node',
   'node_modules/node-pty/prebuilds/win32-x64/conpty_console_list.node',
-  'node_modules/node-pty/prebuilds/win32-x64/pty.node',
-  'node_modules/node-pty/prebuilds/win32-x64/winpty-agent.exe',
-  'node_modules/node-pty/prebuilds/win32-x64/winpty.dll',
+  'node_modules/node-pty/prebuilds/win32-x64/conpty/conpty.dll',
+  'node_modules/node-pty/prebuilds/win32-x64/conpty/OpenConsole.exe',
+] as const
+
+/** Better Sidebar still owns a nested node-pty 1.1 runtime with WinPTY fallback. */
+export const REQUIRED_WINDOWS_X64_SIDEBAR_NODE_PTY_ENTRIES = [
+  'node_modules/dsh-better-sidebar/node_modules/node-pty/package.json',
+  'node_modules/dsh-better-sidebar/node_modules/node-pty/prebuilds/win32-x64/conpty.node',
+  'node_modules/dsh-better-sidebar/node_modules/node-pty/prebuilds/win32-x64/conpty_console_list.node',
+  'node_modules/dsh-better-sidebar/node_modules/node-pty/prebuilds/win32-x64/pty.node',
+  'node_modules/dsh-better-sidebar/node_modules/node-pty/prebuilds/win32-x64/winpty-agent.exe',
+  'node_modules/dsh-better-sidebar/node_modules/node-pty/prebuilds/win32-x64/winpty.dll',
+  'node_modules/dsh-better-sidebar/node_modules/node-pty/prebuilds/win32-x64/conpty/conpty.dll',
+  'node_modules/dsh-better-sidebar/node_modules/node-pty/prebuilds/win32-x64/conpty/OpenConsole.exe',
 ] as const
 
 /** Windows x64 native image runtime required by @deepseek-ai/dsh-attachment-local. */
@@ -233,6 +245,7 @@ export function verifyPackagedRuntime(
     ? [
       ...REQUIRED_UNPACKED_RUNTIME_ENTRIES,
       ...REQUIRED_WINDOWS_X64_NODE_PTY_ENTRIES,
+      ...REQUIRED_WINDOWS_X64_SIDEBAR_NODE_PTY_ENTRIES,
       ...REQUIRED_WINDOWS_X64_SHARP_ENTRIES,
     ]
     : REQUIRED_UNPACKED_RUNTIME_ENTRIES

@@ -5,6 +5,7 @@ import {
   REQUIRED_UNPACKED_PACKAGE_SPECIFIERS,
   REQUIRED_UNPACKED_RUNTIME_ENTRIES,
   REQUIRED_WINDOWS_X64_NODE_PTY_ENTRIES,
+  REQUIRED_WINDOWS_X64_SIDEBAR_NODE_PTY_ENTRIES,
   REQUIRED_WINDOWS_X64_SHARP_ENTRIES,
   resolvePackagedAsarPath,
   resolvePackagedUnpackedRoot,
@@ -58,6 +59,7 @@ describe('packaged desktop runtime verification', () => {
       REQUIRED_UNPACKED_RUNTIME_ENTRIES.length
         + (platform === 'win32'
           ? REQUIRED_WINDOWS_X64_NODE_PTY_ENTRIES.length + REQUIRED_WINDOWS_X64_SHARP_ENTRIES.length
+            + REQUIRED_WINDOWS_X64_SIDEBAR_NODE_PTY_ENTRIES.length
           : 0),
     )
     expect(resolvePackage.mock.calls.map(([specifier]) => specifier))
@@ -91,6 +93,9 @@ describe('packaged desktop runtime verification', () => {
     'node_modules/@deepseek-ai/dsh/lib/bin.js',
     'node_modules/pnpm/bin/pnpm.mjs',
     'node_modules/node-pty/prebuilds/win32-x64/conpty.node',
+    'node_modules/node-pty/prebuilds/win32-x64/conpty/OpenConsole.exe',
+    'node_modules/dsh-better-sidebar/node_modules/node-pty/prebuilds/win32-x64/pty.node',
+    'node_modules/dsh-better-sidebar/node_modules/node-pty/prebuilds/win32-x64/winpty-agent.exe',
     'node_modules/sharp/dist/index.cjs',
     'node_modules/@img/sharp-win32-x64/index.cjs',
   ])('fails loud when physical runtime entry %s is absent from app.asar.unpacked', (missing) => {
