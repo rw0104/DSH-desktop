@@ -114,9 +114,15 @@ try {
       host.provide('webServer', {
         host: '127.0.0.1',
         port: 43120,
-        register() { return () => {} },
+        register(route) {
+          if (route?.kind !== 'exact' || route.path !== '/dsh-desktop/api/workspace/changes' || typeof route.handler !== 'function') {
+            throw new Error('desktop Workbench registered an unexpected Web route')
+          }
+          return () => {}
+        },
       })
       host.provide('webRuntime', {})
+      host.provide('agents', { get: () => undefined })
       host.provide('appExit', () => {})
       host.provide('settings', {
         register() {
