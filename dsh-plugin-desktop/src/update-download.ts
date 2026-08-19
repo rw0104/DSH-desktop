@@ -8,10 +8,16 @@ import { parseSemVer } from './update-checker.ts'
 /** Desktop platforms with a fixed installer download endpoint. */
 export type DesktopDownloadPlatform = 'darwin' | 'win32'
 
-/** Fixed download endpoints that record one user-confirmed installer download. */
+/** Platform download bases. Windows is version-bound to this repository. */
 export const DESKTOP_DOWNLOAD_URLS: Readonly<Record<DesktopDownloadPlatform, string>> = {
   darwin: 'https://www.dshdesktop.cn/api/downloads/mac',
-  win32: 'https://www.dshdesktop.cn/api/downloads/windows',
+  win32: 'https://github.com/rw0104/DSH-desktop/releases/download',
+}
+
+/** Resolve the installer URL for the exact version confirmed by the checker. */
+export function desktopDownloadUrl(platform: DesktopDownloadPlatform, version: string): string {
+  if (platform === 'darwin') return DESKTOP_DOWNLOAD_URLS.darwin
+  return `${DESKTOP_DOWNLOAD_URLS.win32}/v${version}/DSH-Desktop-${version}-x64-Update.exe`
 }
 
 /** Maximum accepted installer size, in bytes. */
@@ -99,7 +105,7 @@ export async function downloadDesktopUpdate(options: DownloadDesktopUpdateOption
 
   let response: Response
   try {
-    response = await options.request(DESKTOP_DOWNLOAD_URLS[platform], {
+    response = await options.request(desktopDownloadUrl(platform, version), {
       method: 'GET',
       cache: 'no-store',
       redirect: 'follow',

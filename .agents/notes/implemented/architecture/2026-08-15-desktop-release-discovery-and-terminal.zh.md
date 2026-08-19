@@ -20,17 +20,17 @@ Desktop 原生操作是围绕同一个 Electron adapter 组合的独立 Cordis H
 
 ## Stable release 更新交接
 
-`desktop-updates` 只查询 `https://www.dshdesktop.cn/api/desktop/version`。其显式配置默认启用后台检查：首次延迟 60 秒，每次检查完成六小时后安排下一次，并为每个请求设置 15 秒期限。只有 Electron 报告为打包应用时才会自动调度。开发运行与其他未打包启动会保留手工托盘命令，但不会主动发起后台网络流量。
+`desktop-updates` 只查询本仓库的 GitHub Latest Release API。其显式配置默认启用后台检查：首次延迟 60 秒，每次检查完成六小时后安排下一次，并为每个请求设置 15 秒期限。只有 Electron 报告为打包应用时才会自动调度。开发运行与其他未打包启动会保留手工托盘命令，但不会主动发起后台网络流量。
 
-手工检查与定时检查共用一个 in-flight request。Checker 使用 no-cache 语义发送 `GET`，拒绝 redirect 与非 200 响应，把响应正文限制为 4 KiB，并且只接受名为 `version` 的 JSON string 字段及规范的 stable Semantic Versioning。比较过程不会把 SemVer identifier 转成 JavaScript number。定时检查遇到无效、相同、旧版本、HTTP、timeout、cancellation、正文超限与网络结果时保持静默。手工检查得到相同或旧版本时会显示包含当前安装版本的“已是最新”对话框；请求或校验失败时则显示一条固定重试提示，不暴露响应或错误细节。
+手工检查与定时检查共用一个 in-flight request。Checker 使用 no-cache 语义与 GitHub 版本化 JSON media headers 发送 `GET`，拒绝 redirect 与非 200 响应，把响应正文限制为 64 KiB，并且只接受 `tag_name` 中以 `v` 开头的规范 stable Semantic Versioning。比较过程不会把 SemVer identifier 转成 JavaScript number。定时检查遇到无效、相同、旧版本、HTTP、timeout、cancellation、正文超限与网络结果时保持静默。手工检查得到相同或旧版本时会显示包含当前安装版本的“已是最新”对话框；请求或校验失败时则显示一条固定重试提示，不暴露响应或错误细节。
 
 只有严格更新的远端版本才会进入可用状态。托盘会显示空闲、检查中、下载中或可用版本。后台结果会为每个版本跨重启显示一次原生 **Download** 或 **Later** 提示；手工选择托盘命令时可以再次询问，并直接以该提示作为结果对话框，不会额外弹出通知。Updater 会在 Electron user-data 目录下原子写入 version-2 JSON 文档。文件上限为 4 KiB，只保存 `lastPromptedVersion`，绝不会在未查询 service 的情况下从状态恢复可用 release。状态不存在时从空状态开始；旧版、格式损坏、体积超限或包含不安全值的状态会被静默替换，而不会被信任。
 
-只有用户选择 **Download** 后，固定的 macOS 或 Windows 下载入口才会被访问。Checker 会先重复版本请求，只有仍然发布同一个更新版本时才继续。Electron `net.fetch` 会跟随 service redirect，把不超过 1 GiB 的文件流式写入私有、按版本划分的 user-data 目录，同步并原子重命名完整文件，并在失败或取消后清理 partial 文件。这个即时复查可以缩小 release rotation 窗口，但不能把固定 endpoint 与版本建立加密绑定；后续 service 应返回 versioned URL 与平台 hash。交接前要求 macOS 产物包含 UDIF `koly` trailer，Windows 产物包含 DOS 与 PE signature。这些检查可以拒绝 HTML error 或结构错误的产物，但不能证明 publisher 身份。
+只有用户选择 **Download** 后才会访问安装包。Checker 会先重复版本请求，只有仍然发布同一个更新版本时才继续。Windows 随后从本仓库 GitHub Release 下载确切版本的 `Update.exe`；macOS 仍保留既有 DMG 交付入口。Electron `net.fetch` 把不超过 1 GiB 的文件流式写入私有、按版本划分的 user-data 目录，同步并原子重命名完整文件，并在失败或取消后清理 partial 文件。交接前要求 macOS 产物包含 UDIF `koly` trailer，Windows 产物包含 DOS 与 PE signature。这些检查可以拒绝 HTML error 或结构错误的产物，但不能证明 publisher 身份。
 
 macOS 会打开经过校验的 DMG，并说明用户必须替换 `Applications` 中的 DSH Desktop 后重新打开；它不会自行 mount 并修改已安装的签名 bundle。Windows 会在 NSIS installer 准备完成后再次询问。选择 **Restart and Install** 会使用准确 argv 且不经过 shell 启动 installer，等待其 spawn event，然后在当前应用退出前请求既有的有界 Cordis teardown。选择 **Later**，或任何下载、文件系统与 installer 打开错误，都不会显示 failure UI，同时会保留托盘中的可重试版本操作。手工检查失败会使用上述固定重试对话框。
 
-发布顺序是一项运维 invariant：必须先准备好两个 installer artifact 及其 redirect，再修改 Upstash Redis key `deepseek-harness-desktop:release:version`。更新该 key 会立即让版本可被发现，无需重新部署 service。Key 缺失、服务不可用或值无效时，公开 endpoint 不会返回可用版本，Desktop checker 会直接忽略。
+发布顺序是一项运维 invariant：版本 tag、GitHub Release、带版本号的 Windows Update asset、blockmap 与 `latest.yml` 必须全部存在，版本才算可发现。发布 GitHub Release 会让 checker 看到该版本；draft 和 prerelease 不会由 Latest Release endpoint 返回。
 
 ## 隔离终端环境
 
@@ -70,4 +70,4 @@ Headless terminal 测试会检查生成的 macOS 与 Windows 文件、空格与 
 
 打包后的 DSH Desktop 只有在用户明确确认后才能发现并下载较新的 stable release，同时仍可提供普通 desktop-profile 插件工作流，而无需修改上游 checkout 或削弱 renderer 隔离。macOS 替换仍由用户手工完成；Windows 会在第二次确认后使用下载好的 NSIS 程序安装。生成的 CLI 环境仍只存在于从托盘打开的终端内。
 
-公开 DSH Desktop 版本 service 现在是 release version 的权威来源；各平台 download redirect 则保留为计数用 delivery entry，检查阶段绝不会探测它们。Desktop package 也开始拥有内置 pnpm 版本和生成 shim 行为，这会扩大打包 runtime closure，并且必须持续与 Electron ABI 对齐。Linux 保留兼容模式，但在形成独立平台设计前既没有 installer download path，也没有 desktop 终端。
+本仓库 GitHub Latest Release 是 release version 的权威来源，Windows installer URL 与该确切版本绑定。Desktop package 也开始拥有内置 pnpm 版本和生成 shim 行为，这会扩大打包 runtime closure，并且必须持续与 Electron ABI 对齐。Linux 保留兼容模式，但在形成独立平台设计前既没有 installer download path，也没有 desktop 终端。

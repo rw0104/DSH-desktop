@@ -6,6 +6,7 @@ import {
   DESKTOP_DOWNLOAD_URLS,
   MAX_UPDATE_DOWNLOAD_BYTES,
   UpdateDownloadError,
+  desktopDownloadUrl,
   downloadDesktopUpdate,
   type DesktopDownloadPlatform,
   type UpdateArtifactRequest,
@@ -101,7 +102,8 @@ describe('desktop update installer download', () => {
       version: '2.2.0',
       userDataPath,
       request: async (url) => {
-        expect(url).toBe(DESKTOP_DOWNLOAD_URLS.win32)
+        expect(url).toBe(desktopDownloadUrl('win32', '2.2.0'))
+        expect(url).toBe('https://github.com/rw0104/DSH-desktop/releases/download/v2.2.0/DSH-Desktop-2.2.0-x64-Update.exe')
         return chunkedResponse([artifact])
       },
     })

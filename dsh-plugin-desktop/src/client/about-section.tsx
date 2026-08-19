@@ -13,6 +13,10 @@ export type DesktopAboutSectionProps = PropsRuntime<'settings.section'> & {
 export function DesktopAboutSection({ about }: DesktopAboutSectionProps) {
   const { t } = about
   const version = new URLSearchParams(window.location.search).get('dsh-desktop-version') ?? 'unknown'
+  const platform = new URLSearchParams(window.location.search).get('dsh-desktop-platform')
+  const updateMethod = platform === 'win32'
+    ? t('windowsUpdate')
+    : platform === 'darwin' ? t('macUpdate') : t('manualInstall')
   const releaseUrl = version === 'unknown' ? RELEASES_URL : `${RELEASES_URL}/tag/v${version}`
   const openExternal = (event: React.MouseEvent<HTMLAnchorElement>): void => {
     event.preventDefault()
@@ -32,7 +36,7 @@ export function DesktopAboutSection({ about }: DesktopAboutSectionProps) {
         </div>
         <div className="dshDesktopAboutRow">
           <span className="dshDesktopAboutLabel">{t('updateMethod')}</span>
-          <span className="dshDesktopAboutValue">{t('manualInstall')}</span>
+          <span className="dshDesktopAboutValue">{updateMethod}</span>
         </div>
         <div className="dshDesktopAboutRow">
           <span className="dshDesktopAboutLabel">{t('repository')}</span>

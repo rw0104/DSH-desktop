@@ -13,16 +13,18 @@ body[data-dsh-title-bar-compat] [data-dsh-better-sidebar] > div:first-child {
   top: calc(var(--dsh-title-bar-strip, 40px) - 12px);
 }
 
-/* A path-less Files tab is a navigation surface, not a document canvas. Keep
-   its guidance compact so the file tree remains the visual anchor. */
-[class*="editorMain"]:has(> [class*="editorPlaceholder"]:only-child) > [class*="editorPlaceholder"] {
-  flex: none !important;
-  min-height: 0 !important;
-  align-items: flex-start !important;
-  justify-content: flex-start !important;
-  padding: 12px 16px !important;
-  text-align: left !important;
-  line-height: 1.45 !important;
+/* A path-less Files tab is the explorer home. When its tree is open, remove
+   the empty preview column completely and let the tree own the full body. */
+[class*="editorBody"]:has(> [class*="editorMain"] > [class*="editorPlaceholder"]:only-child):has(> [class*="editorTreeDock"]) > [class*="editorMain"] {
+  display: none !important;
+}
+[class*="editorBody"]:has(> [class*="editorMain"] > [class*="editorPlaceholder"]:only-child):has(> [class*="editorTreeDock"]) > [class*="editorTreeDock"] {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  border-left: 0 !important;
+}
+[class*="editorBody"]:has(> [class*="editorMain"] > [class*="editorPlaceholder"]:only-child):has(> [class*="editorTreeDock"]) [class*="editorTreeResize"] {
+  display: none !important;
 }
 `
 
