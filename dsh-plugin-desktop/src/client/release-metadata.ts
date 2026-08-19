@@ -28,3 +28,31 @@ export const DESKTOP_ABOUT_LOCALE_DICTIONARY = {
     viewRelease: 'View release and notes',
   },
 } as const
+
+/** Locale dictionary for the Host-owned plugin market. */
+export const DESKTOP_PLUGIN_MARKET_LOCALE_DICTIONARY = {
+  zh: {
+    nav: '插件市场',
+    title: '插件市场',
+    subtitle: '从受信任目录安装或删除插件。变更会在重启后生效。',
+    profile: '当前 Profile',
+    installed: '已安装',
+    install: '安装',
+    remove: '删除',
+    working: '处理中…',
+    restart: '安装或删除插件后，应用会请求重启以加载新的插件组合。',
+    error: '操作失败',
+  },
+  en: {
+    nav: 'Plugin market',
+    title: 'Plugin market',
+    subtitle: 'Install or remove plugins from the trusted catalog. Changes apply after restart.',
+    profile: 'Active profile',
+    installed: 'Installed',
+    install: 'Install',
+    remove: 'Remove',
+    working: 'Working…',
+    restart: 'The app requests a restart after plugin changes so the new composition can load.',
+    error: 'Operation failed',
+  },
+} as const

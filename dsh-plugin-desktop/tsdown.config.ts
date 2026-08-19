@@ -12,6 +12,8 @@ export default defineConfig([
       'profile-manager': 'src/profile-manager.ts',
       'profile-service': 'src/profile-service.ts',
       pnpm: 'src/pnpm.ts',
+      'plugin-market': 'src/plugin-market.ts',
+      'profile-recovery': 'src/profile-recovery.ts',
       profiles: 'src/profiles.ts',
       runtime: 'src/runtime.ts',
       'electron-runtime': 'src/electron-runtime.ts',

@@ -26,6 +26,8 @@ const EXPECTED_WORKBENCH_ROUTES = new Set([
   '/dsh-desktop/api/workspace/changes',
   '/dsh-desktop/api/workspace/terminals',
   '/dsh-desktop/api/workspace/worktrees',
+  '/dsh-desktop/api/plugins/market',
+  '/dsh-desktop/api/open-directory',
 ])
 const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-loader-'))
 let ctx
@@ -102,6 +104,7 @@ try {
       return mounted
     },
     show() {},
+    registerTrayItem() { return { refresh() {}, dispose() {} } },
     async requestRestart() {},
     prepareToQuit() {},
   }
@@ -110,6 +113,8 @@ try {
     prepared.rootConfig,
     [{ insert: [
       { id: 'desktop-shell', name: 'dsh-plugin-desktop' },
+      { id: 'desktop-plugin-market', name: 'dsh-plugin-desktop/plugin-market' },
+      { id: 'desktop-recovery', name: 'dsh-plugin-desktop/profile-recovery' },
       { id: 'third-party-smoke', name: THIRD_PARTY_NAME },
     ] }],
     (host) => {
@@ -117,6 +122,23 @@ try {
       host.loader.internal = undefined
       host.provide(DSH_LAUNCH_ENVIRONMENT_KEY, launchEnvironment)
       host.provide('desktopRuntime', runtime)
+      host.provide('desktopPnpmBootstrap', {
+        activeProfileName: 'desktop',
+        activeProfileDir: join(home, 'profiles', 'desktop'),
+        homeDir: home,
+        appExecutable: process.execPath,
+        pnpmBinPath,
+        electronVersion,
+        nodeBinDir: pnpmRuntime.pathDir,
+        nodeShimPath: pnpmRuntime.nodeShimPath,
+        clearEnvironmentPath: pnpmRuntime.clearEnvironmentPath,
+        dshBootstrapPath: fileURLToPath(new URL('../lib/desktop-cli.js', import.meta.url)),
+      })
+      host.provide('desktopPnpm', { runPlugin() { throw new Error('loader smoke must not mutate plugins') } })
+      host.provide('desktopProfiles', {
+        current: { name: 'desktop', dir: join(home, 'profiles', 'desktop') },
+        list: () => [{ name: 'desktop', dir: join(home, 'profiles', 'desktop'), exists: true, bundles: [], webCapable: true }],
+      })
       host.provide('webServer', {
         host: '127.0.0.1',
         port: 43120,

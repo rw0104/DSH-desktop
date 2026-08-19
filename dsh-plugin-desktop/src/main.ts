@@ -14,6 +14,8 @@ import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
 import { installDesktopPnpmRuntime } from './desktop-runtime-environment.ts'
+import { createDesktopLogWriter, type DesktopLogWriter } from './desktop-log.ts'
+import { restoreProfileSnapshot } from './profile-recovery.ts'
 import { ElectronDesktopRuntime } from './electron-runtime.ts'
 import { installProfilePackageResolver } from './module-resolution.ts'
 import { packagedDependencyPath } from './packaged-runtime-path.ts'
@@ -86,6 +88,8 @@ async function start(): Promise<void> {
   let disposePnpmRuntime: (() => void) | undefined
   let startupWindow: ReturnType<typeof createStartupWindow> | undefined
   let runtime!: ElectronDesktopRuntime
+  let desktopLog: DesktopLogWriter | undefined
+  let homeDirForRecovery: string | undefined
   const nativeExit = createDesktopExitCoordinator(
     {
       prepareToQuit: () => { runtime.prepareToQuit() },
@@ -110,7 +114,11 @@ async function start(): Promise<void> {
       try {
         await current?.fiber.dispose()
       } finally {
-        disposePnpmRuntime?.()
+        try {
+          disposePnpmRuntime?.()
+        } finally {
+          desktopLog?.close()
+        }
       }
     },
     finalExit,
@@ -120,6 +128,8 @@ async function start(): Promise<void> {
 
   app.on('second-instance', () => { runtime.show() })
   await app.whenReady()
+  desktopLog = createDesktopLogWriter(app.getPath('userData'))
+  desktopLog.info('DSH Desktop starting version=%s platform=%s packaged=%s', app.getVersion(), process.platform, app.isPackaged)
   if (!process.argv.includes('--headless')) startupWindow = createStartupWindow(app.getLocale())
   if (process.platform === 'win32') app.setAppUserModelId('ai.deepseek.dsh.desktop')
   if (app.isPackaged && process.cwd() === '/') process.chdir(app.getPath('home'))
@@ -134,7 +144,11 @@ async function start(): Promise<void> {
     try {
       await current?.fiber.dispose()
     } finally {
-      disposePnpmRuntime?.()
+      try {
+        disposePnpmRuntime?.()
+      } finally {
+        desktopLog?.close()
+      }
     }
   })
 
@@ -156,6 +170,7 @@ async function start(): Promise<void> {
     const releasePnpmRuntime = (): void => { pnpmRuntime.dispose() }
     disposePnpmRuntime = releasePnpmRuntime
     const homeDir = resolveDshHome()
+    homeDirForRecovery = homeDir
     let visionEnabled = true
     try {
       visionEnabled = await resolveVisionConsent({
@@ -212,6 +227,7 @@ async function start(): Promise<void> {
           'dsh-plugin-desktop: profile package resolution',
         )
         hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, environment)
+        hostCtx.provide('desktopLog', desktopLog)
         hostCtx.provide('desktopRuntime', runtime)
         hostCtx.provide('desktopPnpmBootstrap', desktopPnpmBootstrap)
         await hostCtx.plugin(DesktopProfileService, {
@@ -242,6 +258,12 @@ async function start(): Promise<void> {
     await runtime.mountScheduled(() => {
       markDesktopProfileHealthy(selectionStatePath, activeProfileName)
     })
+    try {
+      current?.get('desktopRecovery')?.captureHealthy()
+      desktopLog.info('profile marked healthy profile=%s', activeProfileName)
+    } catch (cause) {
+      desktopLog.warn('could not capture healthy profile snapshot: %s', cause instanceof Error ? cause.message : String(cause))
+    }
     closeStartupWindow(startupWindow)
     startupWindow = undefined
     if (profileStartup.rolledBackFrom !== undefined) {
@@ -251,6 +273,15 @@ async function start(): Promise<void> {
       )
     }
   } catch (cause) {
+    desktopLog?.error('Desktop startup failed: %s', cause instanceof Error ? cause.stack ?? cause.message : String(cause))
+    if (homeDirForRecovery !== undefined && profileStartup !== undefined) {
+      try {
+        const restored = restoreProfileSnapshot(homeDirForRecovery, profileStartup.profileName)
+        desktopLog?.warn('restored profile manifest from recovery snapshot profile=%s createdAt=%s', restored.profileName, restored.createdAt)
+      } catch (recoveryCause) {
+        desktopLog?.warn('recovery snapshot was not applied: %s', recoveryCause instanceof Error ? recoveryCause.message : String(recoveryCause))
+      }
+    }
     closeStartupWindow(startupWindow)
     startupWindow = undefined
     const detail = cause instanceof Error ? cause.stack ?? cause.message : String(cause)

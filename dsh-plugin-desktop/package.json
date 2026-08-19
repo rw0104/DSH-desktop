@@ -40,6 +40,14 @@
       "types": "./lib/types/pnpm.d.ts",
       "default": "./lib/pnpm.js"
     },
+    "./plugin-market": {
+      "types": "./lib/types/plugin-market.d.ts",
+      "default": "./lib/plugin-market.js"
+    },
+    "./profile-recovery": {
+      "types": "./lib/types/profile-recovery.d.ts",
+      "default": "./lib/profile-recovery.js"
+    },
     "./profile-service": {
       "types": "./lib/types/profile-service.d.ts",
       "default": "./lib/profile-service.js"
@@ -92,11 +100,12 @@
     "verify:loader": "node scripts/verify-loader-boot.mjs",
     "verify:profile": "node scripts/verify-profile-boot.mjs",
     "verify:product-plugins": "node scripts/verify-product-plugins.mjs",
+    "verify:upstream-compatibility": "node scripts/verify-upstream-compatibility.mjs",
     "verify:package-footprint": "node scripts/verify-package-footprint.mjs",
     "verify:release-readiness": "node scripts/verify-release-readiness.mjs",
     "verify:vision-runtime": "node scripts/verify-vision-runtime.mjs",
     "check": "yarn run build && yarn run typecheck && yarn run test && yarn run verify:closure && yarn run verify:cli && yarn run verify:loader && yarn run verify:profile && yarn run verify:product-plugins",
-    "check:win-package": "yarn run build && yarn run typecheck && vitest run tests/package.spec.ts tests/package-win.spec.ts tests/update-checker.spec.ts tests/update-download.spec.ts tests/verify-win-installer.spec.ts tests/verify-packaged-runtime.spec.ts tests/windows-pwsh-sandbox.spec.ts tests/window-options.spec.ts tests/electron-runtime.spec.ts tests/sidebar-terminal-lifecycle.spec.ts tests/client-environment.spec.ts tests/plugin.spec.ts tests/workspace-workbench.spec.ts && yarn run verify:closure",
+    "check:win-package": "yarn run build && yarn run typecheck && vitest run tests/package.spec.ts tests/package-win.spec.ts tests/update-checker.spec.ts tests/update-download.spec.ts tests/verify-win-installer.spec.ts tests/verify-packaged-runtime.spec.ts tests/windows-pwsh-sandbox.spec.ts tests/window-options.spec.ts tests/electron-runtime.spec.ts tests/sidebar-terminal-lifecycle.spec.ts tests/client-environment.spec.ts tests/plugin.spec.ts tests/workspace-workbench.spec.ts tests/desktop-log.spec.ts tests/plugin-market.spec.ts tests/profile-recovery.spec.ts tests/open-directory.spec.ts && yarn run verify:closure",
     "start": "node lib/bin.js",
     "dev": "yarn run build && node lib/bin.js",
     "package:dir": "yarn run build && node scripts/package-dir.mjs",

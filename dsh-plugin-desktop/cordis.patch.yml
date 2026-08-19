@@ -10,6 +10,10 @@
       disabled: !!js process.platform === 'linux'
     - id: desktop-pnpm
       name: dsh-plugin-desktop/pnpm
+    - id: desktop-plugin-market
+      name: dsh-plugin-desktop/plugin-market
+    - id: desktop-recovery
+      name: dsh-plugin-desktop/profile-recovery
     - id: desktop-profiles
       name: dsh-plugin-desktop/profiles
     - id: desktop-updates

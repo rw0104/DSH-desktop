@@ -5,10 +5,11 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import { DesktopAboutSection, DESKTOP_ABOUT_LOCALE } from './about-section.tsx'
+import { DesktopPluginMarketSection, DESKTOP_PLUGIN_MARKET_LOCALE } from './plugin-market-section.tsx'
 import { applyAdvancedShell } from './advanced-shell.ts'
 import { parseDesktopClientEnvironment } from './environment.ts'
 import { installWindowsDrivePickerEnhancement } from './drive-picker-enhancement.ts'
-import { DESKTOP_ABOUT_LOCALE_DICTIONARY } from './release-metadata.ts'
+import { DESKTOP_ABOUT_LOCALE_DICTIONARY, DESKTOP_PLUGIN_MARKET_LOCALE_DICTIONARY } from './release-metadata.ts'
 import { installDesktopAboutStyles, installDesktopIntegrationStyles } from './styles.ts'
 import { WorkspaceChangesTab } from './WorkspaceChangesTab.tsx'
 
@@ -78,5 +79,24 @@ export function apply(ctx: ClientContext): void {
       removeStyles()
     }
   }, 'desktop: About settings section')
+  ctx.effect(() => {
+    const removeStyles = installDesktopAboutStyles()
+    const disposeLocaleZh = ctx.locale.register(DESKTOP_PLUGIN_MARKET_LOCALE, 'zh', DESKTOP_PLUGIN_MARKET_LOCALE_DICTIONARY.zh)
+    const disposeLocaleEn = ctx.locale.register(DESKTOP_PLUGIN_MARKET_LOCALE, 'en', DESKTOP_PLUGIN_MARKET_LOCALE_DICTIONARY.en)
+    const t = ctx.locale.bind(DESKTOP_PLUGIN_MARKET_LOCALE)
+    const disposeSlot = ctx.slots.inject('settings.section', () => ctx.slots.register({
+      name: 'settings.section',
+      id: 'desktop-plugin-market',
+      order: 890,
+      label: () => t('nav'),
+      inject: () => ({ market: { t } }),
+    }, DesktopPluginMarketSection))
+    return () => {
+      disposeSlot()
+      disposeLocaleZh()
+      disposeLocaleEn()
+      removeStyles()
+    }
+  }, 'desktop: Plugin market settings section')
   if (environment.mode === 'advanced') applyAdvancedShell(ctx, environment)
 }

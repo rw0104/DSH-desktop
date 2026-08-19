@@ -208,6 +208,12 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
   }
 
   /** @inheritdoc */
+  async openDirectory(path: string): Promise<void> {
+    const error = await shell.openPath(path)
+    if (error !== '') throw new Error(`dsh-plugin-desktop: failed to open directory: ${error}`)
+  }
+
+  /** @inheritdoc */
   setThemeSource(source: DesktopThemeSource): void {
     if (this.scheduled?.mode === 'advanced' && this.window !== undefined) {
       nativeTheme.themeSource = source

@@ -1,8 +1,126 @@
 diff --git a/lib/client.js b/lib/client.js
-index e4a3f15cc746e2913bd28fc3e339e6a90a202729..1c26541b2ee895f92069ab61fa1549f65b076550 100644
+index e4a3f15..4144c9e 100644
 --- a/lib/client.js
 +++ b/lib/client.js
-@@ -6134,6 +6134,8 @@ window.__ModuleLoader__.load({
+@@ -1556,6 +1556,8 @@ window.__ModuleLoader__.load({
+ 			copy: "复制",
+ 			newFile: "新文件",
+ 			openEditor: "打开编辑器",
++			openDirectory: "在系统文件管理器中打开",
++			openDirectoryFailed: "打开目录失败",
+ 			gitDetail: "查看变更详情",
+ 			referenceFile: "@文件",
+ 			addToConversation: "添加到对话",
+@@ -1802,6 +1804,8 @@ window.__ModuleLoader__.load({
+ 			copy: "Copy",
+ 			newFile: "New file",
+ 			openEditor: "Open editor",
++			openDirectory: "Open in file manager",
++			openDirectoryFailed: "Could not open directory",
+ 			gitDetail: "View change details",
+ 			referenceFile: "@file",
+ 			addToConversation: "Add to conversation",
+@@ -2342,6 +2346,7 @@ window.__ModuleLoader__.load({
+ 			"gitDiffFileTag": "nArs4W_gitDiffFileTag",
+ 			"tabBarPlus": "nArs4W_tabBarPlus",
+ 			"explorerRef": "nArs4W_explorerRef",
++			"explorerOpenDirectory": "nArs4W_explorerOpenDirectory",
+ 			"gitCommit": "nArs4W_gitCommit",
+ 			"explorerHidden": "nArs4W_explorerHidden"
+ 		};
+@@ -2560,6 +2565,24 @@ window.__ModuleLoader__.load({
+ 				patch,
+ 				...expectedRevision !== void 0 ? { expectedRevision } : {}
+ 			}),
++			/** Ask the desktop Host to open one validated directory in the native file manager. */
++			openDirectory: async (scope, path) => {
++				let response;
++				try {
++					response = await fetch("/dsh-desktop/api/open-directory", {
++						method: "POST",
++						headers: { "content-type": "application/json", "x-dsh-workbench-action": "open-directory" },
++						body: JSON.stringify({ sessionId: scope.sessionId, path })
++					});
++				} catch (error) {
++					throw new SidebarApiError("network", error instanceof Error ? error.message : String(error));
++				}
++				const parsed = await response.json().catch(() => null);
++				if (!response.ok || parsed?.ok !== true || typeof parsed.path !== "string") {
++					throw new SidebarApiError(parsed?.error ?? "http", `HTTP ${response.status}`);
++				}
++				return { ok: true, path: parsed.path };
++			},
+ 			/** Probe a URL's response headers (the sidebar browser's embeddability
+ 			*  check; see the host's browser.probe route). */
+ 			browserProbe: (url, signal) => call("browser.probe", { url }, signal)
+@@ -2694,6 +2717,7 @@ window.__ModuleLoader__.load({
+ 			const dataRef = (0, react.useRef)(data);
+ 			/** The row whose path was just copied ("copied" label replaces its button). */
+ 			const [copiedPath, setCopiedPath] = (0, react.useState)(null);
++			const [directoryError, setDirectoryError] = (0, react.useState)(null);
+ 			/** Open context menu: the row path (and whether it is a directory) plus the cursor position. */
+ 			const [rowMenu, setRowMenu] = (0, react.useState)(null);
+ 			const storeLevel = (0, react.useCallback)((path, level) => {
+@@ -2747,8 +2771,27 @@ window.__ModuleLoader__.load({
+ 					}, COPIED_MS);
+ 				});
+ 			}, []);
++			/** Open a directory in the native file manager through the desktop Host. */
++			const openDirectory = (0, react.useCallback)((path) => {
++				void api.openDirectory({ sessionId, cwd }, path).then(() => {
++					setDirectoryError(null);
++				}).catch((error) => {
++					setDirectoryError(error instanceof Error ? error.message : String(error));
++				});
++			}, [sessionId, cwd]);
+ 			/** The row's trailing actions: the @-reference button, or the copied label. */
+ 			const rowActions = (entry) => {
++				if (entry.isDir) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
++					type: "button",
++					className: "dshDesktopOpenDirectory",
++					"aria-label": t("openDirectory"),
++					title: t("openDirectory"),
++					onClick: (event) => {
++						event.stopPropagation();
++						openDirectory(entry.path);
++					},
++					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpen16, { size: 13 })
++				});
+ 				if (copiedPath === entry.path) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+ 					className: sidebar_module_css_default.explorerCopied,
+ 					children: t("copied")
+@@ -2882,8 +2925,19 @@ window.__ModuleLoader__.load({
+ 					children: [
+ 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpen16, { size: 14 }),
+ 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+-							className: sidebar_module_css_default.explorerName,
+-							children: baseName$1(root)
++						className: sidebar_module_css_default.explorerName,
++						children: baseName$1(root)
++						}),
++						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
++							type: "button",
++							className: "dshDesktopOpenDirectory",
++							"aria-label": t("openDirectory"),
++							title: t("openDirectory"),
++							onClick: (event) => {
++								event.stopPropagation();
++								openDirectory(root);
++							},
++							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpen16, { size: 13 })
+ 						}),
+ 						copiedPath === root ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+ 							className: sidebar_module_css_default.explorerCopied,
+@@ -2900,7 +2954,7 @@ window.__ModuleLoader__.load({
+ 							children: t("referenceFile")
+ 						})
+ 					]
+-				}), data[root] !== void 0 && renderLevel(root, 1)] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
++				}), directoryError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { className: sidebar_module_css_default.explorerError, children: [t("openDirectoryFailed"), ": ", directoryError] }), data[root] !== void 0 && renderLevel(root, 1)] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
+ 					open: rowMenu !== null,
+ 					onClose: () => {
+ 						setRowMenu(null);
+@@ -6134,6 +6188,8 @@ window.__ModuleLoader__.load({
  		const BROWSER_IFRAME_SANDBOX = "allow-scripts allow-forms allow-popups allow-downloads allow-modals allow-popups-to-escape-sandbox";
  		function BrowserView(props) {
  			const { store, tab } = props;
@@ -11,7 +129,7 @@ index e4a3f15cc746e2913bd28fc3e339e6a90a202729..1c26541b2ee895f92069ab61fa1549f6
  			const [url, setUrl] = (0, react.useState)(tab.path);
  			const [input, setInput] = (0, react.useState)(tab.path ?? "");
  			/** Blocked/invalid hint shown under the address bar (null = none). */
-@@ -6141,6 +6143,8 @@ window.__ModuleLoader__.load({
+@@ -6141,6 +6197,8 @@ window.__ModuleLoader__.load({
  			/** Address-bar navigation history (in-frame clicks are not tracked). */
  			const [history, setHistory] = (0, react.useState)(tab.path !== void 0 ? [tab.path] : []);
  			const [cursor, setCursor] = (0, react.useState)(tab.path !== void 0 ? 0 : -1);
@@ -20,7 +138,7 @@ index e4a3f15cc746e2913bd28fc3e339e6a90a202729..1c26541b2ee895f92069ab61fa1549f6
  			/** Bumped on reload to remount the iframe (also remounts on sandbox flip). */
  			const [reloadKey, setReloadKey] = (0, react.useState)(0);
  			/** TEMPORARY sandbox unlock for THIS surface only (never writes the global
-@@ -6153,7 +6157,7 @@ window.__ModuleLoader__.load({
+@@ -6153,7 +6211,7 @@ window.__ModuleLoader__.load({
  			/** The user asked to load the refused site anyway (keeps the plain iframe). */
  			const [forceEmbed, setForceEmbed] = (0, react.useState)(false);
  			(0, react.useEffect)(() => {
@@ -29,7 +147,7 @@ index e4a3f15cc746e2913bd28fc3e339e6a90a202729..1c26541b2ee895f92069ab61fa1549f6
  				let cancelled = false;
  				setEmbedBlocked(null);
  				setForceEmbed(false);
-@@ -6163,7 +6167,34 @@ window.__ModuleLoader__.load({
+@@ -6163,7 +6221,34 @@ window.__ModuleLoader__.load({
  				return () => {
  					cancelled = true;
  				};
@@ -65,7 +183,7 @@ index e4a3f15cc746e2913bd28fc3e339e6a90a202729..1c26541b2ee895f92069ab61fa1549f6
  			const persist = (nextUrl) => {
  				let host = nextUrl;
  				try {
-@@ -6216,8 +6247,10 @@ window.__ModuleLoader__.load({
+@@ -6216,8 +6301,10 @@ window.__ModuleLoader__.load({
  								className: sidebar_module_css_default.iconButton,
  								"aria-label": t("browserBack"),
  								title: t("browserBack"),
@@ -78,7 +196,7 @@ index e4a3f15cc746e2913bd28fc3e339e6a90a202729..1c26541b2ee895f92069ab61fa1549f6
  								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronLeftOutline14, {})
  							}),
  							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-@@ -6225,8 +6258,10 @@ window.__ModuleLoader__.load({
+@@ -6225,8 +6312,10 @@ window.__ModuleLoader__.load({
  								className: sidebar_module_css_default.iconButton,
  								"aria-label": t("browserForward"),
  								title: t("browserForward"),
@@ -91,7 +209,7 @@ index e4a3f15cc746e2913bd28fc3e339e6a90a202729..1c26541b2ee895f92069ab61fa1549f6
  								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronRightOutline14, {})
  							}),
  							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-@@ -6235,7 +6270,8 @@ window.__ModuleLoader__.load({
+@@ -6235,7 +6324,8 @@ window.__ModuleLoader__.load({
  								"aria-label": t("refresh"),
  								title: t("refresh"),
  								onClick: () => {
@@ -101,7 +219,7 @@ index e4a3f15cc746e2913bd28fc3e339e6a90a202729..1c26541b2ee895f92069ab61fa1549f6
  								},
  								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutline14, {})
  							}),
-@@ -6278,7 +6314,7 @@ window.__ModuleLoader__.load({
+@@ -6278,7 +6368,7 @@ window.__ModuleLoader__.load({
  						className: sidebar_module_css_default.browserMessage,
  						children: message
  					}),
@@ -110,7 +228,7 @@ index e4a3f15cc746e2913bd28fc3e339e6a90a202729..1c26541b2ee895f92069ab61fa1549f6
  						sandboxed: !noSandbox,
  						local: localUnlock,
  						dangerCopy: t("browserNoSandboxWarning"),
-@@ -6292,6 +6328,13 @@ window.__ModuleLoader__.load({
+@@ -6292,6 +6382,13 @@ window.__ModuleLoader__.load({
  					url === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
  						className: sidebar_module_css_default.browserStart,
  						children: t("browserStart")
@@ -124,8 +242,238 @@ index e4a3f15cc746e2913bd28fc3e339e6a90a202729..1c26541b2ee895f92069ab61fa1549f6
  					}) : embedBlocked !== null && !forceEmbed ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BrowserEmbedBlocked, {
  						url: embedBlocked,
  						onOpenInBrowser: () => {
+@@ -9714,4 +9811,4 @@ window.__ModuleLoader__.load({
+ 	}
+ });
+ 
+-//# sourceMappingURL=client.js.map
+\ No newline at end of file
++//# sourceMappingURL=client.js.map
+diff --git a/lib/index.js b/lib/index.js
+index 862d120..42f3adb 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -1349,12 +1349,14 @@ var AgentPtyRegistry = class {
+ 	shell;
+ 	shellArgs;
+ 	nodePty;
++	sharedUiManager;
+ 	sessions = /* @__PURE__ */ new Map();
+ 	changeListeners = /* @__PURE__ */ new Set();
+-	constructor(shell, shellArgs = [], nodePty = loadRequiredNodePty()) {
++	constructor(shell, shellArgs = [], nodePty = loadRequiredNodePty(), sharedUiManager) {
+ 		this.shell = shell;
+ 		this.shellArgs = shellArgs;
+ 		this.nodePty = nodePty;
++		this.sharedUiManager = sharedUiManager;
+ 		ensureSpawnHelper();
+ 	}
+ 	/**
+@@ -1368,7 +1370,9 @@ var AgentPtyRegistry = class {
+ 	create(sessionId, title, command, cwd, cols = 80, rows = 24) {
+ 		const uuid = randomUUID();
+ 		const dims = clampDims(cols, rows);
+-		const pty = this.nodePty.spawn(this.shell, shellSpawnArgs(this.shellArgs), {
++		const sharedKey = `${sessionId}:agent:${uuid}`;
++		const shared = this.sharedUiManager?.open(sessionId, `agent:${uuid}`, cwd, dims.cols, dims.rows);
++		const pty = shared?.pty ?? this.nodePty.spawn(this.shell, shellSpawnArgs(this.shellArgs), {
+ 			name: "xterm-256color",
+ 			cols: dims.cols,
+ 			rows: dims.rows,
+@@ -1383,7 +1387,8 @@ var AgentPtyRegistry = class {
+ 			cwd,
+ 			pty,
+ 			transcript: "",
+-			exited: false
++			exited: false,
++			...shared === void 0 ? {} : { sharedKey }
+ 		};
+ 		pty.onData((data) => {
+ 			handle.transcript += data;
+@@ -1587,7 +1592,8 @@ var AgentPtyRegistry = class {
+ 		const handle = this.sessions.get(uuid);
+ 		if (handle === void 0) return false;
+ 		this.sessions.delete(uuid);
+-		try {
++		if (handle.sharedKey !== void 0) this.sharedUiManager?.close(handle.sharedKey);
++		else try {
+ 			handle.pty.kill();
+ 		} catch {}
+ 		this.notify();
+@@ -2681,7 +2687,7 @@ function apply(ctx, config) {
+ 		ctx.logger?.warn(`[dsh-better-sidebar] node-pty (${DSH_NODE_PTY_RANGE}) failed to load: ${detail}`);
+ 	}
+ 	const ptyManager = nodePty !== null ? new PtyManager(terminalShell, resolved.terminalsPerSession, resolved.shellArgs, nodePty) : null;
+-	const agentPtyRegistry = nodePty !== null ? new AgentPtyRegistry(terminalShell, resolved.shellArgs, nodePty) : null;
++	const agentPtyRegistry = nodePty !== null ? new AgentPtyRegistry(terminalShell, resolved.shellArgs, nodePty, ptyManager ?? void 0) : null;
+ 	let settingsFace;
+ 	let toolsDisposers = null;
+ 	const syncToolsGate = (scope) => {
+@@ -2944,42 +2950,57 @@ async function attachTerminal(ctx, ptyManager, agentPtyRegistry, ws, req, resolv
+ 		}
+ 		const cwd = sessionCwdOf(ctx, sessionId, url.searchParams.get("cwd") ?? void 0);
+ 		const handle = ptyManager.open(sessionId, tabId, cwd, 80, 24);
+-		if (handle.transcript !== "") ws.send(handle.transcript);
+-		const onData = (data) => {
+-			if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4194304) ws.send(data);
+-		};
+-		const onExit = ({ exitCode }) => {
+-			onData(`\r\n[process exited with code ${String(exitCode)}]\r\n`);
+-		};
+-		const dataSub = handle.pty.onData(onData);
+-		const exitSub = handle.pty.onExit(onExit);
+-		ws.on("message", (data) => {
+-			const text = data.toString("utf8");
+-			let control = null;
+-			try {
+-				const parsed = JSON.parse(text);
+-				if (parsed !== null && typeof parsed === "object") control = parsed;
+-			} catch {}
+-			if (control !== null && control.type === "close") {
+-				ptyManager.scheduleClose(handle.key, 0);
+-				return;
+-			}
+-			if (handle.exited) return;
+-			if (control !== null && control.type === "resize" && typeof control.cols === "number" && typeof control.rows === "number") {
+-				const dims = clampDims(control.cols, control.rows);
+-				handle.pty.resize(dims.cols, dims.rows);
+-			} else handle.pty.write(text);
+-		});
+-		ws.on("close", () => {
+-			dataSub.dispose();
+-			exitSub.dispose();
+-			ptyManager.scheduleClose(handle.key, resolved.reconnectGraceMs);
+-		});
++		pumpUiTerminal(ptyManager, handle, ws, resolved.reconnectGraceMs, ctx.get("workspaceTerminal"));
+ 	} catch (error) {
+ 		ws.close(1011, error instanceof Error ? error.message : String(error));
+ 	}
+ }
+ /**
++* Pump one UI terminal's pty to its connected view. When the shell exits,
++* close the socket after the final status line so the client reconnect loop
++* can replace the exited handle instead of leaving a connected input sink.
++*/
++function pumpUiTerminal(ptyManager, handle, ws, reconnectGraceMs, terminalRegistry) {
++	terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "attached", cwd: handle.cwd });
++	if (handle.transcript !== "") ws.send(handle.transcript);
++	const onData = (data) => {
++		if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4194304) ws.send(data);
++		terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "output", data: { text: data } });
++	};
++	const onExit = ({ exitCode }) => {
++		onData(`\r\n[process exited with code ${String(exitCode)}]\r\n`);
++		terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "exited", data: { exitCode } });
++		if (ws.readyState === WebSocket.OPEN) ws.close(1e3, "terminal process exited");
++	};
++	const dataSub = handle.pty.onData(onData);
++	const exitSub = handle.pty.onExit(onExit);
++	ws.on("message", (data) => {
++		const text = data.toString("utf8");
++		let control = null;
++		try {
++			const parsed = JSON.parse(text);
++			if (parsed !== null && typeof parsed === "object") control = parsed;
++		} catch {}
++		if (control !== null && control.type === "close") {
++			terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "closed", data: { reason: "user closed terminal tab" } });
++			ptyManager.scheduleClose(handle.key, 0);
++			return;
++		}
++		if (handle.exited) return;
++		if (control !== null && control.type === "resize" && typeof control.cols === "number" && typeof control.rows === "number") {
++			const dims = clampDims(control.cols, control.rows);
++			handle.pty.resize(dims.cols, dims.rows);
++			terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "resized", data: dims });
++		} else { terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "input", data: { text } }); handle.pty.write(text); }
++	});
++	ws.on("close", () => {
++		dataSub.dispose();
++		exitSub.dispose();
++		ptyManager.scheduleClose(handle.key, reconnectGraceMs);
++		terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "disconnected", data: { reason: "socket closed" } });
++	});
++}
++/**
+ * Pump one agent terminal's pty to a connected view. The close frame kills
+ * the pty immediately (the agent's terminal closes when the user closes the
+ * sidebar tab); a bare socket drop leaves the pty alive — the agent owns
+@@ -3019,4 +3040,4 @@ function pumpAgentTerminal(registry, handle, ws) {
+ 	});
+ }
+ //#endregion
+-export { Config, apply, inject, mediaTypeForPath, name };
++export { Config, apply, inject, mediaTypeForPath, name, pumpUiTerminal };
+diff --git a/src/agent-pty.ts b/src/agent-pty.ts
+index ce54ca3..4dd18e3 100644
+--- a/src/agent-pty.ts
++++ b/src/agent-pty.ts
+@@ -13,7 +13,7 @@
+  */
+ import { randomUUID } from 'node:crypto'
+ import type { IPty } from 'node-pty'
+-import { ensureSpawnHelper, shellSpawnArgs } from './pty-manager.ts'
++import { ensureSpawnHelper, shellSpawnArgs, type PtyManager } from './pty-manager.ts'
+ import { loadRequiredNodePty, type NodePtyModule } from './pty-deps.ts'
+ import { SidebarError } from './wire.ts'
+ 
+@@ -116,6 +116,8 @@ export interface AgentTerminalHandle {
+   exitCode?: number | null
+   /** Exit signal number once known (POSIX only; undefined on Windows). */
+   exitSignal?: number | null
++  /** UI-manager key when this Agent terminal owns the shared PTY. */
++  sharedKey?: string
+ }
+ 
+ /** Read result shape (mirrors the official tool-pty terminal_read contract). */
+@@ -195,6 +197,8 @@ export class AgentPtyRegistry {
+     private readonly shellArgs: string[] = [],
+     /** The loaded node-pty module (injected so a broken install degrades instead of crashing the plugin). */
+     private readonly nodePty: NodePtyModule = loadRequiredNodePty(),
++    /** Optional UI registry used to share the exact same PTY with Agent tabs. */
++    private readonly sharedUiManager?: PtyManager,
+   ) {
+     ensureSpawnHelper()
+   }
+@@ -217,7 +221,9 @@ export class AgentPtyRegistry {
+   ): string {
+     const uuid = randomUUID()
+     const dims = clampDims(cols, rows)
+-    const pty = this.nodePty.spawn(this.shell, shellSpawnArgs(this.shellArgs), {
++    const sharedKey = `${sessionId}:agent:${uuid}`
++    const shared = this.sharedUiManager?.open(sessionId, `agent:${uuid}`, cwd, dims.cols, dims.rows)
++    const pty = shared?.pty ?? this.nodePty.spawn(this.shell, shellSpawnArgs(this.shellArgs), {
+       name: 'xterm-256color',
+       cols: dims.cols,
+       rows: dims.rows,
+@@ -233,6 +239,7 @@ export class AgentPtyRegistry {
+       pty,
+       transcript: '',
+       exited: false,
++      ...shared === undefined ? {} : { sharedKey },
+     }
+     pty.onData((data) => {
+       handle.transcript += data
+@@ -483,10 +490,13 @@ export class AgentPtyRegistry {
+     const handle = this.sessions.get(uuid)
+     if (handle === undefined) return false
+     this.sessions.delete(uuid)
+-    try {
+-      handle.pty.kill()
+-    } catch {
+-      // Already exited or gone; nothing left to kill.
++    if (handle.sharedKey !== undefined) this.sharedUiManager?.close(handle.sharedKey)
++    else {
++      try {
++        handle.pty.kill()
++      } catch {
++        // Already exited or gone; nothing left to kill.
++      }
+     }
+     this.notify()
+     return true
 diff --git a/src/client/BrowserView.tsx b/src/client/BrowserView.tsx
-index 5fb832f582d3cac53fbacf029adab4f701df3c91..7533f1a91987d69c784add9cce5a77a17c6ada40 100644
+index 5fb832f..7533f1a 100644
 --- a/src/client/BrowserView.tsx
 +++ b/src/client/BrowserView.tsx
 @@ -16,7 +16,7 @@
@@ -296,216 +644,179 @@ index 5fb832f582d3cac53fbacf029adab4f701df3c91..7533f1a91987d69c784add9cce5a77a1
        ) : embedBlocked !== null && !forceEmbed ? (
          <BrowserEmbedBlocked
            url={embedBlocked}
-diff --git a/src/agent-pty.ts b/src/agent-pty.ts
-index ce54ca385c..4dd18e3f30 100644
---- a/src/agent-pty.ts
-+++ b/src/agent-pty.ts
-@@ -13,6 +13,6 @@
- import { randomUUID } from 'node:crypto'
- import type { IPty } from 'node-pty'
--import { ensureSpawnHelper, shellSpawnArgs } from './pty-manager.ts'
-+import { ensureSpawnHelper, shellSpawnArgs, type PtyManager } from './pty-manager.ts'
- import { loadRequiredNodePty, type NodePtyModule } from './pty-deps.ts'
- import { SidebarError } from './wire.ts'
+diff --git a/src/client/FileTree.tsx b/src/client/FileTree.tsx
+index 7e85a94..8a1d277 100644
+--- a/src/client/FileTree.tsx
++++ b/src/client/FileTree.tsx
+@@ -61,6 +61,7 @@ export function FileTree(props: {
+   const dataRef = useRef(data)
+   /** The row whose path was just copied ("copied" label replaces its button). */
+   const [copiedPath, setCopiedPath] = useState<string | null>(null)
++  const [directoryError, setDirectoryError] = useState<string | null>(null)
+   /** Open context menu: the row path (and whether it is a directory) plus the cursor position. */
+   const [rowMenu, setRowMenu] = useState<{ path: string; isDir: boolean; x: number; y: number } | null>(null)
  
-@@ -116,5 +116,7 @@ export interface AgentTerminalHandle {
-   exitCode?: number | null
-   /** Exit signal number once known (POSIX only; undefined on Windows). */
-   exitSignal?: number | null
-+  /** UI-manager key when this Agent terminal owns the shared PTY. */
-+  sharedKey?: string
+@@ -109,8 +110,33 @@ export function FileTree(props: {
+     })
+   }, [])
+ 
++  /** Open a directory in the native file manager through the desktop Host. */
++  const openDirectory = useCallback((path: string): void => {
++    void api.openDirectory({ sessionId, cwd }, path).then(() => {
++      setDirectoryError(null)
++    }).catch((error: unknown) => {
++      setDirectoryError(error instanceof Error ? error.message : String(error))
++    })
++  }, [sessionId, cwd])
++
+   /** The row's trailing actions: the @-reference button, or the copied label. */
+   const rowActions = (entry: FsEntry): ReactNode => {
++    if (entry.isDir) {
++      return (
++        <button
++          type="button"
++          className="dshDesktopOpenDirectory"
++          aria-label={t('openDirectory')}
++          title={t('openDirectory')}
++          onClick={(event) => {
++            event.stopPropagation()
++            openDirectory(entry.path)
++          }}
++        >
++          <IconFolderOpen16 size={13} />
++        </button>
++      )
++    }
+     if (copiedPath === entry.path) {
+       return <span className={css.explorerCopied}>{t('copied')}</span>
+     }
+@@ -229,6 +255,18 @@ export function FileTree(props: {
+           >
+             <IconFolderOpen16 size={14} />
+             <span className={css.explorerName}>{baseName(root)}</span>
++            <button
++              type="button"
++              className="dshDesktopOpenDirectory"
++              aria-label={t('openDirectory')}
++              title={t('openDirectory')}
++              onClick={(event) => {
++                event.stopPropagation()
++                openDirectory(root)
++              }}
++            >
++              <IconFolderOpen16 size={13} />
++            </button>
+             {copiedPath === root
+               ? <span className={css.explorerCopied}>{t('copied')}</span>
+               : (
+@@ -246,6 +284,7 @@ export function FileTree(props: {
+                 </button>
+               )}
+           </div>
++          {directoryError !== null && <div className={css.explorerError}>{t('openDirectoryFailed')}: {directoryError}</div>}
+           {data[root] !== undefined && renderLevel(root, 1)}
+         </>
+       )}
+diff --git a/src/client/api.ts b/src/client/api.ts
+index 216916a..3c95466 100644
+--- a/src/client/api.ts
++++ b/src/client/api.ts
+@@ -213,6 +213,24 @@ export const api = {
+       patch,
+       ...(expectedRevision !== undefined ? { expectedRevision } : {}),
+     }),
++  /** Ask the desktop Host to open one validated directory in the native file manager. */
++  openDirectory: async (scope: SessionScope, path: string): Promise<{ ok: true; path: string }> => {
++    let response: Response
++    try {
++      response = await fetch('/dsh-desktop/api/open-directory', {
++        method: 'POST',
++        headers: { 'content-type': 'application/json', 'x-dsh-workbench-action': 'open-directory' },
++        body: JSON.stringify({ sessionId: scope.sessionId, path }),
++      })
++    } catch (error) {
++      throw new SidebarApiError('network', error instanceof Error ? error.message : String(error))
++    }
++    const parsed = await response.json().catch(() => null) as { ok?: boolean; path?: string; error?: string } | null
++    if (!response.ok || parsed?.ok !== true || typeof parsed.path !== 'string') {
++      throw new SidebarApiError(parsed?.error ?? 'http', `HTTP ${response.status}`)
++    }
++    return { ok: true, path: parsed.path }
++  },
+   /** Probe a URL's response headers (the sidebar browser's embeddability
+    *  check; see the host's browser.probe route). */
+   browserProbe: (url: string, signal?: AbortSignal) =>
+diff --git a/src/client/locales.ts b/src/client/locales.ts
+index 246e6f6..53f9b25 100644
+--- a/src/client/locales.ts
++++ b/src/client/locales.ts
+@@ -123,6 +123,8 @@ export const zh = {
+   copy: '复制',
+   newFile: '新文件',
+   openEditor: '打开编辑器',
++  openDirectory: '在系统文件管理器中打开',
++  openDirectoryFailed: '打开目录失败',
+   gitDetail: '查看变更详情',
+   referenceFile: '@文件',
+   addToConversation: '添加到对话',
+@@ -370,6 +372,8 @@ export const en: Record<keyof typeof zh, string> = {
+   copy: 'Copy',
+   newFile: 'New file',
+   openEditor: 'Open editor',
++  openDirectory: 'Open in file manager',
++  openDirectoryFailed: 'Could not open directory',
+   gitDetail: 'View change details',
+   referenceFile: '@file',
+   addToConversation: 'Add to conversation',
+diff --git a/src/client/sidebar.module.css b/src/client/sidebar.module.css
+index 8acf8d0..7060865 100644
+--- a/src/client/sidebar.module.css
++++ b/src/client/sidebar.module.css
+@@ -758,6 +758,32 @@
+   display: inline-flex;
  }
  
-@@ -195,4 +197,6 @@ export class AgentPtyRegistry {
-     private readonly shellArgs: string[] = [],
-     /** The loaded node-pty module (injected so a broken install degrades instead of crashing the plugin). */
-     private readonly nodePty: NodePtyModule = loadRequiredNodePty(),
-+    /** Optional UI registry used to share the exact same PTY with Agent tabs. */
-+    private readonly sharedUiManager?: PtyManager,
-   ) {
-@@ -217,4 +221,6 @@ export class AgentPtyRegistry {
-   ): string {
-     const uuid = randomUUID()
-     const dims = clampDims(cols, rows)
--    const pty = this.nodePty.spawn(this.shell, shellSpawnArgs(this.shellArgs), {
-+    const sharedKey = `${sessionId}:agent:${uuid}`
-+    const shared = this.sharedUiManager?.open(sessionId, `agent:${uuid}`, cwd, dims.cols, dims.rows)
-+    const pty = shared?.pty ?? this.nodePty.spawn(this.shell, shellSpawnArgs(this.shellArgs), {
-@@ -233,3 +239,4 @@ export class AgentPtyRegistry {
-       transcript: '',
-       exited: false,
-+      ...shared === undefined ? {} : { sharedKey },
-     }
-@@ -483,11 +490,14 @@ export class AgentPtyRegistry {
-     const handle = this.sessions.get(uuid)
-     if (handle === undefined) return false
-     this.sessions.delete(uuid)
--    try {
--      handle.pty.kill()
--    } catch {
--      // Already exited or gone; nothing left to kill.
-+    if (handle.sharedKey !== undefined) this.sharedUiManager?.close(handle.sharedKey)
-+    else {
-+      try {
-+        handle.pty.kill()
-+      } catch {
-+        // Already exited or gone; nothing left to kill.
-+      }
-     }
-     this.notify()
-     return true
-   }
-diff --git a/lib/index.js b/lib/index.js
-index 862d120b181874b169bc93d4ccb7f49909e99ca7..2729e1a8630073370c6423db60d3e9f8140b47e5 100644
---- a/lib/index.js
-+++ b/lib/index.js
-@@ -1349,11 +1349,13 @@ var AgentPtyRegistry = class {
- 	shell;
- 	shellArgs;
- 	nodePty;
-+	sharedUiManager;
- 	sessions = /* @__PURE__ */ new Map();
- 	changeListeners = /* @__PURE__ */ new Set();
--	constructor(shell, shellArgs = [], nodePty = loadRequiredNodePty()) {
-+	constructor(shell, shellArgs = [], nodePty = loadRequiredNodePty(), sharedUiManager) {
- 		this.shell = shell;
- 		this.shellArgs = shellArgs;
- 		this.nodePty = nodePty;
-+		this.sharedUiManager = sharedUiManager;
- 		ensureSpawnHelper();
- 	}
-@@ -1368,7 +1370,9 @@ var AgentPtyRegistry = class {
- 	create(sessionId, title, command, cwd, cols = 80, rows = 24) {
- 		const uuid = randomUUID();
- 		const dims = clampDims(cols, rows);
--		const pty = this.nodePty.spawn(this.shell, shellSpawnArgs(this.shellArgs), {
-+		const sharedKey = `${sessionId}:agent:${uuid}`;
-+		const shared = this.sharedUiManager?.open(sessionId, `agent:${uuid}`, cwd, dims.cols, dims.rows);
-+		const pty = shared?.pty ?? this.nodePty.spawn(this.shell, shellSpawnArgs(this.shellArgs), {
- 			name: "xterm-256color",
- 			cols: dims.cols,
- 			rows: dims.rows,
-@@ -1383,5 +1387,6 @@ var AgentPtyRegistry = class {
- 			cwd,
- 			pty,
- 			transcript: "",
--			exited: false
-+			exited: false,
-+			...shared === void 0 ? {} : { sharedKey }
- 		};
-@@ -1587,7 +1592,8 @@ var AgentPtyRegistry = class {
- 		const handle = this.sessions.get(uuid);
- 		if (handle === void 0) return false;
- 		this.sessions.delete(uuid);
--		try {
-+		if (handle.sharedKey !== void 0) this.sharedUiManager?.close(handle.sharedKey);
-+		else try {
- 			handle.pty.kill();
- 		} catch {}
- 		this.notify();
-@@ -2681,6 +2687,6 @@ function apply(ctx, config) {
- 		ctx.logger?.warn(`[dsh-better-sidebar] node-pty (${DSH_NODE_PTY_RANGE}) failed to load: ${detail}`);
- 	}
- 	const ptyManager = nodePty !== null ? new PtyManager(terminalShell, resolved.terminalsPerSession, resolved.shellArgs, nodePty) : null;
--	const agentPtyRegistry = nodePty !== null ? new AgentPtyRegistry(terminalShell, resolved.shellArgs, nodePty) : null;
-+	const agentPtyRegistry = nodePty !== null ? new AgentPtyRegistry(terminalShell, resolved.shellArgs, nodePty, ptyManager ?? void 0) : null;
- 	let settingsFace;
- 	let toolsDisposers = null;
-@@ -2947,36 +2947,51 @@ async function attachTerminal(ctx, ptyManager, agentPtyRegistry, ws, req, resolv
--		if (handle.transcript !== "") ws.send(handle.transcript);
--		const onData = (data) => {
--			if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4194304) ws.send(data);
--		};
--		const onExit = ({ exitCode }) => {
--			onData(`\r\n[process exited with code ${String(exitCode)}]\r\n`);
--		};
--		const dataSub = handle.pty.onData(onData);
--		const exitSub = handle.pty.onExit(onExit);
--		ws.on("message", (data) => {
--			const text = data.toString("utf8");
--			let control = null;
--			try {
--				const parsed = JSON.parse(text);
--				if (parsed !== null && typeof parsed === "object") control = parsed;
--			} catch {}
--			if (control !== null && control.type === "close") {
--				ptyManager.scheduleClose(handle.key, 0);
--				return;
--			}
--			if (handle.exited) return;
--			if (control !== null && control.type === "resize" && typeof control.cols === "number" && typeof control.rows === "number") {
--				const dims = clampDims(control.cols, control.rows);
--				handle.pty.resize(dims.cols, dims.rows);
--			} else handle.pty.write(text);
--		});
--		ws.on("close", () => {
--			dataSub.dispose();
--			exitSub.dispose();
--			ptyManager.scheduleClose(handle.key, resolved.reconnectGraceMs);
--		});
-+		pumpUiTerminal(ptyManager, handle, ws, resolved.reconnectGraceMs, ctx.get("workspaceTerminal"));
--	} catch (error) {
--		ws.close(1011, error instanceof Error ? error.message : String(error));
--	}
-+	} catch (error) {
-+		ws.close(1011, error instanceof Error ? error.message : String(error));
-+	}
- }
-+/**
-+* Pump one UI terminal's pty to its connected view. When the shell exits,
-+* close the socket after the final status line so the client reconnect loop
-+* can replace the exited handle instead of leaving a connected input sink.
-+*/
-+function pumpUiTerminal(ptyManager, handle, ws, reconnectGraceMs, terminalRegistry) {
-+	terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "attached", cwd: handle.cwd });
-+	if (handle.transcript !== "") ws.send(handle.transcript);
-+	const onData = (data) => {
-+		if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4194304) ws.send(data);
-+		terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "output", data: { text: data } });
-+	};
-+	const onExit = ({ exitCode }) => {
-+		onData(`\r\n[process exited with code ${String(exitCode)}]\r\n`);
-+		terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "exited", data: { exitCode } });
-+		if (ws.readyState === WebSocket.OPEN) ws.close(1e3, "terminal process exited");
-+	};
-+	const dataSub = handle.pty.onData(onData);
-+	const exitSub = handle.pty.onExit(onExit);
-+	ws.on("message", (data) => {
-+		const text = data.toString("utf8");
-+		let control = null;
-+		try {
-+			const parsed = JSON.parse(text);
-+			if (parsed !== null && typeof parsed === "object") control = parsed;
-+		} catch {}
-+		if (control !== null && control.type === "close") {
-+			terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "closed", data: { reason: "user closed terminal tab" } });
-+			ptyManager.scheduleClose(handle.key, 0);
-+			return;
-+		}
-+		if (handle.exited) return;
-+		if (control !== null && control.type === "resize" && typeof control.cols === "number" && typeof control.rows === "number") {
-+			const dims = clampDims(control.cols, control.rows);
-+			handle.pty.resize(dims.cols, dims.rows);
-+			terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "resized", data: dims });
-+		} else { terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "input", data: { text } }); handle.pty.write(text); }
-+	});
-+	ws.on("close", () => {
-+		dataSub.dispose();
-+		exitSub.dispose();
-+		ptyManager.scheduleClose(handle.key, reconnectGraceMs);
-+		terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "disconnected", data: { reason: "socket closed" } });
-+	});
++/* The hover-revealed native file-manager action for directory rows. */
++.explorerOpenDirectory {
++  flex: none;
++  display: none;
++  align-items: center;
++  justify-content: center;
++  width: 24px;
++  height: 22px;
++  padding: 0;
++  border: 1px solid var(--dsw-alias-border-l1);
++  border-radius: 5px;
++  background: var(--dsw-alias-bg-layer-2);
++  color: var(--dsw-alias-label-tertiary);
++  cursor: pointer;
 +}
- /**
-@@ -3021,2 +3030,2 @@ function pumpAgentTerminal(registry, handle, ws) {
- //#endregion
--export { Config, apply, inject, mediaTypeForPath, name };
-+export { Config, apply, inject, mediaTypeForPath, name, pumpUiTerminal };
++
++.explorerOpenDirectory:hover {
++  background: var(--dsw-alias-interactive-bg-hover);
++  color: var(--dsw-alias-label-primary);
++}
++
++.explorerRow:hover .explorerOpenDirectory,
++.explorerRow:focus-within .explorerOpenDirectory {
++  display: inline-flex;
++}
++
+ .explorerCopied {
+   flex: none;
+   font: var(--dsw-font-xxxs-11);
+@@ -2177,6 +2203,7 @@
+ .paneCard:focus-visible,
+ .explorerRow:focus-visible,
+ .explorerRef:focus-visible,
++.explorerOpenDirectory:focus-visible,
+ .gitRowMain:focus-visible,
+ .gitLink:focus-visible,
+ .gitCommitButton:focus-visible,
 diff --git a/src/index.ts b/src/index.ts
-index 0ae8f4f4d12474c352a9ec903d214a97ecf47ef8..d56d1a6e57c8d3f32fc4bd7cdd1fe03d25c791eb 100644
+index 0ae8f4f..bb612bc 100644
 --- a/src/index.ts
 +++ b/src/index.ts
-
 @@ -36,7 +36,13 @@ import { isTrustedApiRequest, isLoopbackHostname } from './trust-fence.ts'
  import { registerBundleRoute } from './bundle-route.ts'
  import * as git from './git.ts'
@@ -521,10 +832,19 @@ index 0ae8f4f4d12474c352a9ec903d214a97ecf47ef8..d56d1a6e57c8d3f32fc4bd7cdd1fe03d
  import { AgentPtyRegistry, clampDims, type AgentTerminalHandle } from './agent-pty.ts'
  import {
    DSH_NODE_PTY_RANGE,
-@@ -498,1 +504,1 @@ export function apply(ctx: Context, config: Config): void {
+@@ -495,7 +501,7 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
+   // through the terminal_create tool; the sidebar view attaches through the
+   // same /sidebar/ws/terminal upgrade with ?uuid=... instead of ?tab=...
+   const agentPtyRegistry = nodePty !== null
 -    ? new AgentPtyRegistry(terminalShell, resolved.shellArgs, nodePty)
 +    ? new AgentPtyRegistry(terminalShell, resolved.shellArgs, nodePty, ptyManager ?? undefined)
-@@ -861,58 +867,89 @@ async function attachTerminal(
+     : null
+ 
+   // ── User-facing "Side card" preferences ──────────────────────────────────
+@@ -858,61 +864,92 @@ async function attachTerminal(
+     }
+     const cwd = sessionCwdOf(ctx, sessionId, url.searchParams.get('cwd') ?? undefined)
+     const handle = ptyManager.open(sessionId, tabId, cwd, 80, 24)
 -    // Replay the transcript, then follow live output.
 -    if (handle.transcript !== '') ws.send(handle.transcript)
 -    const onData = (data: string): void => {
@@ -576,15 +896,11 @@ index 0ae8f4f4d12474c352a9ec903d214a97ecf47ef8..d56d1a6e57c8d3f32fc4bd7cdd1fe03d
 -      ptyManager.scheduleClose(handle.key, resolved.reconnectGraceMs)
 -    })
 +    pumpUiTerminal(ptyManager, handle, ws, resolved.reconnectGraceMs, ctx.get('workspaceTerminal'))
--  } catch (error) {
--    ws.close(1011, error instanceof Error ? error.message : String(error))
--  }
-+  } catch (error) {
-+    ws.close(1011, error instanceof Error ? error.message : String(error))
-+  }
+   } catch (error) {
+     ws.close(1011, error instanceof Error ? error.message : String(error))
+   }
  }
--
-+
+ 
 +/**
 + * Pump one UI terminal's pty to its connected view. When the shell exits,
 + * close the socket after the final status line so the client reconnect loop

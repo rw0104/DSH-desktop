@@ -26,6 +26,28 @@ body[data-dsh-title-bar-compat] [data-dsh-better-sidebar] > div:first-child {
 [class*="editorBody"]:has(> [class*="editorMain"] > [class*="editorPlaceholder"]:only-child):has(> [class*="editorTreeDock"]) [class*="editorTreeResize"] {
   display: none !important;
 }
+.dshDesktopOpenDirectory {
+  display: none;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  color: var(--dsw-alias-label-tertiary);
+  background: var(--dsw-alias-bg-layer-2);
+  cursor: pointer;
+}
+[class*="explorerRow"]:hover .dshDesktopOpenDirectory,
+[class*="explorerRow"]:focus-within .dshDesktopOpenDirectory {
+  display: inline-flex;
+}
+.dshDesktopOpenDirectory:hover {
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
 `
 
 /** Styles for the desktop-owned About section in Settings. */
@@ -135,6 +157,17 @@ const ABOUT_STYLES = `
   cursor: pointer;
 }
 .dshDesktopAboutAction:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.dshDesktopAboutError { padding: 8px 10px; color: var(--dsw-alias-state-error-primary); background: var(--dsw-alias-state-error-tertiary); border: 1px solid var(--dsw-alias-state-error-primary); }
+.dshDesktopPluginMarket { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 720px; }
+.dshDesktopPluginMarketIntro { display: flex; flex-direction: column; gap: 6px; }
+.dshDesktopPluginMarketProfile, .dshDesktopPluginMarketHint { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.dshDesktopPluginMarketEntries { display: flex; flex-direction: column; gap: 8px; }
+.dshDesktopPluginMarketEntry { padding: 10px 0; border-top: 1px solid var(--dsw-alias-border-l2); }
+.dshDesktopPluginMarketHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dshDesktopPluginMarketHead h3 { margin: 0; color: var(--dsw-alias-label-primary); font-size: 14px; }
+.dshDesktopPluginMarketHead p { margin: 4px 0 0; color: var(--dsw-alias-label-secondary); line-height: 1.4; }
+.dshDesktopPluginMarketEntry > a { display: block; margin-top: 6px; color: var(--dsw-alias-interactive-label-primary); overflow-wrap: anywhere; }
+.dshDesktopPluginMarketInstalled { display: inline-block; margin-top: 6px; color: var(--dsw-alias-state-success-primary); font-size: 12px; }
 `
 
 /** Advanced-shell stylesheet kept as a plain string so the package client bundle stays self-contained. */

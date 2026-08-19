@@ -7,6 +7,7 @@ import { WorkspaceTerminalRegistry } from './workspace-terminal.ts'
 import { installWorkspaceTerminalRoutes } from './workspace-terminal-routes.ts'
 import { WorkspaceWorktreeService } from './workspace-worktree.ts'
 import { installWorkspaceWorktreeRoutes } from './workspace-worktree-routes.ts'
+import { installOpenDirectoryRoute } from './open-directory.ts'
 
 /** The stable identity of one Session's filesystem checkout. */
 export interface SessionWorkspaceBinding {
@@ -200,6 +201,7 @@ export function installWorkspaceWorkbench(ctx: Context): void {
     const disposeRoutes = installWorkspaceChangesRoutes(ctx, service)
     const disposeTerminalRoutes = installWorkspaceTerminalRoutes(ctx, service.terminals)
     const disposeWorktreeRoutes = installWorkspaceWorktreeRoutes(ctx, service)
+    const disposeOpenDirectoryRoute = installOpenDirectoryRoute(ctx, service)
     const onCreated = ctx.on('session/created', session => {
       service.bindSession({
         sessionId: String(session.id),
@@ -250,6 +252,7 @@ export function installWorkspaceWorkbench(ctx: Context): void {
       disposeRoutes()
       disposeTerminalRoutes()
       disposeWorktreeRoutes()
+      disposeOpenDirectoryRoute()
       service.dispose()
       void disposeService()
       void disposeTerminalService()
