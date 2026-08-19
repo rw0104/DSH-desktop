@@ -1,6 +1,6 @@
 {
   "name": "deepseek-harness-desktop",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "Independent DSH Desktop workbench with Vision Toolkit and Better Sidebar",
   "license": "MIT",
