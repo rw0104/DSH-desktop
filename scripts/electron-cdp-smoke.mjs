@@ -15,11 +15,13 @@ const toggleDetails = process.argv.includes('--toggle-details')
 const openDirectoryPicker = process.argv.includes('--open-directory-picker')
 const openCurrentDirectory = process.argv.includes('--open-current-directory')
 const openBetterSidebar = process.argv.includes('--open-better-sidebar')
+const openWorkspaceChanges = process.argv.includes('--open-workspace-changes')
 const openBottomPanel = process.argv.includes('--open-bottom-panel')
 const openBetterBrowser = process.argv.includes('--open-better-browser')
 const unlockBetterBrowser = process.argv.includes('--unlock-better-browser')
 const assertTerminalPainted = process.argv.includes('--assert-terminal-painted')
 const browserUrl = process.argv.find(value => value.startsWith('--browser-url='))?.slice('--browser-url='.length)
+const directoryPath = process.argv.find(value => value.startsWith('--directory-path='))?.slice('--directory-path='.length)
 const selectedDrive = process.argv.find(value => value.startsWith('--select-drive='))?.slice('--select-drive='.length)
 
 const cdpPort = process.env.DSH_CDP_PORT ?? '9223'
@@ -105,6 +107,22 @@ if (openDirectoryPicker || openCurrentDirectory) {
   await clickVisibleButton(['添加工作区...', '添加工作区…', 'Add workspace...'])
   await new Promise(resolve => setTimeout(resolve, 1500))
 }
+if (directoryPath !== undefined && (openDirectoryPicker || openCurrentDirectory)) {
+  await command('Runtime.evaluate', {
+    expression: `(() => {
+      const input = [...document.querySelectorAll('[role="dialog"] input')]
+        .find(node => node instanceof HTMLInputElement)
+      if (!(input instanceof HTMLInputElement)) return false
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+      setter?.call(input, ${JSON.stringify(directoryPath)})
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }))
+      return true
+    })()`,
+  })
+  await new Promise(resolve => setTimeout(resolve, 1000))
+}
 if (openCurrentDirectory) {
   await command('Runtime.evaluate', {
     expression: `([...document.querySelectorAll('[role="dialog"] button')].find(node => /^(打开|Open)$/.test((node.textContent ?? '').trim())))?.click()`,
@@ -137,6 +155,24 @@ for (const label of [toggleSidebar ? 'Sidebar' : null, toggleDetails ? 'Details'
 if (openBetterSidebar || openBetterBrowser) {
   await clickVisibleButton(['展开侧边栏', 'Expand sidebar'])
   await new Promise(resolve => setTimeout(resolve, 750))
+}
+if (openWorkspaceChanges) {
+  if (!openBetterSidebar && !openBetterBrowser) {
+    await clickVisibleButton(['展开侧边栏', 'Expand sidebar'])
+    await new Promise(resolve => setTimeout(resolve, 750))
+  }
+  await clickVisibleButton(['新建标签页', 'New tab'])
+  await new Promise(resolve => setTimeout(resolve, 400))
+  await command('Runtime.evaluate', {
+    expression: `(() => {
+      const item = [...document.querySelectorAll('[role="menuitem"]')]
+        .find(node => ['Changes', '变更'].includes((node.textContent ?? '').trim()))
+      if (!(item instanceof HTMLElement)) return false
+      item.click()
+      return true
+    })()`,
+  })
+  await new Promise(resolve => setTimeout(resolve, 1000))
 }
 if (openBottomPanel) {
   await command('Runtime.evaluate', {
@@ -202,6 +238,21 @@ const inspection = await command('Runtime.evaluate', {
     dialogs: [...document.querySelectorAll('[role="dialog"]')].map(dialog => (dialog.textContent ?? '').trim().slice(0, 120)),
     betterSidebarHost: document.querySelector('[data-dsh-better-sidebar]') !== null,
     betterSidebarPanel: document.querySelector('[data-dsh-better-sidebar] [class*="panel"]') !== null,
+    sidebarTabTitles: [...document.querySelectorAll('[class*="tabTitle"]')].map(node => ({ text: (node.textContent ?? '').trim(), className: node.className, parentClassName: node.parentElement?.className ?? null })),
+    workspaceChanges: (() => {
+      const root = document.querySelector('.dshWorkspaceChanges')
+      if (!(root instanceof HTMLElement)) return null
+      const rect = root.getBoundingClientRect()
+      return {
+        visible: rect.width > 0 && rect.height > 0,
+        rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+        branch: (root.querySelector('.dshWorkspaceChangesBranch')?.textContent ?? '').trim(),
+        scopes: [...root.querySelectorAll('.dshWorkspaceChangesScope')].map(node => ({ text: (node.textContent ?? '').trim(), pressed: node.getAttribute('aria-pressed') })),
+        files: root.querySelectorAll('.dshWorkspaceChangesFile').length,
+        alerts: [...root.querySelectorAll('[role="alert"]')].map(node => (node.textContent ?? '').trim()).filter(Boolean),
+        focusable: [...root.querySelectorAll('button, input, textarea, select')].filter(node => (node instanceof HTMLElement) && node.offsetWidth > 0 && node.offsetHeight > 0).length,
+      }
+    })(),
     titleBarCompat: document.body.hasAttribute('data-dsh-title-bar-compat'),
     titleBarStrip: getComputedStyle(document.body).getPropertyValue('--dsh-title-bar-strip').trim(),
     betterSidebarToggles: [...document.querySelectorAll('button')]
@@ -355,6 +406,17 @@ if (assertTerminalPainted) {
   inspectionValue.terminal.paint = { ...extract, foregroundPixels }
   if (!terminalTextIsPainted(foregroundPixels, extract.width, extract.height)) {
     throw new Error(`terminal text is present in DOM but not painted (${foregroundPixels} foreground pixels)`)
+  }
+}
+if (openWorkspaceChanges) {
+  if (inspectionValue.workspaceChanges?.visible !== true) {
+    throw new Error(`Workspace Changes surface was not visible: ${JSON.stringify(inspectionValue.workspaceChanges)}`)
+  }
+  if (inspectionValue.workspaceChanges.scopes?.length !== 3) {
+    throw new Error(`Workspace Changes scopes were not mounted: ${JSON.stringify(inspectionValue.workspaceChanges)}`)
+  }
+  if (inspectionValue.workspaceChanges.alerts?.length > 0 && inspectionValue.workspaceChanges.branch === 'Loading') {
+    throw new Error(`Workspace Changes remained in loading state after an error: ${JSON.stringify(inspectionValue.workspaceChanges)}`)
   }
 }
 inspectionValue.cdpEvents = eventSummary

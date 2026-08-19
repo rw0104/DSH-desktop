@@ -1,6 +1,6 @@
 # Agent Note: Workspace Workbench next-stage architecture
 
-Status: planned
+Status: active; W0 and W1 complete; W2 is next
 
 English | [中文](2026-08-19-workspace-workbench-next-stage.zh.md)
 
@@ -50,7 +50,7 @@ The Client Workbench presents Changes, Files, Terminal, Artifacts, Tasks, and Co
 
 The first implementation slice is W0 + W1 only. Keep the existing Files/viewer registry. Unify Terminal after Activity Ledger stabilizes. Better Sidebar remains a compatibility layer; disable one builtin only after its domain migrates.
 
-Current progress: W0 `WorkspaceWorkbenchService`, Session binding, Activity Ledger, deep-link vocabulary, and `WorkspaceChangesService` now live in `dsh-plugin-desktop` and are owned by the Host generation lifecycle. W1 has its first vertical slice: a Host Changes route, a desktop-owned Changes tab, branch/staged/unstaged file status, and file-level stage/unstage/revert. Last turn, hunk mutation confirmation, and inline comments remain incomplete.
+Current progress: W0 `WorkspaceWorkbenchService`, Session binding, Activity Ledger, deep-link vocabulary, and `WorkspaceChangesService` now live in `dsh-plugin-desktop` and are owned by the Host generation lifecycle. W1 is complete: the Host Changes route and desktop-owned Changes tab provide Unstaged/Staged/Last turn scopes, content-sensitive hunk stage/unstage/revert, line-level comments, structured Session context, and packaged Electron smoke evidence. W2 Unified Terminal is next.
 
 ## Constraints
 

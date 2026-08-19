@@ -17,11 +17,24 @@ export interface WorkspaceChangeHunk {
   readonly lines: readonly string[]
 }
 
+/** Build a deterministic, content-sensitive identity for one diff hunk. */
+function hunkId(path: string, header: string, lines: readonly string[]): string {
+  // FNV-1a keeps this module portable to the client build while still making
+  // a changed hunk fail closed instead of reusing a stale UI id.
+  let hash = 2166136261
+  const input = `${path}\n${header}\n${lines.join('\n')}`
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index)
+    hash = Math.imul(hash, 16777619) >>> 0
+  }
+  return `hunk:${hash.toString(16).padStart(8, '0')}`
+}
+
 /** Parse a Git unified diff into stable file/hunk records without shell parsing. */
 export function parseWorkspaceDiff(diff: string): readonly WorkspaceChangeFile[] {
   const files: WorkspaceChangeFile[] = []
   let current: { path: string; oldPath?: string; status: WorkspaceChangeFile['status']; hunks: WorkspaceChangeHunk[] } | undefined
-  let hunk: { readonly id: string; readonly header: string; readonly oldStart: number; readonly oldCount: number; readonly newStart: number; readonly newCount: number; lines: string[] } | undefined
+  let hunk: { id: string; readonly header: string; readonly oldStart: number; readonly oldCount: number; readonly newStart: number; readonly newCount: number; lines: string[] } | undefined
   for (const line of diff.split('\n')) {
     if (line.startsWith('diff --git ')) {
       if (current !== undefined) files.push(current)
@@ -46,7 +59,7 @@ export function parseWorkspaceDiff(diff: string): readonly WorkspaceChangeFile[]
       const match = /^@@ -([0-9]+)(?:,([0-9]+))? \+([0-9]+)(?:,([0-9]+))? @@/u.exec(line)
       if (match === null) continue
       hunk = {
-        id: `hunk:${current.path}:${current.hunks.length + 1}`,
+        id: hunkId(current.path, header, []),
         header,
         oldStart: Number(match[1]),
         oldCount: Number(match[2] ?? 1),
@@ -57,6 +70,9 @@ export function parseWorkspaceDiff(diff: string): readonly WorkspaceChangeFile[]
       current.hunks.push(hunk)
     } else if (hunk !== undefined && (line.startsWith(' ') || line.startsWith('+') || line.startsWith('-') || line.startsWith('\\'))) {
       hunk.lines = [...hunk.lines, line]
+      // The id includes the complete line payload. Recompute it after each
+      // line because the parser deliberately does not retain the raw patch.
+      hunk.id = hunkId(current.path, hunk.header, hunk.lines)
     }
   }
   if (current !== undefined) files.push(current)

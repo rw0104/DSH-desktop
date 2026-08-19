@@ -1,6 +1,6 @@
 # Agent Note：Workspace Workbench 下一阶段架构
 
-Status: planned
+Status: active; W0 and W1 complete; W2 is next
 
 [English](2026-08-19-workspace-workbench-next-stage.md) | 中文
 
@@ -50,7 +50,7 @@ Client Workbench 提供 Changes、Files、Terminal、Artifacts、Tasks 和 Conte
 
 首批实现只做 W0 + W1。Files/viewer registry 暂时保留；Terminal 在 Activity Ledger 稳定后统一。Better Sidebar 在迁移期作为兼容层，每迁移一个 domain 才禁用对应 builtin，禁止一次性重写。
 
-当前进度：W0 的 `WorkspaceWorkbenchService`、Session binding、Activity Ledger、deep link vocabulary 和 `WorkspaceChangesService` 已进入 `dsh-plugin-desktop`，并由 Host generation 生命周期管理。W1 已完成第一条纵向切片：Host Changes route、桌面自有 Changes tab、branch/staged/unstaged 文件状态和 file-level stage/unstage/revert。Last turn、hunk 写操作确认和行级评论尚未完成。
+当前进度：W0 的 `WorkspaceWorkbenchService`、Session binding、Activity Ledger、deep link vocabulary 和 `WorkspaceChangesService` 已进入 `dsh-plugin-desktop`，并由 Host generation 生命周期管理。W1 已完成：Host Changes route、桌面自有 Changes tab、Unstaged/Staged/Last turn scope、内容敏感 hunk stage/unstage/revert、行级评论、结构化 Session context 和 packaged Electron smoke。下一阶段进入 W2 Unified Terminal。
 
 ## 约束
 

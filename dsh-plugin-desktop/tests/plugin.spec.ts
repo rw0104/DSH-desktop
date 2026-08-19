@@ -95,6 +95,10 @@ function createHarness(platform: DesktopRuntime['platform'] = 'darwin'): PluginH
     logger: { warn: vi.fn(), error: vi.fn() },
     get: vi.fn(() => () => {}),
     effect: vi.fn((register: () => unknown) => register()),
+    provide: vi.fn((name: string, value: unknown) => {
+      ;(ctx as unknown as Record<string, unknown>)[name] = value
+      return () => { delete (ctx as unknown as Record<string, unknown>)[name] }
+    }),
     on: vi.fn((event: string, listener: (namespace: unknown, next: unknown) => void) => {
       if (event === 'settings/updated') settingsUpdated = listener
       return () => { if (settingsUpdated === listener) settingsUpdated = undefined }
@@ -165,6 +169,7 @@ describe('desktop Host plugin', () => {
     apply(harness.ctx, config)
 
     expect(inject).toContain('settings')
+    expect(inject).toContain('agents')
     expect(inject).not.toContain('loader')
     const register = vi.mocked(harness.ctx.settings.register)
     expect(register.mock.calls[0]?.[2]).toEqual(expect.objectContaining({ applies: 'restart' }))
