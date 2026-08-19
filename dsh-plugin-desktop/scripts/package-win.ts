@@ -1,7 +1,7 @@
 /** Build an unsigned Windows x64 NSIS installer on a native Windows host. */
 
 import { spawnSync } from 'node:child_process'
-import { readFileSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -36,7 +36,7 @@ export interface WindowsPackageOptions {
   /** Absolute electron-builder CLI module. */
   readonly builderCli: string
   /** Local Electron distribution used to avoid a second network download. */
-  readonly electronDist: string
+  readonly electronDist?: string
   /** Absolute packaged-installer verification script. */
   readonly verifier: string
   /** Node executable used to run package-local scripts. */
@@ -94,6 +94,7 @@ function defaultOptions(): WindowsPackageOptions {
     throw new Error(`desktop package at ${desktopRoot} has no valid version`)
   }
   const windowsRoot = process.env.SystemRoot ?? process.env.WINDIR
+  const electronDist = join(dirname(require.resolve('electron/package.json')), 'dist')
   return {
     env: process.env,
     platform: process.platform,
@@ -106,7 +107,7 @@ function defaultOptions(): WindowsPackageOptions {
       ? 'cmd.exe'
       : join(windowsRoot, 'System32', 'cmd.exe'),
     builderCli: require.resolve('electron-builder/cli.js'),
-    electronDist: join(dirname(require.resolve('electron/package.json')), 'dist'),
+    ...(existsSync(electronDist) ? { electronDist } : {}),
     verifier: fileURLToPath(new URL('./verify-win-installer.ts', import.meta.url)),
     nodeExecutable: process.execPath,
     removeArtifact: path => { rmSync(path, { force: true }) },
@@ -138,6 +139,9 @@ export function packageWindowsInstaller(
   }
 
   const cleanEnvironment = withoutWindowsSigningSecrets(options.env)
+  const electronDistArgs = options.electronDist === undefined
+    ? []
+    : [`--config.electronDist=${options.electronDist}`]
   const distDir = win32.join(options.desktopRoot, 'dist')
   for (const artifact of [
     `DSH-Desktop-${options.version}-x64-Setup.exe`,
@@ -172,7 +176,7 @@ export function packageWindowsInstaller(
       'never',
       '--config.win.signExecutable=false',
       '--config.npmRebuild=false',
-      `--config.electronDist=${options.electronDist}`,
+      ...electronDistArgs,
     ],
     options.desktopRoot,
     {
@@ -193,7 +197,7 @@ export function packageWindowsInstaller(
       win32.join(options.desktopRoot, 'dist', 'win-unpacked'),
       '--config.win.signExecutable=false',
       '--config.npmRebuild=false',
-      `--config.electronDist=${options.electronDist}`,
+      ...electronDistArgs,
       '--config.nsis.differentialPackage=true',
       '--config.nsis.useZip=false',
       '--config.nsis.artifactName=DSH-Desktop-${version}-${arch}-Update.${ext}',
