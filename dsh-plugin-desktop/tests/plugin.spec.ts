@@ -189,6 +189,16 @@ describe('desktop Host plugin', () => {
     expect(harness.update).toHaveBeenCalledWith({ mode: 'advanced' })
   })
 
+  it('installs the Workspace Workbench service in the Host generation', () => {
+    const harness = createHarness()
+    apply(harness.ctx, config)
+    const workbench = harness.ctx.workspaceWorkbench
+    expect(workbench).toBeDefined()
+    const binding = workbench?.bindSession({ sessionId: 'session-1', profileName: 'desktop', cwd: 'C:\\repo' })
+    expect(binding?.sessionId).toBe('session-1')
+    expect(workbench?.snapshot().bindings).toHaveLength(1)
+  })
+
   it.each(['win32', 'linux'] as const)(
     'keeps the full-size application icon on %s',
     (platform) => {

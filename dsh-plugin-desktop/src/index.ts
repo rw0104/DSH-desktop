@@ -14,6 +14,7 @@ import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import type { DesktopPlatform, DesktopShellMode } from './runtime.ts'
 import type {} from './runtime.ts'
 import { installDesktopSidebarDefaults } from './sidebar-defaults.ts'
+import { installWorkspaceWorkbench } from './workspace-workbench.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'desktop-shell'
@@ -115,6 +116,7 @@ export function apply(ctx: Context, config: Config): void {
     throw new Error('dsh-plugin-desktop: desktop shell requires a loopback Web server')
   }
   installDesktopSidebarDefaults(ctx)
+  installWorkspaceWorkbench(ctx)
   const iconFilename = ctx.desktopRuntime.platform === 'darwin'
     ? 'app-icon-mac.png'
     : 'app-icon.png'
