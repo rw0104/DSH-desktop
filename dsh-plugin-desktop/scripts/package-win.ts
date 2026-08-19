@@ -35,6 +35,8 @@ export interface WindowsPackageOptions {
   readonly commandShell: string
   /** Absolute electron-builder CLI module. */
   readonly builderCli: string
+  /** Local Electron distribution used to avoid a second network download. */
+  readonly electronDist: string
   /** Absolute packaged-installer verification script. */
   readonly verifier: string
   /** Node executable used to run package-local scripts. */
@@ -104,6 +106,7 @@ function defaultOptions(): WindowsPackageOptions {
       ? 'cmd.exe'
       : join(windowsRoot, 'System32', 'cmd.exe'),
     builderCli: require.resolve('electron-builder/cli.js'),
+    electronDist: join(dirname(require.resolve('electron/package.json')), 'dist'),
     verifier: fileURLToPath(new URL('./verify-win-installer.ts', import.meta.url)),
     nodeExecutable: process.execPath,
     removeArtifact: path => { rmSync(path, { force: true }) },
@@ -169,6 +172,7 @@ export function packageWindowsInstaller(
       'never',
       '--config.win.signExecutable=false',
       '--config.npmRebuild=false',
+      `--config.electronDist=${options.electronDist}`,
     ],
     options.desktopRoot,
     {
@@ -189,6 +193,7 @@ export function packageWindowsInstaller(
       win32.join(options.desktopRoot, 'dist', 'win-unpacked'),
       '--config.win.signExecutable=false',
       '--config.npmRebuild=false',
+      `--config.electronDist=${options.electronDist}`,
       '--config.nsis.differentialPackage=true',
       '--config.nsis.useZip=false',
       '--config.nsis.artifactName=DSH-Desktop-${version}-${arch}-Update.${ext}',

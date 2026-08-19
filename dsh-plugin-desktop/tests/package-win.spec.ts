@@ -29,6 +29,7 @@ function options(calls: CommandCall[], logs: string[] = []): WindowsPackageOptio
     desktopRoot: 'C:\\repo\\dsh-plugin-desktop',
     commandShell: 'C:\\Windows\\System32\\cmd.exe',
     builderCli: 'C:\\repo\\node_modules\\electron-builder\\cli.js',
+    electronDist: 'C:\\repo\\node_modules\\electron\\dist',
     verifier: 'C:\\repo\\dsh-plugin-desktop\\scripts\\verify-win-installer.ts',
     nodeExecutable: 'C:\\Program Files\\nodejs\\node.exe',
     removeArtifact: () => {},
@@ -80,6 +81,7 @@ describe('Windows x64 installer packaging', () => {
         'never',
         '--config.win.signExecutable=false',
         '--config.npmRebuild=false',
+        '--config.electronDist=C:\\repo\\node_modules\\electron\\dist',
       ],
       cwd: 'C:\\repo\\dsh-plugin-desktop',
       env: {
@@ -101,6 +103,7 @@ describe('Windows x64 installer packaging', () => {
         'C:\\repo\\dsh-plugin-desktop\\dist\\win-unpacked',
         '--config.win.signExecutable=false',
         '--config.npmRebuild=false',
+        '--config.electronDist=C:\\repo\\node_modules\\electron\\dist',
         '--config.nsis.differentialPackage=true',
         '--config.nsis.useZip=false',
         '--config.nsis.artifactName=DSH-Desktop-${version}-${arch}-Update.${ext}',
