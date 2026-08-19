@@ -10,3 +10,4 @@ This repository owns the desktop product around an unmodified DeepSeek Harness c
 - Keep graphical application launch explicit. Builds, typechecks, unit tests, and Loader smokes must remain headless-safe.
 - Commit before major changes of direction and keep the submodule pin update separate from desktop behavior changes.
 - Keep the repository topology and package-manager split consistent with the [owning Agent Note](.agents/notes/implemented/process/2026-08-15-pinned-upstream-and-isolated-yarn-workspace.md).
+- Every completed desktop feature or release must add a task-oriented development note under `docs/releases/` before the version tag is created. The note must record user-visible changes, upgrade steps, validation, artifacts, and known limitations; the GitHub Release body must link to that note.

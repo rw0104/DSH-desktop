@@ -12,6 +12,88 @@ const DESKTOP_INTEGRATION_STYLES = `
 body[data-dsh-title-bar-compat] [data-dsh-better-sidebar] > div:first-child {
   top: calc(var(--dsh-title-bar-strip, 40px) - 12px);
 }
+
+/* A path-less Files tab is a navigation surface, not a document canvas. Keep
+   its guidance compact so the file tree remains the visual anchor. */
+[class*="editorMain"]:has(> [class*="editorPlaceholder"]:only-child) > [class*="editorPlaceholder"] {
+  flex: none !important;
+  min-height: 0 !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  padding: 12px 16px !important;
+  text-align: left !important;
+  line-height: 1.45 !important;
+}
+`
+
+/** Styles for the desktop-owned About section in Settings. */
+const ABOUT_STYLES = `
+.dshDesktopAbout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 720px;
+}
+.dshDesktopAboutIntro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dshDesktopAboutTitle {
+  margin: 0;
+  font: var(--dsw-font-s-strong-14);
+  font-size: 18px;
+  color: var(--dsw-alias-label-primary);
+}
+.dshDesktopAboutSubtitle {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  line-height: 1.5;
+}
+.dshDesktopAboutRows {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--dsw-alias-border-l2);
+}
+.dshDesktopAboutRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
+}
+.dshDesktopAboutLabel {
+  color: var(--dsw-alias-label-secondary);
+}
+.dshDesktopAboutValue {
+  color: var(--dsw-alias-label-primary);
+  text-align: right;
+}
+.dshDesktopAboutValue code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.dshDesktopAboutLink {
+  color: var(--dsw-alias-interactive-label-primary);
+  text-decoration: none;
+}
+.dshDesktopAboutLink:hover { text-decoration: underline; }
+.dshDesktopAboutActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dshDesktopAboutAction {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 7px;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-layer-1);
+  cursor: pointer;
+}
+.dshDesktopAboutAction:hover { background: var(--dsw-alias-interactive-bg-hover); }
 `
 
 /** Advanced-shell stylesheet kept as a plain string so the package client bundle stays self-contained. */
@@ -57,6 +139,16 @@ export function installDesktopIntegrationStyles(): () => void {
   style.dataset.plugin = 'dsh-plugin-desktop'
   style.dataset.pluginCss = 'dsh-plugin-desktop/integration'
   style.textContent = DESKTOP_INTEGRATION_STYLES
+  document.head.appendChild(style)
+  return () => { style.remove() }
+}
+
+/** Install the desktop-owned About section styles. */
+export function installDesktopAboutStyles(): () => void {
+  const style = document.createElement('style')
+  style.dataset.plugin = 'dsh-plugin-desktop'
+  style.dataset.pluginCss = 'dsh-plugin-desktop/about'
+  style.textContent = ABOUT_STYLES
   document.head.appendChild(style)
   return () => { style.remove() }
 }

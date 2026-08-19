@@ -171,7 +171,7 @@ describe('desktop Host plugin', () => {
     expect(loaderAwait).not.toHaveBeenCalled()
     expect(harness.shell()).toEqual(expect.objectContaining({
       mode: 'compatibility',
-      url: 'http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin',
+      url: 'http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin&dsh-desktop-version=2.0.0',
       productName: 'DSH Desktop',
       windowTitle: 'DeepSeek Harness Desktop',
       iconPath: expect.stringMatching(/[\\/]build[\\/]app-icon-mac\.png$/u),

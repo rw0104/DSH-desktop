@@ -90,10 +90,12 @@ export function desktopRendererUrl(
   port: number,
   mode: DesktopShellMode,
   platform: Context['desktopRuntime']['platform'],
+  productVersion = 'unknown',
 ): string {
   const url = new URL(`http://127.0.0.1:${String(port)}/`)
   url.searchParams.set('dsh-desktop-mode', mode)
   url.searchParams.set('dsh-desktop-platform', platform)
+  if (productVersion !== 'unknown') url.searchParams.set('dsh-desktop-version', productVersion)
   const drives = detectWindowsDriveLetters(platform)
   if (drives.length > 0) url.searchParams.set('dsh-desktop-drives', drives.join(''))
   return url.href
@@ -163,7 +165,7 @@ export function apply(ctx: Context, config: Config): void {
   ctx.effect(
     () => ctx.desktopRuntime.schedule({
       ...config,
-      url: desktopRendererUrl(ctx.webServer.port, config.mode, ctx.desktopRuntime.platform),
+      url: desktopRendererUrl(ctx.webServer.port, config.mode, ctx.desktopRuntime.platform, ctx.desktopRuntime.updates.currentVersion),
       productName: 'DSH Desktop',
       windowTitle: 'DeepSeek Harness Desktop',
       iconPath,
