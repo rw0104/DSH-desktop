@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url)
 const desktopManifest = readJson(join(packageRoot, 'package.json'))
 const products = [
   { name: '@anionex/dsh-vision-toolkit', version: '0.1.24' },
-  { name: 'dsh-better-sidebar', version: '0.12.3' },
+  { name: 'dsh-better-sidebar', version: '0.13.1' },
 ]
 
 for (const product of products) {
@@ -42,9 +42,16 @@ function fail(message) {
 
 function isPinnedDependency(product, value) {
   if (value === product.version) return true
-  if (product.name !== '@anionex/dsh-vision-toolkit' || typeof value !== 'string') return false
-  return value.startsWith(`patch:${product.name}@npm%3A${product.version}#`)
-    && decodeURIComponent(value).includes('../patches/@anionex-dsh-vision-toolkit-npm-0.1.24.patch')
+  if (typeof value !== 'string') return false
+  if (product.name === '@anionex/dsh-vision-toolkit') {
+    return value.startsWith(`patch:${product.name}@npm%3A${product.version}#`)
+      && decodeURIComponent(value).includes('../patches/@anionex-dsh-vision-toolkit-npm-0.1.24.patch')
+  }
+  if (product.name === 'dsh-better-sidebar') {
+    return value.startsWith(`patch:${product.name}@npm%3A${product.version}#`)
+      && decodeURIComponent(value).includes('../patches/dsh-better-sidebar@0.13.1.patch')
+  }
+  return false
 }
 
 function isPatchedDependency(value) {

@@ -8,9 +8,15 @@ A native desktop workbench for DeepSeek Harness. It brings Agent sessions, code,
 
 Current Windows x64 release:
 
-[Download DSH Desktop v1.0.2](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.2) · [Direct Windows installer](https://github.com/rw0104/DSH-desktop/releases/download/v1.0.2/DSH-Desktop-1.0.2-x64-Setup.exe)
+[Download DSH Desktop v1.0.4](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.4) · [Direct Windows installer](https://github.com/rw0104/DSH-desktop/releases/download/v1.0.4/DSH-Desktop-1.0.4-x64-Setup.exe)
 
 The installer supports per-user installation, a custom install directory, Start Menu shortcuts, and a desktop shortcut. The current installer is unsigned, so Windows may show a SmartScreen or Unknown Publisher warning.
+
+## Community
+
+DSH Desktop QQ group: **1106941154**.
+
+![DSH Desktop community QR code](assets/dsh-desktop-qq-group.png)
 
 ## Product capabilities
 
@@ -29,7 +35,7 @@ DSH Desktop uses the official [DeepSeek Harness](https://github.com/deepseek-ai/
 
 - Electron desktop shell, tray, window lifecycle, and installer/update handoff;
 - Windows Mica/macOS vibrancy Advanced Shell with the official left sidebar and Better Sidebar right workbench composed together;
-- Pinned product integration for Vision Toolkit `0.1.24` and Better Sidebar `0.12.3`;
+- Pinned product integration for Vision Toolkit `0.1.24` and Better Sidebar `0.13.1`;
 - Vision privacy consent, Python/Chrome health checks, and visible startup failure handling;
 - Profile management, a managed terminal, Windows directory-picker enhancements, and package/memory release gates;
 - Windows x64 NSIS packaging and GitHub Release automation.
@@ -38,7 +44,7 @@ The official Runtime remains responsible for Agents, Sessions, Tools, Profiles, 
 
 ## Install and first launch
 
-1. Download the Windows x64 installer from the [v1.0.2 Release](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.2).
+1. Download the Windows x64 installer from the [v1.0.4 Release](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.4).
 2. Choose an installation directory and complete setup.
 3. Launch DSH Desktop. The first launch explains the Vision Toolkit privacy boundary; Chinese Windows displays the Chinese copy.
 4. Configure models, credentials, and the vision service in DSH Settings. Python is required for local Vision tools; Chrome, Chromium, or Edge is only required for HTML screenshots.

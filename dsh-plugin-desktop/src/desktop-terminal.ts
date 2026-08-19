@@ -527,13 +527,29 @@ function windowsEnvironmentValue(environment: Readonly<NodeJS.ProcessEnv>, name:
 }
 
 /** Resolve known Windows shells from explicit system paths and then the inherited PATH. */
-function defaultWindowsExecutableResolver(
+export function resolveWindowsExecutable(
   command: string,
   environment: Readonly<NodeJS.ProcessEnv>,
   exists: DesktopTerminalExecutableExists,
 ): string | undefined {
   const candidates: string[] = []
   const systemRoot = windowsEnvironmentValue(environment, 'SystemRoot')
+  if (command.toLowerCase() === 'pwsh.exe') {
+    const programRoots = [
+      windowsEnvironmentValue(environment, 'ProgramW6432'),
+      windowsEnvironmentValue(environment, 'ProgramFiles'),
+    ]
+    for (const root of programRoots) {
+      if (root === undefined || root.length === 0) continue
+      candidates.push(win32.join(root, 'PowerShell', '7', 'pwsh.exe'))
+      candidates.push(win32.join(root, 'PowerShell', '7-preview', 'pwsh.exe'))
+    }
+    const localAppData = windowsEnvironmentValue(environment, 'LocalAppData')
+    if (localAppData !== undefined && localAppData.length > 0) {
+      candidates.push(win32.join(localAppData, 'Microsoft', 'PowerShell', '7', 'pwsh.exe'))
+      candidates.push(win32.join(localAppData, 'Programs', 'PowerShell', '7', 'pwsh.exe'))
+    }
+  }
   if (command.toLowerCase() === 'powershell.exe' && systemRoot !== undefined) {
     candidates.push(win32.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'))
   }
@@ -570,7 +586,7 @@ function resolveWindowsTerminal(
 ): WindowsTerminalLauncher | undefined {
   if (options.windowsTerminal !== undefined) return options.windowsTerminal
   const exists = options.windowsExecutableExists ?? existsSync
-  const resolveExecutable = options.windowsExecutableResolver ?? defaultWindowsExecutableResolver
+  const resolveExecutable = options.windowsExecutableResolver ?? resolveWindowsExecutable
   const executable = resolveExecutable(WINDOWS_TERMINAL_COMMAND, environment, exists)
   if (executable === undefined) return undefined
   assertScriptValue('wt.exe executable', executable)
@@ -594,7 +610,7 @@ function resolveWindowsShell(
   environment: Readonly<NodeJS.ProcessEnv>,
 ): ResolvedWindowsShell {
   const exists = options.windowsExecutableExists ?? existsSync
-  const resolveExecutable = options.windowsExecutableResolver ?? defaultWindowsExecutableResolver
+  const resolveExecutable = options.windowsExecutableResolver ?? resolveWindowsExecutable
   for (const command of WINDOWS_SHELL_COMMANDS) {
     const executable = resolveExecutable(command, environment, exists)
     if (executable === undefined) continue
@@ -637,7 +653,7 @@ function resolveWindowsCommandProcessor(
 ): string {
   if (shell.kind === 'cmd') return shell.executable
   const exists = options.windowsExecutableExists ?? existsSync
-  const resolveExecutable = options.windowsExecutableResolver ?? defaultWindowsExecutableResolver
+  const resolveExecutable = options.windowsExecutableResolver ?? resolveWindowsExecutable
   const executable = resolveExecutable('cmd.exe', environment, exists)
   if (executable === undefined) {
     throw new Error('dsh-plugin-desktop: terminal requires cmd.exe to create a visible Windows console')

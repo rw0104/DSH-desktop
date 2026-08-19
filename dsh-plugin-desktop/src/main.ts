@@ -26,7 +26,8 @@ import {
   type DesktopProfileStartup,
 } from './profile-manager.ts'
 import { DesktopProfileService } from './profile-service.ts'
-import { prepareDesktopProfile } from './profile.ts'
+import { prepareDesktopProfile, type DesktopProfileOptions } from './profile.ts'
+import { resolveDesktopSidebarTerminal } from './sidebar-terminal-shell.ts'
 import { resolveVisionConsent, type VisionConsentPrompt } from './vision-consent.ts'
 import { getVisionConsentCopy } from './vision-consent-dialog.ts'
 import { closeStartupWindow, createStartupWindow } from './startup-window.ts'
@@ -173,12 +174,15 @@ async function start(): Promise<void> {
     profileStatePath = selectionStatePath
     profileStartup = beginDesktopProfileStartup(selectionStatePath, homeDir)
     const activeProfileName = profileStartup.profileName
+    const desktopProfileOptions: DesktopProfileOptions = { visionEnabled }
+    const sidebarTerminal = resolveDesktopSidebarTerminal()
+    if (sidebarTerminal !== undefined) desktopProfileOptions.sidebarTerminal = sidebarTerminal
     const prepared = prepareDesktopProfile(
       process.env.DSH_TELEMETRY_DISABLED,
       homeDir,
       process.platform,
       activeProfileName,
-      { visionEnabled },
+      desktopProfileOptions,
     )
     const desktopPnpmBootstrap: DesktopPnpmBootstrap = {
       activeProfileName,

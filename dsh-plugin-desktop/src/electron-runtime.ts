@@ -17,6 +17,10 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { desktopTerminalStateDirectory, openDesktopTerminal } from './desktop-terminal.ts'
+import {
+  classifyEmbeddedBrowserUrl,
+  sanitizeEmbeddedBrowserPreferences,
+} from './embedded-browser-policy.ts'
 import { packagedDependencyPath } from './packaged-runtime-path.ts'
 import type {
   DesktopNotification,
@@ -469,6 +473,11 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
       window.hide()
     }
     const preserveBlankTitle = (event: Electron.Event): void => { event.preventDefault() }
+    const openExternal = (url: string): void => {
+      void shell.openExternal(url).catch((cause: unknown) => {
+        process.stderr.write(`dsh-plugin-desktop: failed to open external link: ${cause instanceof Error ? cause.message : String(cause)}\n`)
+      })
+    }
     const navigate = (event: Electron.Event<{ url: string, isMainFrame: boolean }>): void => {
       // Keep the application shell on its loopback origin, but do not cancel
       // deliberate child-frame navigation such as Better Sidebar's browser.
@@ -483,19 +492,55 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
       }
       if (targetOrigin !== origin) event.preventDefault()
     }
+    const willAttachWebview = (
+      event: Electron.Event,
+      webPreferences: Electron.WebPreferences,
+      params: Record<string, string>,
+    ): void => {
+      if (classifyEmbeddedBrowserUrl(params.src ?? '') !== 'webview') {
+        event.preventDefault()
+        return
+      }
+      sanitizeEmbeddedBrowserPreferences(webPreferences as Record<string, unknown>)
+      params.partition = 'persist:dsh-sidebar-browser'
+    }
+    const guestCleanups = new Set<() => void>()
+    const didAttachWebview = (_event: Electron.Event, guest: Electron.WebContents): void => {
+      const guardGuestNavigation = (event: Electron.Event, url: string): void => {
+        if (classifyEmbeddedBrowserUrl(url) !== 'webview') event.preventDefault()
+      }
+      guest.on('will-navigate', guardGuestNavigation)
+      guest.on('will-redirect', guardGuestNavigation)
+      guest.setWindowOpenHandler(({ url }) => {
+        const disposition = classifyEmbeddedBrowserUrl(url)
+        if (disposition === 'webview') {
+          void guest.loadURL(url).catch((cause: unknown) => {
+            process.stderr.write(`dsh-plugin-desktop: failed to navigate embedded browser: ${cause instanceof Error ? cause.message : String(cause)}\n`)
+          })
+        } else if (disposition === 'external') {
+          openExternal(url)
+        }
+        return { action: 'deny' }
+      })
+      guestCleanups.add(() => {
+        if (guest.isDestroyed()) return
+        guest.off('will-navigate', guardGuestNavigation)
+        guest.off('will-redirect', guardGuestNavigation)
+      })
+    }
 
     app.on('activate', show)
     window.on('close', close)
     window.on('page-title-updated', preserveBlankTitle)
     window.webContents.on('will-frame-navigate', navigate)
     window.webContents.on('will-redirect', navigate)
+    window.webContents.on('will-attach-webview', willAttachWebview)
+    window.webContents.on('did-attach-webview', didAttachWebview)
     window.webContents.setWindowOpenHandler(({ url }) => {
       try {
         const target = new URL(url)
         if (target.protocol === 'https:' || target.protocol === 'http:' || target.protocol === 'mailto:') {
-          void shell.openExternal(target.href).catch((cause: unknown) => {
-            process.stderr.write(`dsh-plugin-desktop: failed to open external link: ${cause instanceof Error ? cause.message : String(cause)}\n`)
-          })
+          openExternal(target.href)
         }
       } catch {
         // A malformed target is rejected with the same deny result.
@@ -540,6 +585,10 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
       window.off('page-title-updated', preserveBlankTitle)
       window.webContents.off('will-frame-navigate', navigate)
       window.webContents.off('will-redirect', navigate)
+      window.webContents.off('will-attach-webview', willAttachWebview)
+      window.webContents.off('did-attach-webview', didAttachWebview)
+      for (const cleanupGuest of guestCleanups) cleanupGuest()
+      guestCleanups.clear()
       mountedTray.off('click', show)
       if (fallbackShowTimer !== undefined) clearTimeout(fallbackShowTimer)
       mountedTray.destroy()

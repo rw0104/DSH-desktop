@@ -207,6 +207,8 @@ describe('published package surface', () => {
     expect(manifest.scripts?.build).toContain('node scripts/generate-mac-app-icon.mjs')
     expect(manifest.scripts?.['package:dir']).toBe('yarn run build && node scripts/package-dir.mjs')
     expect(packageDir).toContain("CSC_IDENTITY_AUTO_DISCOVERY: 'false'")
+    expect(packageDir).toContain('config.electronDist')
+    expect(packageDir).toContain("require.resolve('electron/package.json')")
     expect(packageDir).toContain("'--config.npmRebuild=false'")
     expect(packageDir).toContain("'--publish'")
     expect(packageDir).toContain("'never'")

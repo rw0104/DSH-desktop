@@ -29,6 +29,7 @@ import FileSettingsProvider, {
 import { parseDocument } from 'yaml'
 import { unpackedAsarPath } from './packaged-runtime-path.ts'
 import type { DesktopShellMode } from './runtime.ts'
+import type { DesktopSidebarTerminalConfig } from './sidebar-terminal-shell.ts'
 
 /** Persistent profile managed by the desktop launcher and the ordinary dsh plugin command. */
 export const DESKTOP_PROFILE_NAME = 'desktop'
@@ -149,6 +150,7 @@ export interface PreparedDesktopProfile {
 /** Product-owned runtime choices applied after user profile patches. */
 export interface DesktopProfileOptions {
   visionEnabled?: boolean
+  sidebarTerminal?: DesktopSidebarTerminalConfig
 }
 
 /**
@@ -278,6 +280,22 @@ export function prepareDesktopProfile(
   const rows = new Map<string, EntryOptions>()
   for (const row of composeEntries([patches])) {
     if (typeof row.id === 'string') rows.set(row.id, row)
+  }
+  const betterSidebar = rows.get('better-sidebar')
+  const sidebarConfig = rowConfig(betterSidebar)
+  const configuredSidebarShell = typeof sidebarConfig.shell === 'string'
+    ? sidebarConfig.shell.trim()
+    : ''
+  if (betterSidebar?.name === 'dsh-better-sidebar'
+    && configuredSidebarShell === ''
+    && options.sidebarTerminal !== undefined) {
+    patches.push({
+      id: 'better-sidebar',
+      config: {
+        ...sidebarConfig,
+        ...options.sidebarTerminal,
+      },
+    })
   }
   const settings = rows.get('settings')
   if (settings?.name !== SETTINGS_FILE_PACKAGE) {

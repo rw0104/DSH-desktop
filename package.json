@@ -1,6 +1,6 @@
 {
   "name": "deepseek-harness-desktop",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "description": "Independent DSH Desktop workbench with Vision Toolkit and Better Sidebar",
   "license": "MIT",
@@ -46,7 +46,7 @@
     "build": "yarn workspace dsh-plugin-desktop build",
     "typecheck": "yarn workspace dsh-plugin-desktop typecheck",
     "test": "yarn workspace dsh-plugin-desktop test",
-    "check:layout": "node scripts/verify-layout.mjs",
+    "check:layout": "node scripts/verify-layout.mjs && node --test scripts/terminal-paint-pixels.spec.mjs",
     "check": "yarn check:layout && yarn workspace dsh-plugin-desktop check",
     "dev": "yarn workspace dsh-plugin-desktop dev",
     "start": "yarn workspace dsh-plugin-desktop start",

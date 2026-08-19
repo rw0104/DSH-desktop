@@ -1,5 +1,11 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname } from 'node:path'
+import {
+  countForegroundPixels,
+  parseCssRgb,
+  terminalTextIsPainted,
+} from './terminal-paint-pixels.mjs'
 
 const output = process.argv[2]
 if (output === undefined) throw new Error('screenshot output path is required')
@@ -9,8 +15,10 @@ const toggleDetails = process.argv.includes('--toggle-details')
 const openDirectoryPicker = process.argv.includes('--open-directory-picker')
 const openCurrentDirectory = process.argv.includes('--open-current-directory')
 const openBetterSidebar = process.argv.includes('--open-better-sidebar')
+const openBottomPanel = process.argv.includes('--open-bottom-panel')
 const openBetterBrowser = process.argv.includes('--open-better-browser')
 const unlockBetterBrowser = process.argv.includes('--unlock-better-browser')
+const assertTerminalPainted = process.argv.includes('--assert-terminal-painted')
 const browserUrl = process.argv.find(value => value.startsWith('--browser-url='))?.slice('--browser-url='.length)
 const selectedDrive = process.argv.find(value => value.startsWith('--select-drive='))?.slice('--select-drive='.length)
 
@@ -130,6 +138,13 @@ if (openBetterSidebar || openBetterBrowser) {
   await clickVisibleButton(['展开侧边栏', 'Expand sidebar'])
   await new Promise(resolve => setTimeout(resolve, 750))
 }
+if (openBottomPanel) {
+  await command('Runtime.evaluate', {
+    expression: `([...document.querySelectorAll('button')]
+      .find(node => ['展开底部面板', 'Expand bottom panel'].includes(node.getAttribute('aria-label') ?? '')))?.click()`,
+  })
+  await new Promise(resolve => setTimeout(resolve, 2500))
+}
 if (openBetterBrowser) {
   await clickVisibleButton(['新建标签页', 'New tab'])
   await new Promise(resolve => setTimeout(resolve, 400))
@@ -208,6 +223,9 @@ const inspection = await command('Runtime.evaluate', {
     browserFrames: [...document.querySelectorAll('iframe')]
       .filter(node => node.className.includes('browserFrame'))
       .map(node => ({ src: node.src, sandbox: node.getAttribute('sandbox'), title: node.title })),
+    browserWebviews: [...document.querySelectorAll('webview')]
+      .filter(node => node.className.includes('browserFrame'))
+      .map(node => ({ src: node.getAttribute('src'), partition: node.getAttribute('partition'), title: node.getAttribute('title') })),
     browserMessages: [...document.querySelectorAll('[class*="browserMessage"], [class*="browserBlocked"]')]
       .map(node => (node.textContent ?? '').trim())
       .filter(Boolean),
@@ -221,6 +239,59 @@ const inspection = await command('Runtime.evaluate', {
     })),
   })`,
   returnByValue: true,
+})
+const terminalInspectionExpression = `JSON.stringify((() => {
+    const panel = [...document.querySelectorAll('[class*="bottomPanel"]')]
+      .find(node => node.getBoundingClientRect().height > 0)
+    const xterm = document.querySelector('[class*="bottomPanel"] .xterm')
+    if (!(xterm instanceof HTMLElement)) return {
+      ready: false,
+      panelText: (panel?.textContent ?? '').trim().slice(0, 500),
+      tabs: panel === undefined ? [] : [...panel.querySelectorAll('[class*="tabTitle"]')].map(node => (node.textContent ?? '').trim()),
+      banners: panel === undefined ? [] : [...panel.querySelectorAll('[class*="terminalBanner"]')].map(node => (node.textContent ?? '').trim()),
+      xtermCount: panel?.querySelectorAll('.xterm').length ?? 0,
+    }
+    const row = [...xterm.querySelectorAll('.xterm-rows > div')]
+      .find(node => (node.textContent ?? '').trim() !== '')
+    const span = row?.querySelector('span')
+    if (!(row instanceof HTMLElement) || !(span instanceof HTMLElement)) return { ready: false, panelText: 'xterm has no non-empty row', tabs: [], banners: [], xtermCount: 1 }
+    const rowRect = row.getBoundingClientRect()
+    const spanRect = span.getBoundingClientRect()
+    const rowStyle = getComputedStyle(row)
+    const viewport = xterm.querySelector('.xterm-viewport')
+    return {
+      ready: true,
+      text: row.textContent ?? '',
+      rowRect: { left: rowRect.left, top: rowRect.top, width: rowRect.width, height: rowRect.height },
+      textRect: { left: spanRect.left, top: spanRect.top, width: spanRect.width, height: spanRect.height },
+      foreground: rowStyle.color,
+      background: viewport instanceof HTMLElement ? getComputedStyle(viewport).backgroundColor : 'rgb(255, 255, 255)',
+      viewport: { width: innerWidth, height: innerHeight, devicePixelRatio },
+    }
+  })())`
+let terminalInspection = await command('Runtime.evaluate', {
+  expression: terminalInspectionExpression,
+  returnByValue: true,
+})
+if (assertTerminalPainted) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const value = JSON.parse(terminalInspection.result?.result?.value ?? 'null')
+    if (value?.ready === true) break
+    await new Promise(resolve => setTimeout(resolve, 500))
+    terminalInspection = await command('Runtime.evaluate', {
+      expression: terminalInspectionExpression,
+      returnByValue: true,
+    })
+  }
+}
+const terminalDepsInspection = await command('Runtime.evaluate', {
+  expression: `fetch('/sidebar/api/terminal.deps', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: '{}',
+  }).then(response => response.json()).then(JSON.stringify).catch(error => JSON.stringify({ fetchError: String(error) }))`,
+  returnByValue: true,
+  awaitPromise: true,
 })
 const frameTree = await command('Page.getFrameTree')
 const flattenFrames = (node, depth = 0) => [
@@ -255,6 +326,37 @@ if (inspection.result?.result?.value === undefined || screenshot.result?.data ==
 mkdirSync(dirname(output), { recursive: true })
 writeFileSync(output, Buffer.from(screenshot.result.data, 'base64'))
 const inspectionValue = JSON.parse(inspection.result.result.value)
+inspectionValue.terminal = JSON.parse(terminalInspection.result?.result?.value ?? 'null')
+inspectionValue.terminalDeps = JSON.parse(terminalDepsInspection.result?.result?.value ?? 'null')
+if (assertTerminalPainted) {
+  if (inspectionValue.terminal?.ready !== true) {
+    throw new Error(`terminal text row was not found: ${JSON.stringify(inspectionValue.terminal)}`)
+  }
+  const require = createRequire(new URL('../dsh-plugin-desktop/package.json', import.meta.url))
+  const sharp = require('sharp')
+  const screenshotBuffer = Buffer.from(screenshot.result.data, 'base64')
+  const metadata = await sharp(screenshotBuffer).metadata()
+  const scaleX = (metadata.width ?? 0) / inspectionValue.terminal.viewport.width
+  const scaleY = (metadata.height ?? 0) / inspectionValue.terminal.viewport.height
+  const rect = inspectionValue.terminal.textRect
+  const extract = {
+    left: Math.max(0, Math.floor(rect.left * scaleX)),
+    top: Math.max(0, Math.floor(rect.top * scaleY)),
+    width: Math.max(1, Math.ceil(rect.width * scaleX)),
+    height: Math.max(1, Math.ceil(rect.height * scaleY)),
+  }
+  const raw = await sharp(screenshotBuffer).extract(extract).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  const foregroundPixels = countForegroundPixels(
+    raw.data,
+    raw.info.channels,
+    parseCssRgb(inspectionValue.terminal.foreground),
+    parseCssRgb(inspectionValue.terminal.background),
+  )
+  inspectionValue.terminal.paint = { ...extract, foregroundPixels }
+  if (!terminalTextIsPainted(foregroundPixels, extract.width, extract.height)) {
+    throw new Error(`terminal text is present in DOM but not painted (${foregroundPixels} foreground pixels)`)
+  }
+}
 inspectionValue.cdpEvents = eventSummary
 inspectionValue.frameTree = frameTree.result?.frameTree === undefined
   ? []

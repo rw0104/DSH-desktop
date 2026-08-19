@@ -250,6 +250,7 @@ describe('Electron compatibility runtime', () => {
         nodeIntegration: false,
         sandbox: true,
         webSecurity: true,
+        webviewTag: true,
       },
     }))
     expect(options).not.toHaveProperty('autoHideMenuBar')
@@ -350,6 +351,65 @@ describe('Electron compatibility runtime', () => {
 
     await release()
     expect(webContents?.off).toHaveBeenCalledWith('will-frame-navigate', navigate)
+  })
+
+  it('isolates embedded browser guests and keeps their web links in-app', async () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
+    const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
+    const runtime = new ElectronDesktopRuntime(async () => {})
+    const release = runtime.schedule(spec)
+    await runtime.mountScheduled()
+
+    const parent = electron.browserWindows[0]!.webContents
+    const willAttach = parent.on.mock.calls.find(([event]) => event === 'will-attach-webview')?.[1]
+    const didAttach = parent.on.mock.calls.find(([event]) => event === 'did-attach-webview')?.[1]
+    expect(willAttach).toEqual(expect.any(Function))
+    expect(didAttach).toEqual(expect.any(Function))
+
+    const preferences: Record<string, unknown> = {
+      preload: 'C:/unsafe.js',
+      nodeIntegration: true,
+      contextIsolation: false,
+    }
+    const attachEvent = { preventDefault: vi.fn() }
+    willAttach(attachEvent, preferences, { src: 'https://example.com/' })
+    expect(attachEvent.preventDefault).not.toHaveBeenCalled()
+    expect(preferences).toEqual(expect.objectContaining({
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
+    }))
+    expect(preferences).not.toHaveProperty('preload')
+
+    const blockedAttach = { preventDefault: vi.fn() }
+    willAttach(blockedAttach, {}, { src: 'http://127.0.0.1:43120/' })
+    expect(blockedAttach.preventDefault).toHaveBeenCalledOnce()
+
+    const guest = {
+      on: vi.fn(),
+      off: vi.fn(),
+      isDestroyed: vi.fn(() => false),
+      loadURL: vi.fn(async () => {}),
+      setWindowOpenHandler: vi.fn(),
+    }
+    didAttach({}, guest)
+    const open = guest.setWindowOpenHandler.mock.calls[0]?.[0]
+    expect(open({ url: 'https://example.com/inside' })).toEqual({ action: 'deny' })
+    expect(guest.loadURL).toHaveBeenCalledWith('https://example.com/inside')
+    expect(electron.shell.openExternal).not.toHaveBeenCalled()
+
+    expect(open({ url: 'mailto:test@example.com' })).toEqual({ action: 'deny' })
+    expect(electron.shell.openExternal).toHaveBeenCalledWith('mailto:test@example.com')
+
+    const navigate = guest.on.mock.calls.find(([event]) => event === 'will-navigate')?.[1]
+    const blockedNavigation = { preventDefault: vi.fn() }
+    navigate(blockedNavigation, 'http://localhost/private')
+    expect(blockedNavigation.preventDefault).toHaveBeenCalledOnce()
+
+    await release()
+    expect(parent.off).toHaveBeenCalledWith('will-attach-webview', willAttach)
+    expect(parent.off).toHaveBeenCalledWith('did-attach-webview', didAttach)
   })
 
   it('does not mount a registration disposed before Host boot settles', async () => {

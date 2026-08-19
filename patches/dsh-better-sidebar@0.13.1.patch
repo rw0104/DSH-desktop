@@ -1,0 +1,298 @@
+diff --git a/lib/client.js b/lib/client.js
+index e4a3f15cc746e2913bd28fc3e339e6a90a202729..1c26541b2ee895f92069ab61fa1549f65b076550 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -6134,6 +6134,8 @@ window.__ModuleLoader__.load({
+ 		const BROWSER_IFRAME_SANDBOX = "allow-scripts allow-forms allow-popups allow-downloads allow-modals allow-popups-to-escape-sandbox";
+ 		function BrowserView(props) {
+ 			const { store, tab } = props;
++			const webviewRef = (0, react.useRef)(null);
++			const desktopWebview = new URLSearchParams(window.location.search).has("dsh-desktop-mode");
+ 			const [url, setUrl] = (0, react.useState)(tab.path);
+ 			const [input, setInput] = (0, react.useState)(tab.path ?? "");
+ 			/** Blocked/invalid hint shown under the address bar (null = none). */
+@@ -6141,6 +6143,8 @@ window.__ModuleLoader__.load({
+ 			/** Address-bar navigation history (in-frame clicks are not tracked). */
+ 			const [history, setHistory] = (0, react.useState)(tab.path !== void 0 ? [tab.path] : []);
+ 			const [cursor, setCursor] = (0, react.useState)(tab.path !== void 0 ? 0 : -1);
++			const [webviewCanGoBack, setWebviewCanGoBack] = (0, react.useState)(false);
++			const [webviewCanGoForward, setWebviewCanGoForward] = (0, react.useState)(false);
+ 			/** Bumped on reload to remount the iframe (also remounts on sandbox flip). */
+ 			const [reloadKey, setReloadKey] = (0, react.useState)(0);
+ 			/** TEMPORARY sandbox unlock for THIS surface only (never writes the global
+@@ -6153,7 +6157,7 @@ window.__ModuleLoader__.load({
+ 			/** The user asked to load the refused site anyway (keeps the plain iframe). */
+ 			const [forceEmbed, setForceEmbed] = (0, react.useState)(false);
+ 			(0, react.useEffect)(() => {
+-				if (url === void 0) return;
++				if (url === void 0 || desktopWebview) return;
+ 				let cancelled = false;
+ 				setEmbedBlocked(null);
+ 				setForceEmbed(false);
+@@ -6163,7 +6167,34 @@ window.__ModuleLoader__.load({
+ 				return () => {
+ 					cancelled = true;
+ 				};
+-			}, [url]);
++			}, [desktopWebview, url]);
++			(0, react.useEffect)(() => {
++				if (!desktopWebview) return;
++				const view = webviewRef.current;
++				if (view === null) return;
++				const syncNavigation = (event) => {
++					const nextUrl = event.url || view.getURL();
++					const result = normalizeBrowserUrl(nextUrl, window.location.origin);
++					if (result.kind !== "ok") return;
++					setUrl(result.url);
++					setInput(result.url);
++					setWebviewCanGoBack(view.canGoBack());
++					setWebviewCanGoForward(view.canGoForward());
++					let host = result.url;
++					try {
++						host = new URL(result.url).hostname;
++					} catch {}
++					store.reduce((state) => patchTab(state, tab.id, { path: result.url, title: host }));
++				};
++				view.addEventListener("did-navigate", syncNavigation);
++				view.addEventListener("did-navigate-in-page", syncNavigation);
++				view.addEventListener("dom-ready", syncNavigation);
++				return () => {
++					view.removeEventListener("did-navigate", syncNavigation);
++					view.removeEventListener("did-navigate-in-page", syncNavigation);
++					view.removeEventListener("dom-ready", syncNavigation);
++				};
++			}, [desktopWebview, store, tab.id, url]);
+ 			const persist = (nextUrl) => {
+ 				let host = nextUrl;
+ 				try {
+@@ -6216,8 +6247,10 @@ window.__ModuleLoader__.load({
+ 								className: sidebar_module_css_default.iconButton,
+ 								"aria-label": t("browserBack"),
+ 								title: t("browserBack"),
+-								disabled: cursor <= 0,
+-								onClick: goBack,
++								disabled: desktopWebview ? !webviewCanGoBack : cursor <= 0,
++								onClick: desktopWebview ? () => {
++									webviewRef.current?.goBack();
++								} : goBack,
+ 								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronLeftOutline14, {})
+ 							}),
+ 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+@@ -6225,8 +6258,10 @@ window.__ModuleLoader__.load({
+ 								className: sidebar_module_css_default.iconButton,
+ 								"aria-label": t("browserForward"),
+ 								title: t("browserForward"),
+-								disabled: cursor >= history.length - 1,
+-								onClick: goForward,
++								disabled: desktopWebview ? !webviewCanGoForward : cursor >= history.length - 1,
++								onClick: desktopWebview ? () => {
++									webviewRef.current?.goForward();
++								} : goForward,
+ 								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronRightOutline14, {})
+ 							}),
+ 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+@@ -6235,7 +6270,8 @@ window.__ModuleLoader__.load({
+ 								"aria-label": t("refresh"),
+ 								title: t("refresh"),
+ 								onClick: () => {
+-									setReloadKey((key) => key + 1);
++									if (desktopWebview) webviewRef.current?.reload();
++									else setReloadKey((key) => key + 1);
+ 								},
+ 								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutline14, {})
+ 							}),
+@@ -6278,7 +6314,7 @@ window.__ModuleLoader__.load({
+ 						className: sidebar_module_css_default.browserMessage,
+ 						children: message
+ 					}),
+-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SandboxStatusBar, {
++					!desktopWebview && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SandboxStatusBar, {
+ 						sandboxed: !noSandbox,
+ 						local: localUnlock,
+ 						dangerCopy: t("browserNoSandboxWarning"),
+@@ -6292,6 +6328,13 @@ window.__ModuleLoader__.load({
+ 					url === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+ 						className: sidebar_module_css_default.browserStart,
+ 						children: t("browserStart")
++					}) : desktopWebview ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("webview", {
++						ref: webviewRef,
++						className: sidebar_module_css_default.browserFrame,
++						src: url,
++						partition: "persist:dsh-sidebar-browser",
++						allowpopups: true,
++						webpreferences: "contextIsolation=yes,sandbox=yes,nodeIntegration=no"
+ 					}) : embedBlocked !== null && !forceEmbed ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BrowserEmbedBlocked, {
+ 						url: embedBlocked,
+ 						onOpenInBrowser: () => {
+diff --git a/src/client/BrowserView.tsx b/src/client/BrowserView.tsx
+index 5fb832f582d3cac53fbacf029adab4f701df3c91..7533f1a91987d69c784add9cce5a77a17c6ada40 100644
+--- a/src/client/BrowserView.tsx
++++ b/src/client/BrowserView.tsx
+@@ -16,7 +16,7 @@
+  * address-bar navigations (in-frame link clicks are cross-origin and
+  * invisible — a documented limitation).
+  */
+-import { useEffect, useState } from 'react'
++import { useEffect, useRef, useState, type HTMLAttributes } from 'react'
+ import {
+   IconChevronLeftOutline14,
+   IconChevronRightOutline14,
+@@ -43,8 +43,37 @@ import css from './sidebar.module.css'
+ export const BROWSER_IFRAME_SANDBOX =
+   'allow-scripts allow-forms allow-popups allow-downloads allow-modals allow-popups-to-escape-sandbox'
+ 
++interface DesktopWebviewElement extends HTMLElement {
++  src: string
++  canGoBack(): boolean
++  canGoForward(): boolean
++  getURL(): string
++  goBack(): void
++  goForward(): void
++  reload(): void
++}
++
++interface DesktopWebviewNavigateEvent extends Event {
++  url: string
++}
++
++declare module 'react' {
++  namespace JSX {
++    interface IntrinsicElements {
++      webview: HTMLAttributes<DesktopWebviewElement> & {
++        src?: string
++        partition?: string
++        allowpopups?: boolean
++        webpreferences?: string
++      }
++    }
++  }
++}
++
+ export function BrowserView(props: TabComponentProps) {
+   const { store, tab } = props
++  const webviewRef = useRef<DesktopWebviewElement>(null)
++  const desktopWebview = new URLSearchParams(window.location.search).has('dsh-desktop-mode')
+   // The current address (initialized from the persisted tab.path so a
+   // reload restores the visited page).
+   const [url, setUrl] = useState<string | undefined>(tab.path)
+@@ -54,6 +83,8 @@ export function BrowserView(props: TabComponentProps) {
+   /** Address-bar navigation history (in-frame clicks are not tracked). */
+   const [history, setHistory] = useState<string[]>(tab.path !== undefined ? [tab.path] : [])
+   const [cursor, setCursor] = useState<number>(tab.path !== undefined ? 0 : -1)
++  const [webviewCanGoBack, setWebviewCanGoBack] = useState(false)
++  const [webviewCanGoForward, setWebviewCanGoForward] = useState(false)
+   /** Bumped on reload to remount the iframe (also remounts on sandbox flip). */
+   const [reloadKey, setReloadKey] = useState(0)
+   /** TEMPORARY sandbox unlock for THIS surface only (never writes the global
+@@ -71,7 +102,7 @@ export function BrowserView(props: TabComponentProps) {
+   // the browser's cryptic "refused to connect" blank frame. A failed probe
+   // (unreachable) keeps the plain iframe.
+   useEffect(() => {
+-    if (url === undefined) return
++    if (url === undefined || desktopWebview) return
+     let cancelled = false
+     setEmbedBlocked(null)
+     setForceEmbed(false)
+@@ -79,7 +110,33 @@ export function BrowserView(props: TabComponentProps) {
+       if (!cancelled && embeddabilityOf(probe) === 'blocked') setEmbedBlocked(url)
+     }).catch(() => { /* unreachable: keep the plain iframe */ })
+     return () => { cancelled = true }
+-  }, [url])
++  }, [desktopWebview, url])
++
++  useEffect(() => {
++    if (!desktopWebview) return
++    const view = webviewRef.current
++    if (view === null) return
++    const syncNavigation = (event: Event): void => {
++      const nextUrl = (event as DesktopWebviewNavigateEvent).url || view.getURL()
++      const result = normalizeBrowserUrl(nextUrl, window.location.origin)
++      if (result.kind !== 'ok') return
++      setUrl(result.url)
++      setInput(result.url)
++      setWebviewCanGoBack(view.canGoBack())
++      setWebviewCanGoForward(view.canGoForward())
++      let host = result.url
++      try { host = new URL(result.url).hostname } catch { /* keep URL */ }
++      store.reduce(state => patchTab(state, tab.id, { path: result.url, title: host }))
++    }
++    view.addEventListener('did-navigate', syncNavigation)
++    view.addEventListener('did-navigate-in-page', syncNavigation)
++    view.addEventListener('dom-ready', syncNavigation)
++    return () => {
++      view.removeEventListener('did-navigate', syncNavigation)
++      view.removeEventListener('did-navigate-in-page', syncNavigation)
++      view.removeEventListener('dom-ready', syncNavigation)
++    }
++  }, [desktopWebview, store, tab.id, url])
+ 
+   const persist = (nextUrl: string): void => {
+     let host = nextUrl
+@@ -133,8 +190,8 @@ export function BrowserView(props: TabComponentProps) {
+           className={css.iconButton}
+           aria-label={t('browserBack')}
+           title={t('browserBack')}
+-          disabled={cursor <= 0}
+-          onClick={goBack}
++          disabled={desktopWebview ? !webviewCanGoBack : cursor <= 0}
++          onClick={desktopWebview ? () => { webviewRef.current?.goBack() } : goBack}
+         >
+           <IconChevronLeftOutline14 />
+         </button>
+@@ -143,8 +200,8 @@ export function BrowserView(props: TabComponentProps) {
+           className={css.iconButton}
+           aria-label={t('browserForward')}
+           title={t('browserForward')}
+-          disabled={cursor >= history.length - 1}
+-          onClick={goForward}
++          disabled={desktopWebview ? !webviewCanGoForward : cursor >= history.length - 1}
++          onClick={desktopWebview ? () => { webviewRef.current?.goForward() } : goForward}
+         >
+           <IconChevronRightOutline14 />
+         </button>
+@@ -153,7 +210,10 @@ export function BrowserView(props: TabComponentProps) {
+           className={css.iconButton}
+           aria-label={t('refresh')}
+           title={t('refresh')}
+-          onClick={() => { setReloadKey(key => key + 1) }}
++          onClick={() => {
++            if (desktopWebview) webviewRef.current?.reload()
++            else setReloadKey(key => key + 1)
++          }}
+         >
+           <IconRefreshOutline14 />
+         </button>
+@@ -190,15 +250,26 @@ export function BrowserView(props: TabComponentProps) {
+         </button>
+       </div>
+       {message !== null && <div className={css.browserMessage}>{message}</div>}
+-      <SandboxStatusBar
+-        sandboxed={!noSandbox}
+-        local={localUnlock}
+-        dangerCopy={t('browserNoSandboxWarning')}
+-        onUnlock={() => { setLocalUnlock(true) }}
+-        onRestore={() => { setLocalUnlock(false) }}
+-      />
++      {!desktopWebview && (
++        <SandboxStatusBar
++          sandboxed={!noSandbox}
++          local={localUnlock}
++          dangerCopy={t('browserNoSandboxWarning')}
++          onUnlock={() => { setLocalUnlock(true) }}
++          onRestore={() => { setLocalUnlock(false) }}
++        />
++      )}
+       {url === undefined ? (
+         <div className={css.browserStart}>{t('browserStart')}</div>
++      ) : desktopWebview ? (
++        <webview
++          ref={webviewRef}
++          className={css.browserFrame}
++          src={url}
++          partition="persist:dsh-sidebar-browser"
++          allowpopups
++          webpreferences="contextIsolation=yes,sandbox=yes,nodeIntegration=no"
++        />
+       ) : embedBlocked !== null && !forceEmbed ? (
+         <BrowserEmbedBlocked
+           url={embedBlocked}

@@ -45,6 +45,7 @@ describe('compatibility BrowserWindow options', () => {
         nodeIntegration: false,
         sandbox: true,
         webSecurity: true,
+        webviewTag: true,
       },
     }))
     for (const option of [

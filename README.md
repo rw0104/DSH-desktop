@@ -8,9 +8,15 @@
 
 当前 Windows x64 安装包：
 
-[下载 DSH Desktop v1.0.2](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.2) · [直接下载 Windows 安装器](https://github.com/rw0104/DSH-desktop/releases/download/v1.0.2/DSH-Desktop-1.0.2-x64-Setup.exe)
+[下载 DSH Desktop v1.0.4](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.4) · [直接下载 Windows 安装器](https://github.com/rw0104/DSH-desktop/releases/download/v1.0.4/DSH-Desktop-1.0.4-x64-Setup.exe)
 
 安装包支持当前用户安装、选择安装目录、开始菜单和桌面快捷方式。当前安装包未进行 Authenticode 签名，Windows 可能显示 SmartScreen 或 Unknown Publisher 提示。
+
+## 交流群
+
+DSH Desktop 交流 QQ 群：**1106941154**。
+
+![DSH Desktop 交流群二维码](assets/dsh-desktop-qq-group.png)
 
 ## 产品能力
 
@@ -29,7 +35,7 @@ DSH Desktop 使用官方 [DeepSeek Harness](https://github.com/deepseek-ai/deeps
 
 - Electron 原生桌面壳、托盘、窗口生命周期和安装更新交接；
 - Windows Mica/macOS vibrancy 的 Advanced Shell，以及官方左侧栏和 Better Sidebar 右侧工作区的布局组合；
-- Vision Toolkit `0.1.24` 与 Better Sidebar `0.12.3` 的固定产品组合；
+- Vision Toolkit `0.1.24` 与 Better Sidebar `0.13.1` 的固定产品组合；
 - Vision 隐私同意、Python/Chrome 运行时健康检查和失败时的可见反馈；
 - Profile 管理、受管终端、Windows 目录选择增强和发布体积/内存门禁；
 - Windows x64 NSIS 安装包和 GitHub Release 发布流程。
@@ -38,7 +44,7 @@ DSH Desktop 使用官方 [DeepSeek Harness](https://github.com/deepseek-ai/deeps
 
 ## 安装与首次启动
 
-1. 从 [v1.0.2 Release](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.2) 下载 Windows x64 安装器。
+1. 从 [v1.0.4 Release](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.4) 下载 Windows x64 安装器。
 2. 选择安装目录并完成安装。
 3. 启动 DSH Desktop。首次启动会显示 Vision Toolkit 隐私提示；中文 Windows 会显示中文提示。
 4. 在 DSH Settings 中配置模型、凭据和视觉服务。Python 是 Vision 本地工具的前置条件；Chrome、Chromium 或 Edge 只在使用 HTML 截图时需要。

@@ -167,10 +167,54 @@ describe('desktop profile composition', () => {
       id: 'vision-toolkit',
       name: '@anionex/dsh-vision-toolkit',
     })
-    expect(rows).toContainEqual({
+    expect(rows).toContainEqual(expect.objectContaining({
       id: 'better-sidebar',
       name: 'dsh-better-sidebar',
+    }))
+  })
+
+  it('injects the resolved Windows shell into Better Sidebar', () => {
+    const home = temporaryHome()
+    const prepared = prepareDesktopProfile(undefined, home, 'win32', 'desktop', {
+      sidebarTerminal: {
+        shell: 'C:\\Windows\\System32\\cmd.exe',
+        shellArgs: ['/D'],
+      },
     })
+    const rows = composeEntries([prepared.patches])
+
+    expect(rows.find(row => row.id === 'better-sidebar')).toEqual(expect.objectContaining({
+      name: 'dsh-better-sidebar',
+      config: expect.objectContaining({
+        shell: 'C:\\Windows\\System32\\cmd.exe',
+        shellArgs: ['/D'],
+      }),
+    }))
+  })
+
+  it('preserves an explicitly configured Better Sidebar shell', () => {
+    const home = temporaryHome()
+    const profileDir = ensureDesktopProfile(home)
+    writeFileSync(join(profileDir, 'cordis.patch.yml'), [
+      '- id: better-sidebar',
+      '  config:',
+      "    shell: 'D:/Custom/pwsh.exe'",
+      '    shellArgs:',
+      "      - '-NoLogo'",
+      '',
+    ].join('\n'))
+    const prepared = prepareDesktopProfile(undefined, home, 'win32', 'desktop', {
+      sidebarTerminal: {
+        shell: 'C:\\Windows\\System32\\cmd.exe',
+        shellArgs: ['/D'],
+      },
+    })
+    const row = composeEntries([prepared.patches]).find(candidate => candidate.id === 'better-sidebar')
+
+    expect(row?.config).toEqual(expect.objectContaining({
+      shell: 'D:/Custom/pwsh.exe',
+      shellArgs: ['-NoLogo'],
+    }))
   })
 
   it('boots a selected Web profile without overriding its compatibility UI rows', () => {
