@@ -28,6 +28,7 @@ import {
 } from './directory-picker-route.ts'
 import type { DesktopShellMode } from './runtime.ts'
 import type {} from './runtime.ts'
+import { installWorkspaceWorkbench } from './workspace-workbench.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'desktop-shell'
@@ -125,6 +126,7 @@ export function apply(ctx: Context, config: Config): void {
   if (ctx.webServer.host !== '127.0.0.1') {
     throw new Error('dsh-plugin-desktop: desktop shell requires a loopback Web server')
   }
+  installWorkspaceWorkbench(ctx)
   const iconFilename = runtime.platform === 'darwin'
     ? 'app-icon-mac.png'
     : 'app-icon.png'

@@ -395,6 +395,16 @@ describe('desktop Host plugin', () => {
     expect(() => apply(harness.ctx, config)).toThrow('requires a loopback Web server')
   })
 
+  it('installs the Workspace Workbench service in the Host generation', () => {
+    const harness = createHarness()
+    apply(harness.ctx, config)
+    const workbench = harness.ctx.workspaceWorkbench
+    expect(workbench).toBeDefined()
+    const binding = workbench?.bindSession({ sessionId: 'session-1', profileName: 'desktop', cwd: 'C:\\repo' })
+    expect(binding?.sessionId).toBe('session-1')
+    expect(workbench?.snapshot().bindings).toHaveLength(1)
+  })
+
   it('refuses advanced settings on Linux before persistence', () => {
     const harness = createHarness('linux')
     apply(harness.ctx, config)
