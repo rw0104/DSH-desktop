@@ -1,6 +1,6 @@
 # Agent Note：Workspace Workbench 下一阶段架构
 
-Status: active; W0、W1、W2 已完成；下一阶段为 W3
+Status: active; W0、W1、W2、W3.1 已完成；下一步为 W3.2
 
 [English](2026-08-19-workspace-workbench-next-stage.md) | 中文
 
@@ -44,13 +44,13 @@ Client Workbench 提供 Changes、Files、Terminal、Artifacts、Tasks 和 Conte
 | W0 | SessionWorkspaceBinding、ActivityLedger schema、deep-link vocabulary | real composition 能从一个 Turn 投影文件、终端和任务事件 |
 | W1 | Changes/Review：Unstaged、Staged、Last turn、hunk 操作、行级评论 | 评论可作为结构化上下文回送当前 Session，Git 状态一致 |
 | W2 | Unified Terminal 与 Actions | 已完成：用户和 Agent 看到同一 PTY，Session/worktree 间不串线 |
-| W3 | managed worktree、setup scripts、handoff | 两个 Session 可在独立 worktree 并行并安全交接 |
+| W3 | W3.1 只读 worktree inspect 已完成；managed worktree、setup scripts、handoff 待实现 | 两个 Session 可在独立 worktree 并行并安全交接 |
 | W4 | Artifact Registry、自动预览、annotation | 标注可精确回送且持久化可重放 |
 | W5 | plan/jobs/subagents/approvals 时间线与 PR context | 一个 Turn 的执行、变更、验证和 review 形成闭环 |
 
 首批实现为 W0 + W1。W2 已完成且保留现有 Files/viewer registry；Better Sidebar 在迁移期作为兼容层，每迁移一个 domain 才禁用对应 builtin，禁止一次性重写。
 
-当前进度：W0 的 `WorkspaceWorkbenchService`、Session binding、Activity Ledger、deep link vocabulary 和 `WorkspaceChangesService` 已进入 `dsh-plugin-desktop`，并由 Host generation 生命周期管理。W1 已完成：Host Changes route、桌面自有 Changes tab、Unstaged/Staged/Last turn scope、内容敏感 hunk stage/unstage/revert、行级评论、结构化 Session context 和 packaged Electron smoke。W2 已完成：`WorkspaceTerminalRegistry` 记录 UI/Agent 生命周期，Better Sidebar 两个 terminal face 复用同一个 `PtyManager`，PTY 退出会关闭 socket 以便恢复，Host 暴露 Session-scoped terminal projection route。下一阶段进入 W3 Worktree/Environment。
+当前进度：W0 的 `WorkspaceWorkbenchService`、Session binding、Activity Ledger、deep link vocabulary 和 `WorkspaceChangesService` 已进入 `dsh-plugin-desktop`，并由 Host generation 生命周期管理。W1 已完成：Host Changes route、桌面自有 Changes tab、Unstaged/Staged/Last turn scope、内容敏感 hunk stage/unstage/revert、行级评论、结构化 Session context 和 packaged Electron smoke。W2 已完成：`WorkspaceTerminalRegistry` 记录 UI/Agent 生命周期，Better Sidebar 两个 terminal face 复用同一个 `PtyManager`，PTY 退出会关闭 socket 以便恢复，Host 暴露 Session-scoped terminal projection route。W3.1 已完成：`WorkspaceWorktreeService.inspect()` 和只读 Session worktree route 使用 structured argv 解析 repository/common Git dir、checkout、branch、detached 状态及 porcelain worktree entries。下一步进入 W3.2 managed create/remove。
 
 ## 约束
 

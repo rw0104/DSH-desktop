@@ -9,6 +9,7 @@ import { parseWorkspaceDiff } from '../src/workspace-changes.ts'
 import { WorkspaceChangesError, WorkspaceChangesService } from '../src/workspace-changes-service.ts'
 import { createWorkspaceReviewMessage, WorkspaceReviewError, WorkspaceReviewService } from '../src/workspace-review-service.ts'
 import { WorkspaceTerminalRegistry } from '../src/workspace-terminal.ts'
+import { WorkspaceWorktreeService } from '../src/workspace-worktree.ts'
 import { installWorkspaceWorkbench, WorkspaceWorkbenchService } from '../src/workspace-workbench.ts'
 
 const execFileAsync = promisify(execFile)
@@ -55,6 +56,25 @@ describe('Workspace Workbench service', () => {
     const terminal = service.forSession('s1')[0]
     expect(terminal).toMatchObject({ id: 'terminal:ui:s1:tab-1', deepLink: { surface: 'terminal', terminalId: 'terminal:ui:s1:tab-1' }, status: 'running', transcriptBytes: 5 })
     expect(service.snapshot().events.map(event => event.kind)).toEqual(['created', 'attached', 'input', 'output'])
+  })
+
+  it('inspects the bound checkout and parses worktree ownership without shell interpolation', async () => {
+    const root = process.cwd()
+    const calls: string[][] = []
+    const service = new WorkspaceWorktreeService(async args => {
+      calls.push([...args])
+      const command = args.slice(2).join(' ')
+      if (command === 'rev-parse --show-toplevel') return `${root}\n`
+      if (command === 'rev-parse --git-common-dir') return '.git\n'
+      if (command === 'rev-parse --verify HEAD') return '0123456789abcdef\n'
+      if (command === 'branch --show-current') return 'main\n'
+      if (command === 'worktree list --porcelain') return `worktree ${root}\nHEAD 0123456789abcdef\nbranch refs/heads/main\n\n`
+      throw new Error(`unexpected git argv: ${args.join(' ')}`)
+    })
+    const checkout = await service.inspect({ sessionId: 's1', profileName: 'desktop', cwd: root, createdAt: '', updatedAt: '' })
+    expect(checkout).toMatchObject({ sessionId: 's1', repositoryRoot: root, checkoutPath: root, branch: 'main', detached: false, ownership: 'unmanaged' })
+    expect(checkout.worktrees).toEqual([{ path: root, head: '0123456789abcdef', branch: 'main', detached: false, bare: false }])
+    expect(calls.every(args => args[0] === '-C' && args[1] === root)).toBe(true)
   })
 
   it('binds and updates a Session workspace without losing creation identity', () => {
@@ -204,6 +224,34 @@ describe('Workspace Workbench service', () => {
     await handler(request('GET', '/dsh-desktop/api/workspace/terminals?sessionId=missing'), missing)
     expect(missing.statusCode).toBe(200)
     expect(missing.json()).toEqual({ sessionId: 'missing', terminals: [] })
+  })
+
+  it('serves a read-only Session worktree inspection route', async () => {
+    const routes = new Map<string, (req: any, res: any) => Promise<void>>()
+    const context = {
+      effect: (register: () => () => void) => register(),
+      provide: (name: string, value: unknown) => { (context as Record<string, unknown>)[name] = value; return () => { delete (context as Record<string, unknown>)[name] } },
+      webServer: {
+        host: '127.0.0.1',
+        port: 43120,
+        register: (route: { path: string; handler: (req: any, res: any) => Promise<void> }) => { routes.set(route.path, route.handler); return () => {} },
+      },
+      on: () => () => {},
+    } as any
+    installWorkspaceWorkbench(context)
+    context.workspaceWorkbench.bindSession({ sessionId: 's1', profileName: 'desktop', cwd: process.cwd() })
+    const handler = routes.get('/dsh-desktop/api/workspace/worktrees')
+    if (handler === undefined) throw new Error('worktree route was not installed')
+
+    const response = responseRecorder()
+    await handler(request('GET', '/dsh-desktop/api/workspace/worktrees?sessionId=s1&cwd=C%3A%5Cforged'), response)
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({ sessionId: 's1', checkoutPath: process.cwd(), ownership: 'unmanaged' })
+
+    const missing = responseRecorder()
+    await handler(request('GET', '/dsh-desktop/api/workspace/worktrees?sessionId=missing'), missing)
+    expect(missing.statusCode).toBe(404)
+    expect(missing.json()).toEqual({ error: 'session-not-found' })
   })
 
   it('validates a real hunk and injects a structured review comment into the current Agent', async () => {

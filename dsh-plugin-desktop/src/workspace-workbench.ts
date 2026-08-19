@@ -5,6 +5,8 @@ import { WorkspaceChangesService } from './workspace-changes-service.ts'
 import { installWorkspaceChangesRoutes } from './workspace-changes-routes.ts'
 import { WorkspaceTerminalRegistry } from './workspace-terminal.ts'
 import { installWorkspaceTerminalRoutes } from './workspace-terminal-routes.ts'
+import { WorkspaceWorktreeService } from './workspace-worktree.ts'
+import { installWorkspaceWorktreeRoutes } from './workspace-worktree-routes.ts'
 
 /** The stable identity of one Session's filesystem checkout. */
 export interface SessionWorkspaceBinding {
@@ -60,6 +62,7 @@ export class WorkspaceWorkbenchService {
   readonly changes: WorkspaceChangesService
   readonly review: WorkspaceReviewService
   readonly terminals: WorkspaceTerminalRegistry
+  readonly worktrees: WorkspaceWorktreeService
   private readonly bindings = new Map<string, SessionWorkspaceBinding>()
   private readonly activity: WorkspaceActivityEvent[] = []
   private readonly listeners = new Set<Listener>()
@@ -73,6 +76,7 @@ export class WorkspaceWorkbenchService {
     this.changes = new WorkspaceChangesService()
     this.review = review ?? new WorkspaceReviewService()
     this.terminals = new WorkspaceTerminalRegistry()
+    this.worktrees = new WorkspaceWorktreeService()
   }
 
   submitReviewComment(binding: SessionWorkspaceBinding, comment: WorkspaceReviewComment, hunk: Parameters<WorkspaceReviewService['submit']>[2]): void {
@@ -192,8 +196,10 @@ export function installWorkspaceWorkbench(ctx: Context): void {
     }))
     const disposeService = ctx.provide('workspaceWorkbench', service)
     const disposeTerminalService = ctx.provide('workspaceTerminal', service.terminals)
+    const disposeWorktreeService = ctx.provide('workspaceWorktree', service.worktrees)
     const disposeRoutes = installWorkspaceChangesRoutes(ctx, service)
     const disposeTerminalRoutes = installWorkspaceTerminalRoutes(ctx, service.terminals)
+    const disposeWorktreeRoutes = installWorkspaceWorktreeRoutes(ctx, service)
     const onCreated = ctx.on('session/created', session => {
       service.bindSession({
         sessionId: String(session.id),
@@ -243,9 +249,11 @@ export function installWorkspaceWorkbench(ctx: Context): void {
       onEvent()
       disposeRoutes()
       disposeTerminalRoutes()
+      disposeWorktreeRoutes()
       service.dispose()
       void disposeService()
       void disposeTerminalService()
+      void disposeWorktreeService()
     }
   }, 'dsh-plugin-desktop: Workspace Workbench service')
 }
@@ -304,5 +312,6 @@ declare module '@deepseek-ai/cordis' {
   interface Context {
     workspaceWorkbench?: WorkspaceWorkbenchService
     workspaceTerminal?: WorkspaceTerminalRegistry
+    workspaceWorktree?: WorkspaceWorktreeService
   }
 }

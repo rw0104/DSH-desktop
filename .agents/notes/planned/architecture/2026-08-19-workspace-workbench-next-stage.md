@@ -1,6 +1,6 @@
 # Agent Note: Workspace Workbench next-stage architecture
 
-Status: active; W0, W1, and W2 complete; W3 is next
+Status: active; W0, W1, W2, and W3.1 complete; W3.2 is next
 
 English | [中文](2026-08-19-workspace-workbench-next-stage.zh.md)
 
@@ -44,13 +44,13 @@ The Client Workbench presents Changes, Files, Terminal, Artifacts, Tasks, and Co
 | W0 | SessionWorkspaceBinding, ActivityLedger schema, deep-link vocabulary | real composition projects file, terminal, and task events from one Turn |
 | W1 | Changes/Review with Unstaged, Staged, Last turn, hunk actions, inline comments | comments return as structured Session context and Git state remains consistent |
 | W2 | Unified Terminal and Actions | complete: user and Agent share one PTY without cross-Session/worktree leakage |
-| W3 | managed worktrees, setup scripts, handoff | two Sessions work in isolated worktrees and hand off safely |
+| W3 | W3.1 read-only worktree inspect complete; managed worktrees, setup scripts, handoff remain | two Sessions work in isolated worktrees and hand off safely |
 | W4 | Artifact Registry, automatic previews, annotations | annotations return precisely and replay durably |
 | W5 | plan/jobs/subagents/approvals timeline and PR context | execution, changes, validation, and review form one Turn-level loop |
 
 The first implementation slice was W0 + W1. W2 is now complete and keeps the existing Files/viewer registry intact. Better Sidebar remains a compatibility layer; disable one builtin only after its domain migrates.
 
-Current progress: W0 `WorkspaceWorkbenchService`, Session binding, Activity Ledger, deep-link vocabulary, and `WorkspaceChangesService` now live in `dsh-plugin-desktop` and are owned by the Host generation lifecycle. W1 is complete: the Host Changes route and desktop-owned Changes tab provide Unstaged/Staged/Last turn scopes, content-sensitive hunk stage/unstage/revert, line-level comments, structured Session context, and packaged Electron smoke evidence. W2 is complete: `WorkspaceTerminalRegistry` records UI/Agent lifecycle, Better Sidebar reuses one `PtyManager` for both terminal faces, PTY exit closes the socket for recovery, and the Host exposes a Session-scoped terminal projection route. W3 Worktree/Environment is next.
+Current progress: W0 `WorkspaceWorkbenchService`, Session binding, Activity Ledger, deep-link vocabulary, and `WorkspaceChangesService` now live in `dsh-plugin-desktop` and are owned by the Host generation lifecycle. W1 is complete: the Host Changes route and desktop-owned Changes tab provide Unstaged/Staged/Last turn scopes, content-sensitive hunk stage/unstage/revert, line-level comments, structured Session context, and packaged Electron smoke evidence. W2 is complete: `WorkspaceTerminalRegistry` records UI/Agent lifecycle, Better Sidebar reuses one `PtyManager` for both terminal faces, PTY exit closes the socket for recovery, and the Host exposes a Session-scoped terminal projection route. W3.1 is complete: `WorkspaceWorktreeService.inspect()` and a read-only Session worktree route parse repository/common Git dir, checkout, branch, detached state, and porcelain worktree entries with structured argv. W3.2 managed create/remove is next.
 
 ## Constraints
 
