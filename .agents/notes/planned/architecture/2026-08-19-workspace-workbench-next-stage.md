@@ -1,6 +1,6 @@
 # Agent Note: Workspace Workbench next-stage architecture
 
-Status: active; W0 and W1 complete; W2 is next
+Status: active; W0, W1, and W2 complete; W3 is next
 
 English | [中文](2026-08-19-workspace-workbench-next-stage.zh.md)
 
@@ -22,7 +22,7 @@ No complete open-source implementation of the official Codex Desktop Workbench e
 Better Sidebar already supplies Files, Git, Diff, Terminal, Browser, Subagent, and Jobs. The gap is fragmented state rather than tool count:
 
 - Git lacks Last turn attribution, hunk operations, inline comments, and feedback into the Session.
-- UI terminals and Agent terminals use separate registries.
+- UI terminals and Agent terminals used separate registries; W2 now projects both into one Host-owned identity and shares the underlying PTY.
 - A Session has a cwd but no authoritative checkout/worktree binding.
 - Artifacts lack a common source Turn, validation state, and annotation anchors.
 - Plan, approval, tool, file, terminal, job, and subagent events have no shared Activity Ledger.
@@ -43,14 +43,14 @@ The Client Workbench presents Changes, Files, Terminal, Artifacts, Tasks, and Co
 | --- | --- | --- |
 | W0 | SessionWorkspaceBinding, ActivityLedger schema, deep-link vocabulary | real composition projects file, terminal, and task events from one Turn |
 | W1 | Changes/Review with Unstaged, Staged, Last turn, hunk actions, inline comments | comments return as structured Session context and Git state remains consistent |
-| W2 | Unified Terminal and Actions | user and Agent share one PTY without cross-Session/worktree leakage |
+| W2 | Unified Terminal and Actions | complete: user and Agent share one PTY without cross-Session/worktree leakage |
 | W3 | managed worktrees, setup scripts, handoff | two Sessions work in isolated worktrees and hand off safely |
 | W4 | Artifact Registry, automatic previews, annotations | annotations return precisely and replay durably |
 | W5 | plan/jobs/subagents/approvals timeline and PR context | execution, changes, validation, and review form one Turn-level loop |
 
-The first implementation slice is W0 + W1 only. Keep the existing Files/viewer registry. Unify Terminal after Activity Ledger stabilizes. Better Sidebar remains a compatibility layer; disable one builtin only after its domain migrates.
+The first implementation slice was W0 + W1. W2 is now complete and keeps the existing Files/viewer registry intact. Better Sidebar remains a compatibility layer; disable one builtin only after its domain migrates.
 
-Current progress: W0 `WorkspaceWorkbenchService`, Session binding, Activity Ledger, deep-link vocabulary, and `WorkspaceChangesService` now live in `dsh-plugin-desktop` and are owned by the Host generation lifecycle. W1 is complete: the Host Changes route and desktop-owned Changes tab provide Unstaged/Staged/Last turn scopes, content-sensitive hunk stage/unstage/revert, line-level comments, structured Session context, and packaged Electron smoke evidence. W2 Unified Terminal is next.
+Current progress: W0 `WorkspaceWorkbenchService`, Session binding, Activity Ledger, deep-link vocabulary, and `WorkspaceChangesService` now live in `dsh-plugin-desktop` and are owned by the Host generation lifecycle. W1 is complete: the Host Changes route and desktop-owned Changes tab provide Unstaged/Staged/Last turn scopes, content-sensitive hunk stage/unstage/revert, line-level comments, structured Session context, and packaged Electron smoke evidence. W2 is complete: `WorkspaceTerminalRegistry` records UI/Agent lifecycle, Better Sidebar reuses one `PtyManager` for both terminal faces, PTY exit closes the socket for recovery, and the Host exposes a Session-scoped terminal projection route. W3 Worktree/Environment is next.
 
 ## Constraints
 

@@ -1,6 +1,6 @@
 # Agent Note：Workspace Workbench 下一阶段架构
 
-Status: active; W0 and W1 complete; W2 is next
+Status: active; W0、W1、W2 已完成；下一阶段为 W3
 
 [English](2026-08-19-workspace-workbench-next-stage.md) | 中文
 
@@ -22,7 +22,7 @@ Status: active; W0 and W1 complete; W2 is next
 当前 Better Sidebar 已有 Files、Git、Diff、Terminal、Browser、Subagent 与 Jobs。差距不是工具数量，而是状态割裂：
 
 - Git 无 Last turn、hunk stage/revert、行级评论与评论回送。
-- UI terminal 与 Agent terminal 使用不同 registry。
+- UI terminal 与 Agent terminal 曾使用不同 registry；W2 已将两者投影到一个 Host-owned identity，并复用同一个底层 PTY。
 - Session 只有 cwd，没有权威 checkout/worktree binding。
 - Artifact 没有统一来源 Turn、验证状态和 annotation anchor。
 - plan、approval、tool、file、terminal、job、subagent 没有统一 Activity Ledger。
@@ -43,14 +43,14 @@ Client Workbench 提供 Changes、Files、Terminal、Artifacts、Tasks 和 Conte
 | --- | --- | --- |
 | W0 | SessionWorkspaceBinding、ActivityLedger schema、deep-link vocabulary | real composition 能从一个 Turn 投影文件、终端和任务事件 |
 | W1 | Changes/Review：Unstaged、Staged、Last turn、hunk 操作、行级评论 | 评论可作为结构化上下文回送当前 Session，Git 状态一致 |
-| W2 | Unified Terminal 与 Actions | 用户和 Agent 看到同一 PTY，Session/worktree 间不串线 |
+| W2 | Unified Terminal 与 Actions | 已完成：用户和 Agent 看到同一 PTY，Session/worktree 间不串线 |
 | W3 | managed worktree、setup scripts、handoff | 两个 Session 可在独立 worktree 并行并安全交接 |
 | W4 | Artifact Registry、自动预览、annotation | 标注可精确回送且持久化可重放 |
 | W5 | plan/jobs/subagents/approvals 时间线与 PR context | 一个 Turn 的执行、变更、验证和 review 形成闭环 |
 
-首批实现只做 W0 + W1。Files/viewer registry 暂时保留；Terminal 在 Activity Ledger 稳定后统一。Better Sidebar 在迁移期作为兼容层，每迁移一个 domain 才禁用对应 builtin，禁止一次性重写。
+首批实现为 W0 + W1。W2 已完成且保留现有 Files/viewer registry；Better Sidebar 在迁移期作为兼容层，每迁移一个 domain 才禁用对应 builtin，禁止一次性重写。
 
-当前进度：W0 的 `WorkspaceWorkbenchService`、Session binding、Activity Ledger、deep link vocabulary 和 `WorkspaceChangesService` 已进入 `dsh-plugin-desktop`，并由 Host generation 生命周期管理。W1 已完成：Host Changes route、桌面自有 Changes tab、Unstaged/Staged/Last turn scope、内容敏感 hunk stage/unstage/revert、行级评论、结构化 Session context 和 packaged Electron smoke。下一阶段进入 W2 Unified Terminal。
+当前进度：W0 的 `WorkspaceWorkbenchService`、Session binding、Activity Ledger、deep link vocabulary 和 `WorkspaceChangesService` 已进入 `dsh-plugin-desktop`，并由 Host generation 生命周期管理。W1 已完成：Host Changes route、桌面自有 Changes tab、Unstaged/Staged/Last turn scope、内容敏感 hunk stage/unstage/revert、行级评论、结构化 Session context 和 packaged Electron smoke。W2 已完成：`WorkspaceTerminalRegistry` 记录 UI/Agent 生命周期，Better Sidebar 两个 terminal face 复用同一个 `PtyManager`，PTY 退出会关闭 socket 以便恢复，Host 暴露 Session-scoped terminal projection route。下一阶段进入 W3 Worktree/Environment。
 
 ## 约束
 

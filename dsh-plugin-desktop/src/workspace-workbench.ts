@@ -3,6 +3,8 @@ import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { createWorkspaceReviewMessage, WorkspaceReviewService, type WorkspaceReviewComment } from './workspace-review-service.ts'
 import { WorkspaceChangesService } from './workspace-changes-service.ts'
 import { installWorkspaceChangesRoutes } from './workspace-changes-routes.ts'
+import { WorkspaceTerminalRegistry } from './workspace-terminal.ts'
+import { installWorkspaceTerminalRoutes } from './workspace-terminal-routes.ts'
 
 /** The stable identity of one Session's filesystem checkout. */
 export interface SessionWorkspaceBinding {
@@ -57,6 +59,7 @@ type Listener = (snapshot: WorkspaceWorkbenchSnapshot) => void
 export class WorkspaceWorkbenchService {
   readonly changes: WorkspaceChangesService
   readonly review: WorkspaceReviewService
+  readonly terminals: WorkspaceTerminalRegistry
   private readonly bindings = new Map<string, SessionWorkspaceBinding>()
   private readonly activity: WorkspaceActivityEvent[] = []
   private readonly listeners = new Set<Listener>()
@@ -69,6 +72,7 @@ export class WorkspaceWorkbenchService {
     }
     this.changes = new WorkspaceChangesService()
     this.review = review ?? new WorkspaceReviewService()
+    this.terminals = new WorkspaceTerminalRegistry()
   }
 
   submitReviewComment(binding: SessionWorkspaceBinding, comment: WorkspaceReviewComment, hunk: Parameters<WorkspaceReviewService['submit']>[2]): void {
@@ -164,6 +168,7 @@ export class WorkspaceWorkbenchService {
     this.listeners.clear()
     this.bindings.clear()
     this.activity.length = 0
+    this.terminals.dispose()
   }
 
   private publish(): void {
@@ -186,7 +191,9 @@ export function installWorkspaceWorkbench(ctx: Context): void {
       agent.inject(createWorkspaceReviewMessage(comment))
     }))
     const disposeService = ctx.provide('workspaceWorkbench', service)
+    const disposeTerminalService = ctx.provide('workspaceTerminal', service.terminals)
     const disposeRoutes = installWorkspaceChangesRoutes(ctx, service)
+    const disposeTerminalRoutes = installWorkspaceTerminalRoutes(ctx, service.terminals)
     const onCreated = ctx.on('session/created', session => {
       service.bindSession({
         sessionId: String(session.id),
@@ -195,12 +202,14 @@ export function installWorkspaceWorkbench(ctx: Context): void {
       }, new Date(session.header.createdAt))
     })
     const onDisposed = ctx.on('session/disposed', session => {
+      service.terminals.disposeSession(String(session.id))
       service.unbindSession(String(session.id))
     })
     const onEvent = ctx.on('session/event', (session, event) => {
       const sessionId = String(session.id)
       if (service.binding(sessionId) === undefined) return
       const turnSeq = eventTurnSeq(event.data)
+      service.terminals.projectAgentEvent(sessionId, event, new Date(event.time))
       const kind = activityKind(event.type)
       if (kind !== undefined) {
         service.record({
@@ -233,8 +242,10 @@ export function installWorkspaceWorkbench(ctx: Context): void {
       onDisposed()
       onEvent()
       disposeRoutes()
+      disposeTerminalRoutes()
       service.dispose()
       void disposeService()
+      void disposeTerminalService()
     }
   }, 'dsh-plugin-desktop: Workspace Workbench service')
 }
@@ -292,5 +303,6 @@ function workspaceRelativePath(binding: SessionWorkspaceBinding, path: string): 
 declare module '@deepseek-ai/cordis' {
   interface Context {
     workspaceWorkbench?: WorkspaceWorkbenchService
+    workspaceTerminal?: WorkspaceTerminalRegistry
   }
 }

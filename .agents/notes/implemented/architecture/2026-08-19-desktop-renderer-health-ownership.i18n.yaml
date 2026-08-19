@@ -3,3 +3,5 @@
 # and re-record their hashes with git hash-object after editing either side.
 2026-08-19-desktop-renderer-health-ownership.md: 5e7a9b52b8ef2f4ffb6f5790d5f6a13a2eb5c489
 2026-08-19-desktop-renderer-health-ownership.zh.md: 717656d3ba2f3ff0fb68de76387c5a11ae073af7
+2026-08-19-workspace-workbench-next-stage.md: 36058eab0038024a3c9343e431359e8fc4de04e8
+2026-08-19-workspace-workbench-next-stage.zh.md: 2840fc1165de25be20c1b89cca124120be0ac554
