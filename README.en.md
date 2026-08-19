@@ -8,7 +8,7 @@ A native desktop workbench for DeepSeek Harness. It brings Agent sessions, code,
 
 Current Windows x64 release:
 
-[Download DSH Desktop v1.0.4](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.4) · [Direct Windows installer](https://github.com/rw0104/DSH-desktop/releases/download/v1.0.4/DSH-Desktop-1.0.4-x64-Setup.exe)
+[Download DSH Desktop v1.0.5](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.5) · [Direct Windows installer](https://github.com/rw0104/DSH-desktop/releases/download/v1.0.5/DSH-Desktop-1.0.5-x64-Setup.exe)
 
 The installer supports per-user installation, a custom install directory, Start Menu shortcuts, and a desktop shortcut. The current installer is unsigned, so Windows may show a SmartScreen or Unknown Publisher warning.
 
@@ -44,7 +44,7 @@ The official Runtime remains responsible for Agents, Sessions, Tools, Profiles, 
 
 ## Install and first launch
 
-1. Download the Windows x64 installer from the [v1.0.4 Release](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.4).
+1. Download the Windows x64 installer from the [v1.0.5 Release](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.5).
 2. Choose an installation directory and complete setup.
 3. Launch DSH Desktop. The first launch explains the Vision Toolkit privacy boundary; Chinese Windows displays the Chinese copy.
 4. Configure models, credentials, and the vision service in DSH Settings. Python is required for local Vision tools; Chrome, Chromium, or Edge is only required for HTML screenshots.
