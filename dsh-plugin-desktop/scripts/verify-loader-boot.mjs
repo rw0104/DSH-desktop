@@ -25,6 +25,7 @@ const RUNNER_ENVIRONMENT_NAMES = new Set([
 const EXPECTED_WORKBENCH_ROUTES = new Set([
   '/dsh-desktop/api/workspace/changes',
   '/dsh-desktop/api/workspace/terminals',
+  '/dsh-desktop/api/workspace/worktrees',
 ])
 const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-loader-'))
 let ctx
