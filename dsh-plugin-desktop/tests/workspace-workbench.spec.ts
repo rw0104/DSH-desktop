@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { parseWorkspaceDiff } from '../src/workspace-changes.ts'
 import { WorkspaceChangesService } from '../src/workspace-changes-service.ts'
-import { WorkspaceWorkbenchService } from '../src/workspace-workbench.ts'
+import { installWorkspaceWorkbench, WorkspaceWorkbenchService } from '../src/workspace-workbench.ts'
 
 describe('Workspace Workbench service', () => {
   it('binds and updates a Session workspace without losing creation identity', () => {
@@ -33,6 +33,30 @@ describe('Workspace Workbench service', () => {
     service.bindSession({ sessionId: 's1', profileName: 'desktop', cwd: 'C:\\repo' })
     service.dispose()
     expect(() => service.bindSession({ sessionId: 's2', profileName: 'desktop', cwd: 'C:\\repo' })).toThrow('disposed')
+  })
+
+  it('binds real Session lifecycle and projects session events into activity', () => {
+    const listeners = new Map<string, (...args: any[]) => void>()
+    const context = {
+      effect: (register: () => () => void) => register(),
+      webServer: { host: '127.0.0.1', port: 43120, register: () => () => {} },
+      on: (event: string, listener: (...args: any[]) => void) => {
+        listeners.set(event, listener)
+        return () => { listeners.delete(event) }
+      },
+    } as any
+    installWorkspaceWorkbench(context)
+    listeners.get('session/created')?.({ id: 's1', header: { cwd: 'C:\\repo', createdAt: 1_000 } })
+    listeners.get('session/event')?.(
+      { id: 's1' },
+      { type: 'turn/start', time: 2_000, data: { prompt: 'inspect' } },
+    )
+    expect(context.workspaceWorkbench.snapshot()).toMatchObject({
+      bindings: [{ sessionId: 's1', cwd: 'C:\\repo' }],
+      activity: [{ kind: 'turn', status: 'started', title: 'turn/start' }],
+    })
+    listeners.get('session/disposed')?.({ id: 's1' })
+    expect(context.workspaceWorkbench.binding('s1')).toBeUndefined()
   })
 })
 

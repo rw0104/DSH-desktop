@@ -7,6 +7,22 @@ import {
 } from '../window-chrome.ts'
 import { SIDEBAR_COLLAPSED } from './layout-state.ts'
 
+const WORKSPACE_CHANGES_STYLES = `
+.dshWorkspaceChanges { display:flex; flex-direction:column; min-height:100%; color:var(--dsw-alias-label-primary); }
+.dshWorkspaceChangesHeader { display:flex; align-items:center; justify-content:space-between; min-height:40px; padding:0 10px; border-bottom:1px solid var(--dsw-alias-border-l2); }
+.dshWorkspaceChangesBranch { display:flex; align-items:center; gap:6px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:var(--dsw-font-xxs-strong-12); }
+.dshWorkspaceChangesIcon { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; padding:0; border:0; border-radius:6px; color:var(--dsw-alias-label-secondary); background:transparent; cursor:pointer; }
+.dshWorkspaceChangesIcon:hover { color:var(--dsw-alias-label-primary); background:var(--dsw-alias-interactive-bg-hover); }
+.dshWorkspaceChangesIcon:disabled { opacity:.45; cursor:default; }
+.dshWorkspaceChangesRow { display:flex; align-items:center; gap:6px; min-height:34px; padding:0 8px; border-bottom:1px solid var(--dsw-alias-border-l2); }
+.dshWorkspaceChangesBadge { width:22px; color:var(--dsw-alias-label-tertiary); font:var(--dsw-font-xxxs-11); text-align:center; }
+.dshWorkspaceChangesPath { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:var(--dsw-font-xxs-12); }
+.dshWorkspaceChangesAction { flex:none; min-height:24px; padding:0 7px; border:1px solid var(--dsw-alias-border-l2); border-radius:6px; color:var(--dsw-alias-label-secondary); background:transparent; font:var(--dsw-font-xxxs-11); cursor:pointer; }
+.dshWorkspaceChangesAction:hover { color:var(--dsw-alias-label-primary); background:var(--dsw-alias-interactive-bg-hover); }
+.dshWorkspaceChangesEmpty { padding:18px 12px; color:var(--dsw-alias-label-tertiary); font:var(--dsw-font-xxs-12); }
+.dshWorkspaceChangesError { padding:10px 12px; color:var(--dsw-alias-state-error-primary); font:var(--dsw-font-xxs-12); }
+`
+
 /** Advanced-shell stylesheet kept as a plain string so the package client bundle stays self-contained. */
 const ADVANCED_STYLES = `
 html, body, #root { width: 100%; height: 100%; }
@@ -43,6 +59,16 @@ html:has([aria-modal="true"]) .dshDesktopSidebarSurface,
 html:has([aria-modal="true"]) .dshDesktopSidebarSurface::before { -webkit-app-region: no-drag !important; }
 @media (prefers-reduced-motion: reduce) { .dshDesktopFrame { transition: none !important; } }
 `
+
+/** Install and remove the desktop-owned Changes tab styles. */
+export function installWorkspaceChangesStyles(): () => void {
+  const style = document.createElement('style')
+  style.dataset.plugin = 'dsh-plugin-desktop'
+  style.dataset.pluginCss = 'dsh-plugin-desktop/workspace-changes'
+  style.textContent = WORKSPACE_CHANGES_STYLES
+  document.head.appendChild(style)
+  return () => { style.remove() }
+}
 
 /** Install and remove the advanced shell's global native-window styles. @returns the style disposer. */
 export function installAdvancedStyles(): () => void {

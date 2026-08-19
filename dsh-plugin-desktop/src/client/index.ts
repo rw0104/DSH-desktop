@@ -1,4 +1,5 @@
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import { createElement } from 'react'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type convergence only: locale/theme declarations expose settings slot rows.
@@ -10,6 +11,18 @@ import { startRendererBootReporter } from './boot-health.ts'
 import { installDesktopDirectoryPickerBridge, requestDesktopDirectoryValidation } from './directory-picker.ts'
 import { parseDesktopClientEnvironment } from './environment.ts'
 import { installWorkspaceFolderDrop } from './workspace-folder-drop.ts'
+import { WorkspaceChangesTab } from './WorkspaceChangesTab.tsx'
+import { installWorkspaceChangesStyles } from './styles.ts'
+
+type DesktopSidebarRegistry = {
+  registerTab(descriptor: {
+    id: string
+    title: () => string
+    order: number
+    single: boolean
+    component: (props: Parameters<typeof WorkspaceChangesTab>[0]) => unknown
+  }): () => void
+}
 
 export { applyAdvancedShell } from './advanced-shell.ts'
 export {
@@ -28,6 +41,7 @@ export const inject = [
   'sessions',
   'theme',
   'workspaces',
+  'betterSidebar',
 ]
 
 /** Register desktop-owned client surfaces for the current BrowserWindow mode. @param ctx - browser Cordis context. */
@@ -54,5 +68,20 @@ export function apply(ctx: ClientContext): void {
       'dsh-plugin-desktop: native directory picker bridge',
     )
   }
+  ctx.effect(() => {
+    const descriptor = {
+      id: 'desktop:changes',
+      title: () => 'Changes',
+      order: 5,
+      single: true,
+      component: (props: Parameters<typeof WorkspaceChangesTab>[0]) => createElement(WorkspaceChangesTab, props),
+    }
+    const sidebar = (ctx as ClientContext & { betterSidebar?: DesktopSidebarRegistry }).betterSidebar
+    return sidebar?.registerTab(descriptor) ?? (() => {})
+  }, 'desktop: Workspace Changes tab')
+  ctx.effect(
+    () => installWorkspaceChangesStyles(),
+    'desktop: Workspace Changes styles',
+  )
   if (environment.mode === 'advanced') applyAdvancedShell(ctx, environment)
 }

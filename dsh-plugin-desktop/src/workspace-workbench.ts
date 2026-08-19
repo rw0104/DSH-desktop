@@ -1,5 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { WorkspaceChangesService } from './workspace-changes-service.ts'
+import { installWorkspaceChangesRoutes } from './workspace-changes-routes.ts'
 
 /** The stable identity of one Session's filesystem checkout. */
 export interface SessionWorkspaceBinding {
@@ -140,11 +141,57 @@ export function installWorkspaceWorkbench(ctx: Context): void {
   ctx.effect(() => {
     const service = new WorkspaceWorkbenchService()
     ctx.workspaceWorkbench = service
+    const disposeRoutes = installWorkspaceChangesRoutes(ctx, service)
+    const onCreated = ctx.on('session/created', session => {
+      service.bindSession({
+        sessionId: String(session.id),
+        profileName: 'desktop',
+        cwd: session.header.cwd ?? process.cwd(),
+      }, new Date(session.header.createdAt))
+    })
+    const onDisposed = ctx.on('session/disposed', session => {
+      service.unbindSession(String(session.id))
+    })
+    const onEvent = ctx.on('session/event', (session, event) => {
+      const kind = activityKind(event.type)
+      if (kind === undefined || service.binding(String(session.id)) === undefined) return
+      service.record({
+        sessionId: String(session.id),
+        kind,
+        status: activityStatus(event.type),
+        title: event.type,
+        data: event.data as Readonly<Record<string, unknown>>,
+      }, new Date(event.time))
+    })
     return () => {
+      onCreated()
+      onDisposed()
+      onEvent()
+      disposeRoutes()
       service.dispose()
       delete ctx.workspaceWorkbench
     }
   }, 'dsh-plugin-desktop: Workspace Workbench service')
+}
+
+function activityKind(type: string): WorkspaceActivityEvent['kind'] | undefined {
+  if (type.startsWith('turn/')) return 'turn'
+  if (type.startsWith('tool/')) return 'tool'
+  if (type.startsWith('approval/')) return 'approval'
+  if (type.startsWith('file/')) return 'file'
+  if (type.startsWith('terminal/')) return 'terminal'
+  if (type.startsWith('artifact/')) return 'artifact'
+  if (type.startsWith('job/')) return 'task'
+  if (type.startsWith('subagent/')) return 'subagent'
+  return undefined
+}
+
+function activityStatus(type: string): WorkspaceActivityEvent['status'] {
+  if (type.endsWith('/start') || type.endsWith('/started') || type.endsWith('/request')) return 'started'
+  if (type.endsWith('/complete') || type.endsWith('/completed') || type.endsWith('/result')) return 'completed'
+  if (type.endsWith('/error') || type.endsWith('/failed')) return 'failed'
+  if (type.endsWith('/cancel') || type.endsWith('/cancelled') || type.endsWith('/interrupt')) return 'cancelled'
+  return 'running'
 }
 
 declare module '@deepseek-ai/cordis' {
