@@ -89,6 +89,7 @@ function createHarness(platform: DesktopRuntime['platform'] = 'darwin'): PluginH
     webServer: {
       host: '127.0.0.1',
       port: 43120,
+      register: vi.fn(() => () => {}),
     },
     settings,
     logger: { warn: vi.fn(), error: vi.fn() },

@@ -30,6 +30,19 @@ body[data-dsh-title-bar-compat] [data-dsh-better-sidebar] > div:first-child {
 
 /** Styles for the desktop-owned About section in Settings. */
 const ABOUT_STYLES = `
+.dshWorkspaceChanges { display:flex; flex-direction:column; min-height:100%; color:var(--dsw-alias-label-primary); }
+.dshWorkspaceChangesHeader { display:flex; align-items:center; justify-content:space-between; min-height:40px; padding:0 10px; border-bottom:1px solid var(--dsw-alias-border-l2); }
+.dshWorkspaceChangesBranch { display:flex; align-items:center; gap:6px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:var(--dsw-font-xxs-strong-12); }
+.dshWorkspaceChangesIcon { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; padding:0; border:0; border-radius:6px; color:var(--dsw-alias-label-secondary); background:transparent; cursor:pointer; }
+.dshWorkspaceChangesIcon:hover { color:var(--dsw-alias-label-primary); background:var(--dsw-alias-interactive-bg-hover); }
+.dshWorkspaceChangesIcon:disabled { opacity:.45; cursor:default; }
+.dshWorkspaceChangesRow { display:flex; align-items:center; gap:6px; min-height:34px; padding:0 8px; border-bottom:1px solid var(--dsw-alias-border-l2); }
+.dshWorkspaceChangesBadge { width:22px; color:var(--dsw-alias-label-tertiary); font:var(--dsw-font-xxxs-11); text-align:center; }
+.dshWorkspaceChangesPath { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:var(--dsw-font-xxs-12); }
+.dshWorkspaceChangesAction { flex:none; min-height:24px; padding:0 7px; border:1px solid var(--dsw-alias-border-l2); border-radius:6px; color:var(--dsw-alias-label-secondary); background:transparent; font:var(--dsw-font-xxxs-11); cursor:pointer; }
+.dshWorkspaceChangesAction:hover { color:var(--dsw-alias-label-primary); background:var(--dsw-alias-interactive-bg-hover); }
+.dshWorkspaceChangesEmpty { padding:18px 12px; color:var(--dsw-alias-label-tertiary); font:var(--dsw-font-xxs-12); }
+.dshWorkspaceChangesError { padding:10px 12px; color:var(--dsw-alias-state-error-primary); font:var(--dsw-font-xxs-12); }
 .dshDesktopAbout {
   display: flex;
   flex-direction: column;

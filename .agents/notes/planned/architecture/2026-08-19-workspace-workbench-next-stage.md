@@ -50,7 +50,7 @@ The Client Workbench presents Changes, Files, Terminal, Artifacts, Tasks, and Co
 
 The first implementation slice is W0 + W1 only. Keep the existing Files/viewer registry. Unify Terminal after Activity Ledger stabilizes. Better Sidebar remains a compatibility layer; disable one builtin only after its domain migrates.
 
-Current progress: W0 `WorkspaceWorkbenchService`, Session binding, Activity Ledger, deep-link vocabulary, and `WorkspaceChangesService` now live in `dsh-plugin-desktop` and are owned by the Host generation lifecycle. W1 Changes UI, hunk mutation confirmation, and inline comments remain incomplete.
+Current progress: W0 `WorkspaceWorkbenchService`, Session binding, Activity Ledger, deep-link vocabulary, and `WorkspaceChangesService` now live in `dsh-plugin-desktop` and are owned by the Host generation lifecycle. W1 has its first vertical slice: a Host Changes route, a desktop-owned Changes tab, branch/staged/unstaged file status, and file-level stage/unstage/revert. Last turn, hunk mutation confirmation, and inline comments remain incomplete.
 
 ## Constraints
 

@@ -1,4 +1,5 @@
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import { createElement } from 'react'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type convergence: locale/theme/settings declarations expose desktop slots.
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -9,6 +10,17 @@ import { parseDesktopClientEnvironment } from './environment.ts'
 import { installWindowsDrivePickerEnhancement } from './drive-picker-enhancement.ts'
 import { DESKTOP_ABOUT_LOCALE_DICTIONARY } from './release-metadata.ts'
 import { installDesktopAboutStyles, installDesktopIntegrationStyles } from './styles.ts'
+import { WorkspaceChangesTab } from './WorkspaceChangesTab.tsx'
+
+type DesktopSidebarRegistry = {
+  registerTab(descriptor: {
+    id: string
+    title: () => string
+    order: number
+    single: boolean
+    component: (props: Parameters<typeof WorkspaceChangesTab>[0]) => unknown
+  }): () => void
+}
 
 export { applyAdvancedShell } from './advanced-shell.ts'
 export { parseDesktopClientEnvironment } from './environment.ts'
@@ -20,6 +32,7 @@ export const inject = [
   'sessions',
   'theme',
   'locale',
+  'betterSidebar',
 ]
 
 /** Register desktop-owned client surfaces for the current BrowserWindow mode. @param ctx - browser Cordis context. */
@@ -35,6 +48,17 @@ export function apply(ctx: ClientContext): void {
       'desktop: Windows drive picker enhancement',
     )
   }
+  ctx.effect(() => {
+    const descriptor = {
+      id: 'desktop:changes',
+      title: () => 'Changes',
+      order: 5,
+      single: true,
+      component: (props: Parameters<typeof WorkspaceChangesTab>[0]) => createElement(WorkspaceChangesTab, props),
+    }
+    const sidebar = (ctx as ClientContext & { betterSidebar?: DesktopSidebarRegistry }).betterSidebar
+    return sidebar?.registerTab(descriptor) ?? (() => {})
+  }, 'desktop: Workspace Changes tab')
   ctx.effect(() => {
     const removeStyles = installDesktopAboutStyles()
     const disposeLocaleZh = ctx.locale.register(DESKTOP_ABOUT_LOCALE, 'zh', DESKTOP_ABOUT_LOCALE_DICTIONARY.zh)
