@@ -22,12 +22,17 @@ const RUNNER_ENVIRONMENT_NAMES = new Set([
   'NPM_CONFIG_TARGET',
   'NPM_CONFIG_DISTURL',
 ])
+const EXPECTED_WORKBENCH_ROUTES = new Set([
+  '/dsh-desktop/api/workspace/changes',
+  '/dsh-desktop/api/workspace/terminals',
+])
 const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-loader-'))
 let ctx
 let mounted
 let mountedSpec
 let releasePackageResolver
 let pnpmRuntime
+const registeredWorkbenchRoutes = new Set()
 const runnerEnvironment = Object.entries(process.env)
   .filter(([key]) => RUNNER_ENVIRONMENT_NAMES.has(key.toUpperCase()))
 
@@ -115,9 +120,10 @@ try {
         host: '127.0.0.1',
         port: 43120,
         register(route) {
-          if (route?.kind !== 'exact' || route.path !== '/dsh-desktop/api/workspace/changes' || typeof route.handler !== 'function') {
+          if (route?.kind !== 'exact' || !EXPECTED_WORKBENCH_ROUTES.has(route.path) || typeof route.handler !== 'function') {
             throw new Error('desktop Workbench registered an unexpected Web route')
           }
+          registeredWorkbenchRoutes.add(route.path)
           return () => {}
         },
       })
@@ -138,6 +144,10 @@ try {
     prepared.bareModuleBaseUrl,
   )
   await runtime.mountScheduled()
+
+  if (registeredWorkbenchRoutes.size !== EXPECTED_WORKBENCH_ROUTES.size || [...EXPECTED_WORKBENCH_ROUTES].some(path => !registeredWorkbenchRoutes.has(path))) {
+    throw new Error(`desktop Workbench did not register the expected route set: ${[...registeredWorkbenchRoutes].join(', ')}`)
+  }
 
   const desktopEntry = ctx.loader.resolve('include:desktop-shell')
   const thirdPartyEntry = ctx.loader.resolve('include:third-party-smoke')

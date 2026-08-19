@@ -17,6 +17,7 @@ interface TerminalPump {
     },
     socket: FakeTerminalSocket,
     reconnectGraceMs: number,
+    registry?: { applyAdapterEvent(event: { sessionId: string; source: 'ui'; sourceId: string; kind: string; cwd?: string; data?: Record<string, unknown> }): void },
   ): void
 }
 
@@ -77,5 +78,35 @@ describe('Better Sidebar UI terminal lifecycle', () => {
 
     socket.emit('close')
     expect(scheduleClose).toHaveBeenCalledWith(handle.key, 30_000)
+  })
+
+  it('projects UI attach, input, output, exit, and disconnect into the desktop registry', async () => {
+    const sidebar = await vi.importActual<Record<string, unknown>>('dsh-better-sidebar')
+    const pumpUiTerminal = sidebar.pumpUiTerminal as TerminalPump
+    const ptyEvents = new EventEmitter()
+    const socket = new FakeTerminalSocket()
+    const registry = { applyAdapterEvent: vi.fn() }
+    const handle = {
+      key: 'session-2:terminal-2',
+      sessionId: 'session-2',
+      tabId: 'terminal-2',
+      cwd: 'C:\\workspace',
+      transcript: '',
+      exited: false,
+      pty: {
+        onData: (listener: (data: string) => void) => { ptyEvents.on('data', listener); return { dispose: () => { ptyEvents.off('data', listener) } } },
+        onExit: (listener: (event: { exitCode: number; signal?: number }) => void) => { ptyEvents.on('exit', listener); return { dispose: () => { ptyEvents.off('exit', listener) } } },
+        resize: vi.fn(),
+        write: vi.fn(),
+      },
+    }
+    pumpUiTerminal({ scheduleClose: vi.fn() }, handle, socket, 30_000, registry)
+    ptyEvents.emit('data', 'ready')
+    socket.emit('message', Buffer.from('dir\r'))
+    socket.emit('message', Buffer.from(JSON.stringify({ type: 'resize', cols: 100, rows: 30 })))
+    handle.exited = true
+    ptyEvents.emit('exit', { exitCode: 7 })
+    socket.emit('close')
+    expect(registry.applyAdapterEvent.mock.calls.map(call => call[0].kind)).toEqual(['attached', 'output', 'input', 'resized', 'output', 'exited', 'disconnected'])
   })
 })

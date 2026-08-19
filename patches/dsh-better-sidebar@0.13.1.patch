@@ -296,11 +296,122 @@ index 5fb832f582d3cac53fbacf029adab4f701df3c91..7533f1a91987d69c784add9cce5a77a1
        ) : embedBlocked !== null && !forceEmbed ? (
          <BrowserEmbedBlocked
            url={embedBlocked}
+diff --git a/src/agent-pty.ts b/src/agent-pty.ts
+index ce54ca385c..4dd18e3f30 100644
+--- a/src/agent-pty.ts
++++ b/src/agent-pty.ts
+@@ -13,6 +13,6 @@
+ import { randomUUID } from 'node:crypto'
+ import type { IPty } from 'node-pty'
+-import { ensureSpawnHelper, shellSpawnArgs } from './pty-manager.ts'
++import { ensureSpawnHelper, shellSpawnArgs, type PtyManager } from './pty-manager.ts'
+ import { loadRequiredNodePty, type NodePtyModule } from './pty-deps.ts'
+ import { SidebarError } from './wire.ts'
+ 
+@@ -116,5 +116,7 @@ export interface AgentTerminalHandle {
+   exitCode?: number | null
+   /** Exit signal number once known (POSIX only; undefined on Windows). */
+   exitSignal?: number | null
++  /** UI-manager key when this Agent terminal owns the shared PTY. */
++  sharedKey?: string
+ }
+ 
+@@ -195,4 +197,6 @@ export class AgentPtyRegistry {
+     private readonly shellArgs: string[] = [],
+     /** The loaded node-pty module (injected so a broken install degrades instead of crashing the plugin). */
+     private readonly nodePty: NodePtyModule = loadRequiredNodePty(),
++    /** Optional UI registry used to share the exact same PTY with Agent tabs. */
++    private readonly sharedUiManager?: PtyManager,
+   ) {
+@@ -217,4 +221,6 @@ export class AgentPtyRegistry {
+   ): string {
+     const uuid = randomUUID()
+     const dims = clampDims(cols, rows)
+-    const pty = this.nodePty.spawn(this.shell, shellSpawnArgs(this.shellArgs), {
++    const sharedKey = `${sessionId}:agent:${uuid}`
++    const shared = this.sharedUiManager?.open(sessionId, `agent:${uuid}`, cwd, dims.cols, dims.rows)
++    const pty = shared?.pty ?? this.nodePty.spawn(this.shell, shellSpawnArgs(this.shellArgs), {
+@@ -233,3 +239,4 @@ export class AgentPtyRegistry {
+       transcript: '',
+       exited: false,
++      ...shared === undefined ? {} : { sharedKey },
+     }
+@@ -483,11 +490,14 @@ export class AgentPtyRegistry {
+     const handle = this.sessions.get(uuid)
+     if (handle === undefined) return false
+     this.sessions.delete(uuid)
+-    try {
+-      handle.pty.kill()
+-    } catch {
+-      // Already exited or gone; nothing left to kill.
++    if (handle.sharedKey !== undefined) this.sharedUiManager?.close(handle.sharedKey)
++    else {
++      try {
++        handle.pty.kill()
++      } catch {
++        // Already exited or gone; nothing left to kill.
++      }
+     }
+     this.notify()
+     return true
+   }
 diff --git a/lib/index.js b/lib/index.js
 index 862d120b181874b169bc93d4ccb7f49909e99ca7..2729e1a8630073370c6423db60d3e9f8140b47e5 100644
 --- a/lib/index.js
 +++ b/lib/index.js
-@@ -2947,36 +2947,45 @@ async function attachTerminal(ctx, ptyManager, agentPtyRegistry, ws, req, resolv
+@@ -1349,11 +1349,13 @@ var AgentPtyRegistry = class {
+ 	shell;
+ 	shellArgs;
+ 	nodePty;
++	sharedUiManager;
+ 	sessions = /* @__PURE__ */ new Map();
+ 	changeListeners = /* @__PURE__ */ new Set();
+-	constructor(shell, shellArgs = [], nodePty = loadRequiredNodePty()) {
++	constructor(shell, shellArgs = [], nodePty = loadRequiredNodePty(), sharedUiManager) {
+ 		this.shell = shell;
+ 		this.shellArgs = shellArgs;
+ 		this.nodePty = nodePty;
++		this.sharedUiManager = sharedUiManager;
+ 		ensureSpawnHelper();
+ 	}
+@@ -1368,7 +1370,9 @@ var AgentPtyRegistry = class {
+ 	create(sessionId, title, command, cwd, cols = 80, rows = 24) {
+ 		const uuid = randomUUID();
+ 		const dims = clampDims(cols, rows);
+-		const pty = this.nodePty.spawn(this.shell, shellSpawnArgs(this.shellArgs), {
++		const sharedKey = `${sessionId}:agent:${uuid}`;
++		const shared = this.sharedUiManager?.open(sessionId, `agent:${uuid}`, cwd, dims.cols, dims.rows);
++		const pty = shared?.pty ?? this.nodePty.spawn(this.shell, shellSpawnArgs(this.shellArgs), {
+ 			name: "xterm-256color",
+ 			cols: dims.cols,
+ 			rows: dims.rows,
+@@ -1383,5 +1387,6 @@ var AgentPtyRegistry = class {
+ 			cwd,
+ 			pty,
+ 			transcript: "",
+-			exited: false
++			exited: false,
++			...shared === void 0 ? {} : { sharedKey }
+ 		};
+@@ -1587,7 +1592,8 @@ var AgentPtyRegistry = class {
+ 		const handle = this.sessions.get(uuid);
+ 		if (handle === void 0) return false;
+ 		this.sessions.delete(uuid);
+-		try {
++		if (handle.sharedKey !== void 0) this.sharedUiManager?.close(handle.sharedKey);
++		else try {
+ 			handle.pty.kill();
+ 		} catch {}
+ 		this.notify();
+@@ -2681,6 +2687,6 @@ function apply(ctx, config) {
+ 		ctx.logger?.warn(`[dsh-better-sidebar] node-pty (${DSH_NODE_PTY_RANGE}) failed to load: ${detail}`);
+ 	}
+ 	const ptyManager = nodePty !== null ? new PtyManager(terminalShell, resolved.terminalsPerSession, resolved.shellArgs, nodePty) : null;
+-	const agentPtyRegistry = nodePty !== null ? new AgentPtyRegistry(terminalShell, resolved.shellArgs, nodePty) : null;
++	const agentPtyRegistry = nodePty !== null ? new AgentPtyRegistry(terminalShell, resolved.shellArgs, nodePty, ptyManager ?? void 0) : null;
+ 	let settingsFace;
+ 	let toolsDisposers = null;
+@@ -2947,36 +2947,51 @@ async function attachTerminal(ctx, ptyManager, agentPtyRegistry, ws, req, resolv
 -		if (handle.transcript !== "") ws.send(handle.transcript);
 -		const onData = (data) => {
 -			if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4194304) ws.send(data);
@@ -332,7 +443,7 @@ index 862d120b181874b169bc93d4ccb7f49909e99ca7..2729e1a8630073370c6423db60d3e9f8
 -			exitSub.dispose();
 -			ptyManager.scheduleClose(handle.key, resolved.reconnectGraceMs);
 -		});
-+		pumpUiTerminal(ptyManager, handle, ws, resolved.reconnectGraceMs);
++		pumpUiTerminal(ptyManager, handle, ws, resolved.reconnectGraceMs, ctx.get("workspaceTerminal"));
 -	} catch (error) {
 -		ws.close(1011, error instanceof Error ? error.message : String(error));
 -	}
@@ -345,13 +456,16 @@ index 862d120b181874b169bc93d4ccb7f49909e99ca7..2729e1a8630073370c6423db60d3e9f8
 +* close the socket after the final status line so the client reconnect loop
 +* can replace the exited handle instead of leaving a connected input sink.
 +*/
-+function pumpUiTerminal(ptyManager, handle, ws, reconnectGraceMs) {
++function pumpUiTerminal(ptyManager, handle, ws, reconnectGraceMs, terminalRegistry) {
++	terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "attached", cwd: handle.cwd });
 +	if (handle.transcript !== "") ws.send(handle.transcript);
 +	const onData = (data) => {
 +		if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4194304) ws.send(data);
++		terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "output", data: { text: data } });
 +	};
 +	const onExit = ({ exitCode }) => {
 +		onData(`\r\n[process exited with code ${String(exitCode)}]\r\n`);
++		terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "exited", data: { exitCode } });
 +		if (ws.readyState === WebSocket.OPEN) ws.close(1e3, "terminal process exited");
 +	};
 +	const dataSub = handle.pty.onData(onData);
@@ -364,6 +478,7 @@ index 862d120b181874b169bc93d4ccb7f49909e99ca7..2729e1a8630073370c6423db60d3e9f8
 +			if (parsed !== null && typeof parsed === "object") control = parsed;
 +		} catch {}
 +		if (control !== null && control.type === "close") {
++			terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "closed", data: { reason: "user closed terminal tab" } });
 +			ptyManager.scheduleClose(handle.key, 0);
 +			return;
 +		}
@@ -371,12 +486,14 @@ index 862d120b181874b169bc93d4ccb7f49909e99ca7..2729e1a8630073370c6423db60d3e9f8
 +		if (control !== null && control.type === "resize" && typeof control.cols === "number" && typeof control.rows === "number") {
 +			const dims = clampDims(control.cols, control.rows);
 +			handle.pty.resize(dims.cols, dims.rows);
-+		} else handle.pty.write(text);
++			terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "resized", data: dims });
++		} else { terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "input", data: { text } }); handle.pty.write(text); }
 +	});
 +	ws.on("close", () => {
 +		dataSub.dispose();
 +		exitSub.dispose();
 +		ptyManager.scheduleClose(handle.key, reconnectGraceMs);
++		terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: "ui", sourceId: handle.tabId, kind: "disconnected", data: { reason: "socket closed" } });
 +	});
 +}
  /**
@@ -388,6 +505,7 @@ diff --git a/src/index.ts b/src/index.ts
 index 0ae8f4f4d12474c352a9ec903d214a97ecf47ef8..d56d1a6e57c8d3f32fc4bd7cdd1fe03d25c791eb 100644
 --- a/src/index.ts
 +++ b/src/index.ts
+
 @@ -36,7 +36,13 @@ import { isTrustedApiRequest, isLoopbackHostname } from './trust-fence.ts'
  import { registerBundleRoute } from './bundle-route.ts'
  import * as git from './git.ts'
@@ -403,7 +521,10 @@ index 0ae8f4f4d12474c352a9ec903d214a97ecf47ef8..d56d1a6e57c8d3f32fc4bd7cdd1fe03d
  import { AgentPtyRegistry, clampDims, type AgentTerminalHandle } from './agent-pty.ts'
  import {
    DSH_NODE_PTY_RANGE,
-@@ -861,58 +867,72 @@ async function attachTerminal(
+@@ -498,1 +504,1 @@ export function apply(ctx: Context, config: Config): void {
+-    ? new AgentPtyRegistry(terminalShell, resolved.shellArgs, nodePty)
++    ? new AgentPtyRegistry(terminalShell, resolved.shellArgs, nodePty, ptyManager ?? undefined)
+@@ -861,58 +867,89 @@ async function attachTerminal(
 -    // Replay the transcript, then follow live output.
 -    if (handle.transcript !== '') ws.send(handle.transcript)
 -    const onData = (data: string): void => {
@@ -454,7 +575,7 @@ index 0ae8f4f4d12474c352a9ec903d214a97ecf47ef8..d56d1a6e57c8d3f32fc4bd7cdd1fe03d
 -      // open() cancels the pending close.
 -      ptyManager.scheduleClose(handle.key, resolved.reconnectGraceMs)
 -    })
-+    pumpUiTerminal(ptyManager, handle, ws, resolved.reconnectGraceMs)
++    pumpUiTerminal(ptyManager, handle, ws, resolved.reconnectGraceMs, ctx.get('workspaceTerminal'))
 -  } catch (error) {
 -    ws.close(1011, error instanceof Error ? error.message : String(error))
 -  }
@@ -474,15 +595,28 @@ index 0ae8f4f4d12474c352a9ec903d214a97ecf47ef8..d56d1a6e57c8d3f32fc4bd7cdd1fe03d
 +  handle: SidebarPty,
 +  ws: WebSocket,
 +  reconnectGraceMs: number,
++  terminalRegistry?: {
++    applyAdapterEvent(event: {
++      sessionId: string
++      source: 'ui'
++      sourceId: string
++      kind: 'attached' | 'disconnected' | 'input' | 'output' | 'resized' | 'exited' | 'closed'
++      cwd?: string
++      data?: Record<string, unknown>
++    }): unknown
++  },
 +): void {
++  terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: 'ui', sourceId: handle.tabId, kind: 'attached', cwd: handle.cwd })
 +  if (handle.transcript !== '') ws.send(handle.transcript)
 +  const onData = (data: string): void => {
 +    if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4 * 1024 * 1024) {
 +      ws.send(data)
 +    }
++    terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: 'ui', sourceId: handle.tabId, kind: 'output', data: { text: data } })
 +  }
 +  const onExit = ({ exitCode }: { exitCode: number; signal?: number }): void => {
 +    onData(`\r\n[process exited with code ${String(exitCode)}]\r\n`)
++    terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: 'ui', sourceId: handle.tabId, kind: 'exited', data: { exitCode } })
 +    if (ws.readyState === WebSocket.OPEN) ws.close(1000, 'terminal process exited')
 +  }
 +  const dataSub = handle.pty.onData(onData)
@@ -502,6 +636,7 @@ index 0ae8f4f4d12474c352a9ec903d214a97ecf47ef8..d56d1a6e57c8d3f32fc4bd7cdd1fe03d
 +    }
 +    if (control !== null && control.type === 'close') {
 +      // The owning tab was closed: release the quota immediately.
++      terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: 'ui', sourceId: handle.tabId, kind: 'closed', data: { reason: 'user closed terminal tab' } })
 +      ptyManager.scheduleClose(handle.key, 0)
 +      return
 +    }
@@ -513,7 +648,9 @@ index 0ae8f4f4d12474c352a9ec903d214a97ecf47ef8..d56d1a6e57c8d3f32fc4bd7cdd1fe03d
 +    ) {
 +      const dims = clampDims(control.cols, control.rows)
 +      handle.pty.resize(dims.cols, dims.rows)
++      terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: 'ui', sourceId: handle.tabId, kind: 'resized', data: dims })
 +    } else {
++      terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: 'ui', sourceId: handle.tabId, kind: 'input', data: { text } })
 +      handle.pty.write(text)
 +    }
 +  })
@@ -524,6 +661,7 @@ index 0ae8f4f4d12474c352a9ec903d214a97ecf47ef8..d56d1a6e57c8d3f32fc4bd7cdd1fe03d
 +    // process registered for a grace period. Reconnect replaces exited
 +    // handles immediately and reuses only live ones.
 +    ptyManager.scheduleClose(handle.key, reconnectGraceMs)
++    terminalRegistry?.applyAdapterEvent({ sessionId: handle.sessionId, source: 'ui', sourceId: handle.tabId, kind: 'disconnected', data: { reason: 'socket closed' } })
 +  })
 +}
 +

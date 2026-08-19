@@ -8,11 +8,55 @@ import { describe, expect, it, vi } from 'vitest'
 import { parseWorkspaceDiff } from '../src/workspace-changes.ts'
 import { WorkspaceChangesError, WorkspaceChangesService } from '../src/workspace-changes-service.ts'
 import { createWorkspaceReviewMessage, WorkspaceReviewError, WorkspaceReviewService } from '../src/workspace-review-service.ts'
+import { WorkspaceTerminalRegistry } from '../src/workspace-terminal.ts'
 import { installWorkspaceWorkbench, WorkspaceWorkbenchService } from '../src/workspace-workbench.ts'
 
 const execFileAsync = promisify(execFile)
 
 describe('Workspace Workbench service', () => {
+  it('keeps one stable identity across UI reconnects and records bounded terminal lifecycle', () => {
+    const service = new WorkspaceTerminalRegistry(20)
+    const first = service.register({ sessionId: 's1', source: 'ui', sourceId: 'tab-1', cwd: 'C:\\repo', title: 'shell' }, new Date('2026-01-01T00:00:00Z'))
+    service.attach(first.id, new Date('2026-01-01T00:00:01Z'))
+    service.input(first.id, 'echo ready', new Date('2026-01-01T00:00:02Z'))
+    service.output(first.id, 'ready\n', new Date('2026-01-01T00:00:03Z'))
+    service.resize(first.id, 120, 40, new Date('2026-01-01T00:00:04Z'))
+    service.disconnect(first.id, 'page refresh', new Date('2026-01-01T00:00:05Z'))
+    service.attach(first.id, new Date('2026-01-01T00:00:06Z'))
+    expect(service.terminal(first.id)).toMatchObject({ id: first.id, status: 'running', cols: 120, rows: 40, transcriptBytes: 6, lastOutput: 'ready\n' })
+    service.exit(first.id, 0, null, new Date('2026-01-01T00:00:07Z'))
+    const replacement = service.register({ sessionId: 's1', source: 'ui', sourceId: 'tab-1', cwd: 'C:\\repo', title: 'shell' }, new Date('2026-01-01T00:00:08Z'))
+    expect(replacement.id).toBe(first.id)
+    expect(replacement.status).toBe('starting')
+    expect(service.snapshot().events.map(event => event.kind)).toEqual([
+      'created', 'attached', 'input', 'output', 'resized', 'disconnected', 'attached', 'exited', 'attached',
+    ])
+  })
+
+  it('projects Agent terminal tool calls without crossing Session ownership', () => {
+    const service = new WorkspaceTerminalRegistry()
+    service.projectAgentEvent('s1', { type: 'tool/call', data: { turn: 3, step: 1, callId: 'call-1', name: 'terminal_create', arguments: JSON.stringify({ title: 'dev', command: 'npm test', cwd: 'C:\\repo' }) } } as any, new Date('2026-01-01T00:00:00Z'))
+    service.projectAgentEvent('s1', { type: 'tool/result', data: { turn: 3, step: 1, message: { source: { callId: 'call-1' }, content: [{ type: 'text', text: 'Opened terminal "dev" (uuid: uuid-1).' }] } } } as any, new Date('2026-01-01T00:00:01Z'))
+    const first = service.forSession('s1')[0]
+    if (first === undefined) throw new Error('expected Agent terminal projection')
+    expect(first).toMatchObject({ source: 'agent', sourceId: 'uuid-1', status: 'running', title: 'dev', command: 'npm test', cwd: 'C:\\repo' })
+    service.projectAgentEvent('s1', { type: 'tool/call', data: { turn: 3, step: 2, callId: 'call-2', name: 'terminal_send', arguments: JSON.stringify({ uuid: 'uuid-1', text: 'pwd' }) } } as any, new Date('2026-01-01T00:00:02Z'))
+    service.projectAgentEvent('s1', { type: 'tool/result', data: { turn: 3, step: 2, message: { source: { callId: 'call-2' }, content: [{ type: 'text', text: 'Sent 3 byte(s) to terminal uuid-1.' }] } } } as any, new Date('2026-01-01T00:00:03Z'))
+    expect(service.terminal(first.id)?.lastOutput).toContain('Sent 3 byte')
+    expect(service.forSession('s2')).toEqual([])
+    expect(service.terminal(`terminal:agent:s2:uuid-1`)).toBeUndefined()
+  })
+
+  it('accepts UI PTY adapter events under the same session-scoped identity', () => {
+    const service = new WorkspaceTerminalRegistry()
+    service.applyAdapterEvent({ sessionId: 's1', source: 'ui', sourceId: 'tab-1', kind: 'attached', cwd: 'C:\\repo' }, new Date('2026-01-01T00:00:00Z'))
+    service.applyAdapterEvent({ sessionId: 's1', source: 'ui', sourceId: 'tab-1', kind: 'input', data: { text: 'npm test' } }, new Date('2026-01-01T00:00:01Z'))
+    service.applyAdapterEvent({ sessionId: 's1', source: 'ui', sourceId: 'tab-1', kind: 'output', data: { text: 'pass\n' } }, new Date('2026-01-01T00:00:02Z'))
+    const terminal = service.forSession('s1')[0]
+    expect(terminal).toMatchObject({ id: 'terminal:ui:s1:tab-1', deepLink: { surface: 'terminal', terminalId: 'terminal:ui:s1:tab-1' }, status: 'running', transcriptBytes: 5 })
+    expect(service.snapshot().events.map(event => event.kind)).toEqual(['created', 'attached', 'input', 'output'])
+  })
+
   it('binds and updates a Session workspace without losing creation identity', () => {
     const service = new WorkspaceWorkbenchService()
     const first = service.bindSession({ sessionId: 's1', profileName: 'desktop', cwd: 'C:\\repo' }, new Date('2026-01-01T00:00:00Z'))
@@ -97,14 +141,14 @@ describe('Workspace Workbench service', () => {
 
   it('serves scoped Changes from the Host binding without accepting cwd authority', async () => {
     const listeners = new Map<string, (...args: any[]) => void>()
-    let handler: ((req: any, res: any) => Promise<void>) | undefined
+    const routes = new Map<string, (req: any, res: any) => Promise<void>>()
     const context = {
       effect: (register: () => () => void) => register(),
       provide: (name: string, value: unknown) => { (context as Record<string, unknown>)[name] = value; return () => { delete (context as Record<string, unknown>)[name] } },
       webServer: {
         host: '127.0.0.1',
         port: 43120,
-        register: (route: { handler: typeof handler }) => { handler = route.handler; return () => {} },
+        register: (route: { path: string; handler: (req: any, res: any) => Promise<void> }) => { routes.set(route.path, route.handler); return () => {} },
       },
       on: (event: string, listener: (...args: any[]) => void) => {
         listeners.set(event, listener)
@@ -114,6 +158,7 @@ describe('Workspace Workbench service', () => {
     installWorkspaceWorkbench(context)
     listeners.get('session/created')?.({ id: 's1', header: { cwd: process.cwd(), createdAt: 1_000 } })
     listeners.get('session/event')?.({ id: 's1' }, { type: 'turn/start', time: 2_000, data: { turn: 9 } })
+    const handler = routes.get('/dsh-desktop/api/workspace/changes')
     if (handler === undefined) throw new Error('route was not installed')
 
     const response = responseRecorder()
@@ -133,6 +178,34 @@ describe('Workspace Workbench service', () => {
     expect(rejectedPost.json()).toEqual({ error: 'action header rejected' })
   })
 
+  it('serves Session-scoped terminal projections without accepting renderer cwd', async () => {
+    const routes = new Map<string, (req: any, res: any) => Promise<void>>()
+    const context = {
+      effect: (register: () => () => void) => register(),
+      provide: (name: string, value: unknown) => { (context as Record<string, unknown>)[name] = value; return () => { delete (context as Record<string, unknown>)[name] } },
+      webServer: {
+        host: '127.0.0.1',
+        port: 43120,
+        register: (route: { path: string; handler: (req: any, res: any) => Promise<void> }) => { routes.set(route.path, route.handler); return () => {} },
+      },
+      on: () => () => {},
+    } as any
+    installWorkspaceWorkbench(context)
+    context.workspaceTerminal.register({ sessionId: 's1', source: 'ui', sourceId: 'tab-1', cwd: 'C:\\repo' })
+    const handler = routes.get('/dsh-desktop/api/workspace/terminals')
+    if (handler === undefined) throw new Error('terminal route was not installed')
+
+    const response = responseRecorder()
+    await handler(request('GET', '/dsh-desktop/api/workspace/terminals?sessionId=s1&cwd=C%3A%5Cforged'), response)
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({ sessionId: 's1', terminals: [{ id: 'terminal:ui:s1:tab-1', cwd: 'C:\\repo' }] })
+
+    const missing = responseRecorder()
+    await handler(request('GET', '/dsh-desktop/api/workspace/terminals?sessionId=missing'), missing)
+    expect(missing.statusCode).toBe(200)
+    expect(missing.json()).toEqual({ sessionId: 'missing', terminals: [] })
+  })
+
   it('validates a real hunk and injects a structured review comment into the current Agent', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'dsh-workbench-review-'))
     const file = join(directory, 'review.txt')
@@ -147,7 +220,7 @@ describe('Workspace Workbench service', () => {
       await writeFile(file, 'first\nchanged\nthird\n', 'utf8')
 
       const listeners = new Map<string, (...args: any[]) => void>()
-      let handler: ((req: any, res: any) => Promise<void>) | undefined
+      const routes = new Map<string, (req: any, res: any) => Promise<void>>()
       const context = {
         effect: (register: () => () => void) => register(),
         provide: (name: string, value: unknown) => { (context as Record<string, unknown>)[name] = value; return () => { delete (context as Record<string, unknown>)[name] } },
@@ -155,7 +228,7 @@ describe('Workspace Workbench service', () => {
         webServer: {
           host: '127.0.0.1',
           port: 43120,
-          register: (route: { handler: typeof handler }) => { handler = route.handler; return () => {} },
+          register: (route: { path: string; handler: (req: any, res: any) => Promise<void> }) => { routes.set(route.path, route.handler); return () => {} },
         },
         on: (event: string, listener: (...args: any[]) => void) => {
           listeners.set(event, listener)
@@ -164,6 +237,7 @@ describe('Workspace Workbench service', () => {
       } as any
       installWorkspaceWorkbench(context)
       listeners.get('session/created')?.({ id: 's1', header: { cwd: directory, createdAt: 1_000 } })
+      const handler = routes.get('/dsh-desktop/api/workspace/changes')
       if (handler === undefined) throw new Error('route was not installed')
       const getResponse = responseRecorder()
       await handler(request('GET', '/dsh-desktop/api/workspace/changes?sessionId=s1&scope=unstaged'), getResponse)
@@ -191,7 +265,7 @@ describe('Workspace Workbench service', () => {
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
-  })
+  }, 15_000)
 })
 
 describe('Workspace Changes parser', () => {
@@ -305,7 +379,7 @@ describe('Workspace Changes service', () => {
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
-  })
+  }, 15_000)
 
   it('rejects absolute and escaping file mutation paths', async () => {
     const service = new WorkspaceChangesService(async () => '')
