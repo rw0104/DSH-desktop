@@ -68,4 +68,3 @@ Client Workbench 提供 Changes、Files、Terminal、Artifacts、Tasks 和 Conte
 - [Codexia](https://github.com/milisp/codexia/tree/e4ba3cebee01a842383209cc08bca40db5d86f6c)
 - [CodexGui](https://github.com/wieslawsoltes/CodexGui/tree/01a726339bdbda0b0c0c59b23ffb86f7850bc7c6)
 - [CodePilot](https://github.com/op7418/CodePilot/tree/ff26f22d9cfe9ce385424030c6d6f8c52697362c)
-
