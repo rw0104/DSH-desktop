@@ -15,7 +15,7 @@ env:
 
 jobs:
   build-windows:
-    name: Build Windows x64 Setup and Update installers
+    name: Build Windows x64 Setup installer
     runs-on: windows-latest
     steps:
       - name: Check out desktop and pinned upstream
@@ -37,7 +37,7 @@ jobs:
         shell: pwsh
         run: corepack yarn install --immutable
 
-      - name: Build and verify unsigned Setup and Update installers
+      - name: Build and verify unsigned Setup installer
         shell: pwsh
         run: corepack yarn dist:win
 
