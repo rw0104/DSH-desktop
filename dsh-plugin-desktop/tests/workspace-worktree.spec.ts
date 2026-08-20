@@ -22,7 +22,7 @@ describe('managed workspace worktrees', () => {
       const service = new WorkspaceWorktreeService(undefined, managedRoot)
       const binding = await service.createManaged({ sessionId: 'session/one', profileName: 'desktop', repositoryRoot: root, branch: 'feature/session-one' })
       expect(binding.worktreePath.startsWith(managedRoot)).toBe(true)
-      expect(await readFile(join(binding.worktreePath, 'README.md'), 'utf8')).toBe('baseline\n')
+      expect((await readFile(join(binding.worktreePath, 'README.md'), 'utf8')).replace(/\r\n/gu, '\n')).toBe('baseline\n')
       await expect(service.inspect(binding)).resolves.toMatchObject({ ownership: 'managed', branch: 'feature/session-one' })
       await service.removeManaged(binding)
       await expect(service.inspect(binding)).rejects.toBeInstanceOf(WorkspaceWorktreeError)
