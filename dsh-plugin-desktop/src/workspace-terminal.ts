@@ -158,6 +158,7 @@ export class WorkspaceTerminalRegistry {
     const id = terminalId(event.source, event.sessionId, event.sourceId)
     const current = this.terminals.get(id)
     if (current === undefined) {
+      if (event.kind !== 'attached') throw new Error(`terminal registration required before adapter event: ${id}`)
       if (event.cwd === undefined || event.cwd.trim() === '') throw new Error(`terminal adapter event requires cwd before registration: ${id}`)
       this.register({ sessionId: event.sessionId, source: event.source, sourceId: event.sourceId, cwd: event.cwd }, now)
     }

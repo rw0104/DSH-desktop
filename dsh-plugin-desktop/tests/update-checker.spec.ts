@@ -9,7 +9,7 @@ import {
 } from '../src/update-checker.ts'
 
 function versionResponse(version: unknown, init: ResponseInit = {}): Response {
-  return Response.json({ version }, init)
+  return Response.json({ tag_name: typeof version === 'string' ? `v${version}` : version, draft: false, prerelease: false }, init)
 }
 
 describe('strict SemVer parsing', () => {
@@ -80,9 +80,9 @@ describe('public Desktop version check', () => {
       signal: controller.signal,
     })
     const headers = new Headers(calls[0]?.init.headers)
-    expect(headers.get('accept')).toBe('application/json')
+    expect(headers.get('accept')).toBe('application/vnd.github+json')
     expect(headers.has('if-none-match')).toBe(false)
-    expect(headers.has('x-github-api-version')).toBe(false)
+    expect(headers.get('x-github-api-version')).toBe('2022-11-28')
   })
 
   it.each([
@@ -108,11 +108,12 @@ describe('public Desktop version check', () => {
   })
 
   it.each([
-    ['leading v', { version: 'v2.1.0' }],
-    ['prerelease', { version: '2.1.0-rc.1' }],
-    ['invalid SemVer', { version: '2.01.0' }],
-    ['missing version', {}],
-    ['non-string version', { version: 2 }],
+    ['double leading v', { tag_name: 'vv2.1.0', draft: false, prerelease: false }],
+    ['prerelease tag', { tag_name: 'v2.1.0-rc.1', draft: false, prerelease: true }],
+    ['invalid SemVer', { tag_name: 'v2.01.0', draft: false, prerelease: false }],
+    ['missing tag', { draft: false, prerelease: false }],
+    ['non-string tag', { tag_name: 2, draft: false, prerelease: false }],
+    ['draft release', { tag_name: 'v2.1.0', draft: true, prerelease: false }],
     ['array response', ['2.1.0']],
   ])('silently ignores a service response with %s', async (_case, value) => {
     await expect(checkForStableUpdate({

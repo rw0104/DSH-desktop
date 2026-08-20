@@ -98,10 +98,12 @@ export function desktopRendererUrl(
   port: number,
   mode: DesktopShellMode,
   platform: Context['desktopRuntime']['platform'],
+  productVersion = 'unknown',
 ): string {
   const url = new URL(`http://127.0.0.1:${String(port)}/`)
   url.searchParams.set('dsh-desktop-mode', mode)
   url.searchParams.set('dsh-desktop-platform', platform)
+  if (productVersion !== 'unknown') url.searchParams.set('dsh-desktop-version', productVersion)
   return url.href
 }
 
@@ -230,7 +232,7 @@ export function apply(ctx: Context, config: Config): void {
   ctx.effect(
     () => runtime.schedule({
       ...config,
-      url: desktopRendererUrl(ctx.webServer.port, config.mode, runtime.platform),
+      url: desktopRendererUrl(ctx.webServer.port, config.mode, runtime.platform, runtime.updates.currentVersion),
       productName: 'DSH Desktop',
       windowTitle: 'DeepSeek Harness Desktop',
       iconPath,

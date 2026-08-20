@@ -13,9 +13,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/anywhere-labs/deepseek-harness-desktop/releases/latest"><img src="https://img.shields.io/github/v/release/anywhere-labs/deepseek-harness-desktop?style=flat&amp;label=release&amp;color=4D6BFE" alt="Latest release"></a>
-  <a href="https://github.com/anywhere-labs/deepseek-harness-desktop/releases"><img src="https://img.shields.io/github/downloads/anywhere-labs/deepseek-harness-desktop/total?style=flat&amp;label=downloads&amp;color=4D6BFE" alt="Total downloads"></a>
-  <a href="https://github.com/anywhere-labs/deepseek-harness-desktop"><img src="https://img.shields.io/github/stars/anywhere-labs/deepseek-harness-desktop?style=flat&amp;label=%E2%98%85&amp;color=08C" alt="GitHub stars"></a>
+  <a href="https://github.com/rw0104/DSH-desktop/releases/latest"><img src="https://img.shields.io/github/v/release/rw0104/DSH-desktop?style=flat&amp;label=release&amp;color=4D6BFE" alt="Latest release"></a>
+  <a href="https://github.com/rw0104/DSH-desktop/releases"><img src="https://img.shields.io/github/downloads/rw0104/DSH-desktop/total?style=flat&amp;label=downloads&amp;color=4D6BFE" alt="Total downloads"></a>
+  <a href="https://github.com/rw0104/DSH-desktop"><img src="https://img.shields.io/github/stars/rw0104/DSH-desktop?style=flat&amp;label=%E2%98%85&amp;color=08C" alt="GitHub stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat" alt="MIT License"></a>
   <a href="https://discord.gg/TJeGqKRNM"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&amp;logo=discord&amp;logoColor=white" alt="Join Discord"></a>
   <img src="https://img.shields.io/badge/macOS%20%7C%20Windows-4493F8?style=flat-square" alt="Supported platforms: macOS and Windows">
@@ -31,12 +31,12 @@ DSH Desktop integrates the local Web UI, Host service, and plugin system from [D
 
 ## Download and install
 
-Current release installers support Windows x64 and macOS Universal. No extra environment is needed — download, install, and start using it with one click.
+This downstream release channel currently publishes Windows x64 installers. The source retains macOS build support, but this repository does not yet publish a signed and notarized DMG. Windows requires no additional runtime.
 
 | Platform | Download | Installation |
 | --- | --- | --- |
-| Windows x64 | [Download installer](https://www.dshdesktop.cn/api/downloads/windows) | Run the NSIS installer and follow its prompts |
-| macOS Universal | [Download DMG](https://www.dshdesktop.cn/api/downloads/mac) | Open the DMG and drag DSH Desktop into Applications |
+| Windows x64 | [Download installer](https://github.com/rw0104/DSH-desktop/releases/latest) | Download the versioned `x64-Setup.exe` and follow its prompts |
+| macOS Universal | Not published | Build from source; signed and notarized DMG release remains pending |
 
 See the [user guide](docs/user-guide.en.md) and [FAQ](docs/faq.en.md) for plugin commands, platform details, and troubleshooting.
 

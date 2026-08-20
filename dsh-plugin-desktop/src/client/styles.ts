@@ -49,6 +49,23 @@ const WORKSPACE_CHANGES_STYLES = `
 .dshWorkspaceChangesError { padding:10px 12px; color:var(--dsw-alias-state-error-primary); font:var(--dsw-font-xxs-12); }
 `
 
+const DESKTOP_ABOUT_STYLES = `
+.dshDesktopAbout { display:flex; flex-direction:column; gap:20px; width:100%; max-width:720px; }
+.dshDesktopAboutIntro { display:flex; flex-direction:column; gap:6px; }
+.dshDesktopAboutTitle { margin:0; color:var(--dsw-alias-label-primary); font:var(--dsw-font-s-strong-14); font-size:18px; }
+.dshDesktopAboutSubtitle { margin:0; color:var(--dsw-alias-label-secondary); line-height:1.5; }
+.dshDesktopAboutRows { display:flex; flex-direction:column; border-top:1px solid var(--dsw-alias-border-l2); }
+.dshDesktopAboutRow { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:52px; border-bottom:1px solid var(--dsw-alias-border-l2); }
+.dshDesktopAboutLabel { color:var(--dsw-alias-label-secondary); }
+.dshDesktopAboutValue { color:var(--dsw-alias-label-primary); text-align:right; }
+.dshDesktopAboutValue code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+.dshDesktopAboutLink { color:var(--dsw-alias-interactive-label-primary); text-decoration:none; }
+.dshDesktopAboutLink:hover { text-decoration:underline; }
+.dshDesktopAboutActions { display:flex; flex-wrap:wrap; gap:8px; }
+.dshDesktopAboutAction { display:inline-flex; align-items:center; min-height:32px; padding:0 12px; border:1px solid var(--dsw-alias-border-l2); border-radius:7px; color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-layer-1); text-decoration:none; cursor:pointer; }
+.dshDesktopAboutAction:hover { background:var(--dsw-alias-interactive-bg-hover); }
+`
+
 /** Advanced-shell stylesheet kept as a plain string so the package client bundle stays self-contained. */
 const ADVANCED_STYLES = `
 html, body, #root { width: 100%; height: 100%; }
@@ -92,6 +109,16 @@ export function installWorkspaceChangesStyles(): () => void {
   style.dataset.plugin = 'dsh-plugin-desktop'
   style.dataset.pluginCss = 'dsh-plugin-desktop/workspace-changes'
   style.textContent = WORKSPACE_CHANGES_STYLES
+  document.head.appendChild(style)
+  return () => { style.remove() }
+}
+
+/** Install and remove the desktop-owned About settings styles. */
+export function installDesktopAboutStyles(): () => void {
+  const style = document.createElement('style')
+  style.dataset.plugin = 'dsh-plugin-desktop'
+  style.dataset.pluginCss = 'dsh-plugin-desktop/about'
+  style.textContent = DESKTOP_ABOUT_STYLES
   document.head.appendChild(style)
   return () => { style.remove() }
 }

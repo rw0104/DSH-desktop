@@ -9,11 +9,8 @@ import { compareSemVerVersions, parseSemVer } from './update-checker.ts'
 /** Desktop platforms with a fixed installer download endpoint. */
 export type DesktopDownloadPlatform = 'darwin' | 'win32'
 
-/** Fixed download endpoints that record one user-confirmed installer download. */
-export const DESKTOP_DOWNLOAD_URLS: Readonly<Record<DesktopDownloadPlatform, string>> = {
-  darwin: 'https://www.dshdesktop.cn/api/downloads/mac',
-  win32: 'https://www.dshdesktop.cn/api/downloads/windows',
-}
+/** Product-owned GitHub release base used only after explicit confirmation. */
+export const DESKTOP_RELEASES_DOWNLOAD_BASE = 'https://github.com/rw0104/DSH-desktop/releases/download'
 
 /** Maximum accepted installer size, in bytes. */
 export const MAX_UPDATE_DOWNLOAD_BYTES = 1024 * 1024 * 1024
@@ -110,7 +107,7 @@ export async function downloadDesktopUpdate(options: DownloadDesktopUpdateOption
 
   let response: Response
   try {
-    response = await options.request(DESKTOP_DOWNLOAD_URLS[platform], {
+    response = await options.request(desktopUpdateDownloadUrl(platform, options.version), {
       method: 'GET',
       cache: 'no-store',
       redirect: 'follow',
@@ -162,6 +159,16 @@ export function desktopUpdateFilename(platform: DesktopDownloadPlatform, version
   const extension = platform === 'darwin' ? 'dmg' : 'exe'
   const platformName = platform === 'darwin' ? 'mac' : 'windows'
   return `DSH-Desktop-${version}-${platformName}.${extension}`
+}
+
+/** Exact product-owned GitHub asset URL for a stable release. */
+export function desktopUpdateDownloadUrl(platform: DesktopDownloadPlatform, version: string): string {
+  validatedPlatform(platform)
+  const stableVersion = validatedVersion(version)
+  const asset = platform === 'win32'
+    ? `DSH-Desktop-${stableVersion}-x64-Setup.exe`
+    : `DSH-Desktop-${stableVersion}-universal.dmg`
+  return `${DESKTOP_RELEASES_DOWNLOAD_BASE}/v${encodeURIComponent(stableVersion)}/${encodeURIComponent(asset)}`
 }
 
 /** Remember a downloaded installer until an upgraded application resolves its retention. */

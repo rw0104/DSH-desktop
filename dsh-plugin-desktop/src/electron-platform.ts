@@ -33,7 +33,8 @@ class WindowsPlatformStrategy implements ElectronPlatformStrategy {
 
 class MacPlatformStrategy implements ElectronPlatformStrategy {
   readonly platform = 'darwin'
-  readonly updateDownloadPlatform = 'darwin'
+  // This downstream release channel currently publishes Windows installers.
+  readonly updateDownloadPlatform = undefined
   readonly canPickDirectory = false
   readonly canToggleShellMode = true
 

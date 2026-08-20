@@ -32,9 +32,9 @@ describe('desktop client environment', () => {
 
   it('accepts the Electron-owned kebab query markers', () => {
     expect(parseDesktopClientEnvironment('?dsh-desktop-mode=advanced&dsh-desktop-platform=darwin'))
-      .toEqual({ mode: 'advanced', platform: 'darwin' })
-    expect(parseDesktopClientEnvironment('?dsh-desktop-platform=win32&dsh-desktop-mode=compatibility'))
-      .toEqual({ mode: 'compatibility', platform: 'win32' })
+      .toEqual({ mode: 'advanced', platform: 'darwin', productVersion: 'unknown' })
+    expect(parseDesktopClientEnvironment('?dsh-desktop-platform=win32&dsh-desktop-mode=compatibility&dsh-desktop-version=2.0.2'))
+      .toEqual({ mode: 'compatibility', platform: 'win32', productVersion: '2.0.2' })
   })
 
   it.each([
@@ -42,6 +42,7 @@ describe('desktop client environment', () => {
     ['?dsh-desktop-mode=advanced', 'dsh-desktop-platform'],
     ['?dsh-desktop-platform=darwin', 'dsh-desktop-mode'],
     ['?dsh-desktop-mode=advanced&dsh-desktop-platform=android', 'dsh-desktop-platform'],
+    ['?dsh-desktop-mode=advanced&dsh-desktop-platform=darwin&dsh-desktop-version=v2.0.2', 'dsh-desktop-version'],
   ])('fails loud for malformed marker %s', (search, field) => {
     expect(() => parseDesktopClientEnvironment(search)).toThrow(field)
   })

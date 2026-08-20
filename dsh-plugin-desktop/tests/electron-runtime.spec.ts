@@ -1,6 +1,7 @@
 import { basename, dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DesktopShellSpec } from '../src/runtime.ts'
+import { DESKTOP_VERSION_ENDPOINT } from '../src/update-checker.ts'
 
 const terminal = vi.hoisted(() => ({ open: vi.fn() }))
 const diagnostics = vi.hoisted(() => ({ export: vi.fn() }))
@@ -1318,15 +1319,14 @@ describe('Electron desktop runtime', () => {
     await vi.waitFor(() => { expect(restart).toHaveBeenCalledOnce() })
   })
 
-  it('uses Electron networking and confirmation-gated macOS update handoff', async () => {
+  it('uses Electron networking while disabling unowned macOS installer downloads', async () => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin')
-    const response = Response.json({ version: '2.1.0' })
+    const response = Response.json({ tag_name: 'v2.1.0', draft: false, prerelease: false })
     electron.net.fetch.mockResolvedValueOnce(response)
-    updater.download.mockResolvedValueOnce('/tmp/DSH-Desktop-2.1.0-mac.dmg')
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
     const runtime = new ElectronDesktopRuntime(async () => {})
 
-    await expect(runtime.updates.request('https://www.dshdesktop.cn/api/desktop/version', { method: 'GET' }))
+    await expect(runtime.updates.request(DESKTOP_VERSION_ENDPOINT, { method: 'GET' }))
       .resolves.toBe(response)
     expect(runtime.updates).toMatchObject({
       isPackaged: false,
@@ -1335,7 +1335,7 @@ describe('Electron desktop runtime', () => {
       statePath: join('/tmp/dsh-desktop-user-data', 'updates', 'state.json'),
     })
     electron.app.isPackaged = true
-    expect(runtime.updates).toMatchObject({ isPackaged: true, canDownload: true })
+    expect(runtime.updates).toMatchObject({ isPackaged: true, canDownload: false })
 
     await runtime.updates.showManualCheckResult({
       status: 'up-to-date',
@@ -1358,35 +1358,9 @@ describe('Electron desktop runtime', () => {
     await expect(runtime.updates.confirmDownload('2.1.0')).resolves.toBe(false)
     expect(updater.download).not.toHaveBeenCalled()
 
-    electron.dialog.showMessageBox.mockResolvedValueOnce({ response: 0, checkboxChecked: false })
-    await expect(runtime.updates.confirmDownload('2.1.0')).resolves.toBe(true)
-    const controller = new AbortController()
-    electron.dialog.showSaveDialog.mockResolvedValueOnce({
-      canceled: false,
-      filePath: '/tmp/Downloads/DSH-Desktop-2.1.0-mac.dmg',
-    })
-    await runtime.updates.downloadAndOpen('2.1.0', controller.signal)
-    expect(electron.dialog.showSaveDialog).toHaveBeenCalledWith(expect.objectContaining({
-      defaultPath: join('/tmp/Downloads', 'DSH-Desktop-2.1.0-mac.dmg'),
-      filters: [{ name: 'Disk Image', extensions: ['dmg'] }],
-    }))
-    expect(updater.download).toHaveBeenCalledWith({
-      platform: 'darwin',
-      version: '2.1.0',
-      destinationPath: '/tmp/Downloads/DSH-Desktop-2.1.0-mac.dmg',
-      request: expect.any(Function),
-      signal: controller.signal,
-    })
-    expect(electron.shell.openPath).toHaveBeenCalledWith('/tmp/DSH-Desktop-2.1.0-mac.dmg')
-    expect(updater.record).toHaveBeenCalledWith('/tmp/dsh-desktop-user-data', {
-      platform: 'darwin',
-      version: '2.1.0',
-      path: '/tmp/DSH-Desktop-2.1.0-mac.dmg',
-    })
-    expect(electron.dialog.showMessageBox).toHaveBeenLastCalledWith(expect.objectContaining({
-      title: 'DSH Desktop Update Downloaded',
-      buttons: ['OK'],
-    }))
+    await expect(runtime.updates.downloadAndOpen('2.1.0', new AbortController().signal))
+      .rejects.toThrow('updates are unavailable on darwin')
+    expect(updater.download).not.toHaveBeenCalled()
 
     runtime.updates.notify({
       title: 'Profile Recovered',
@@ -1542,44 +1516,15 @@ describe('Electron desktop runtime', () => {
     expect(updater.resolve).toHaveBeenCalledWith('/tmp/dsh-desktop-user-data', artifact, remove)
   })
 
-  it('rejects a macOS handoff when the operating system cannot open the DMG', async () => {
+  it('rejects a macOS handoff before selecting or downloading an installer', async () => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin')
-    updater.download.mockResolvedValueOnce('/tmp/DSH-Desktop-2.1.0-mac.dmg')
-    electron.shell.openPath.mockResolvedValueOnce('Launch Services rejected the image')
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
     const runtime = new ElectronDesktopRuntime(async () => {})
-    electron.dialog.showSaveDialog.mockResolvedValueOnce({
-      canceled: false,
-      filePath: '/tmp/DSH-Desktop-2.1.0-mac.dmg',
-    })
 
     await expect(runtime.updates.downloadAndOpen('2.1.0', new AbortController().signal))
-      .rejects.toThrow('Launch Services rejected the image')
-    expect(electron.dialog.showMessageBox).not.toHaveBeenCalled()
-  })
-
-  it('does not show macOS completion after the update generation is cancelled', async () => {
-    vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin')
-    updater.download.mockResolvedValueOnce('/tmp/DSH-Desktop-2.1.0-mac.dmg')
-    let finishOpen!: (result: string) => void
-    electron.shell.openPath.mockImplementationOnce(async () => new Promise<string>(resolve => {
-      finishOpen = resolve
-    }))
-    const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
-    const runtime = new ElectronDesktopRuntime(async () => {})
-    const controller = new AbortController()
-    electron.dialog.showSaveDialog.mockResolvedValueOnce({
-      canceled: false,
-      filePath: '/tmp/DSH-Desktop-2.1.0-mac.dmg',
-    })
-
-    const pending = runtime.updates.downloadAndOpen('2.1.0', controller.signal)
-    await vi.waitFor(() => { expect(electron.shell.openPath).toHaveBeenCalledOnce() })
-    controller.abort()
-    finishOpen('')
-
-    await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
-    expect(electron.dialog.showMessageBox).not.toHaveBeenCalled()
+      .rejects.toThrow('updates are unavailable on darwin')
+    expect(electron.dialog.showSaveDialog).not.toHaveBeenCalled()
+    expect(updater.download).not.toHaveBeenCalled()
   })
 
   it('uses advanced macOS material options and offers compatibility mode', async () => {

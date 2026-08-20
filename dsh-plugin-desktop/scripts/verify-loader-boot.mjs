@@ -10,22 +10,26 @@ import {
   createLaunchEnvironmentSnapshot,
   DSH_LAUNCH_ENVIRONMENT_KEY,
 } from '@deepseek-ai/dsh-launch-environment'
+import { marketRoutes } from 'dsh-community-market'
 import { installDesktopPnpmRuntime } from '../lib/desktop-runtime-environment.js'
 import { installProfilePackageResolver } from '../lib/module-resolution.js'
 import { prepareDesktopProfile } from '../lib/profile.js'
 
 const BIN_NAME = 'dsh-plugin-desktop-loader-smoke'
 const THIRD_PARTY_NAME = 'dsh-desktop-loader-smoke-plugin'
+const RENDERER_BOOT_REPORT_PATH = '/_dsh/desktop/renderer-boot'
 const RUNNER_ENVIRONMENT_NAMES = new Set([
   'ELECTRON_RUN_AS_NODE',
   'NPM_CONFIG_RUNTIME',
   'NPM_CONFIG_TARGET',
   'NPM_CONFIG_DISTURL',
 ])
-const EXPECTED_WORKBENCH_ROUTES = new Set([
+const EXPECTED_HOST_ROUTES = new Set([
+  RENDERER_BOOT_REPORT_PATH,
   '/dsh-desktop/api/workspace/changes',
   '/dsh-desktop/api/workspace/terminals',
   '/dsh-desktop/api/workspace/worktrees',
+  ...Object.values(marketRoutes),
 ])
 const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-loader-'))
 let ctx
@@ -33,7 +37,7 @@ let mounted
 let mountedSpec
 let releasePackageResolver
 let pnpmRuntime
-const registeredWorkbenchRoutes = new Set()
+const registeredHostRoutes = new Set()
 const runnerEnvironment = Object.entries(process.env)
   .filter(([key]) => RUNNER_ENVIRONMENT_NAMES.has(key.toUpperCase()))
 
@@ -45,6 +49,7 @@ try {
   }])
   const launchPath = launchEnvironment.get('PATH')?.value
   const packageRoot = new URL('../', import.meta.url)
+  const desktopPackageVersion = JSON.parse(readFileSync(new URL('package.json', packageRoot), 'utf8')).version
   const pnpmBinPath = fileURLToPath(new URL('node_modules/pnpm/bin/pnpm.mjs', packageRoot))
   const electronVersion = JSON.parse(readFileSync(new URL('node_modules/electron/package.json', packageRoot), 'utf8')).version
   pnpmRuntime = installDesktopPnpmRuntime({
@@ -91,6 +96,7 @@ try {
 
   const runtime = {
     platform: 'darwin',
+    updates: { currentVersion: desktopPackageVersion },
     schedule(spec) {
       mountedSpec = spec
       return async () => { await mounted }
@@ -121,11 +127,14 @@ try {
         host: '127.0.0.1',
         port: 43120,
         register(route) {
-          if (route?.kind !== 'exact' || !EXPECTED_WORKBENCH_ROUTES.has(route.path) || typeof route.handler !== 'function') {
-            throw new Error('desktop Workbench registered an unexpected Web route')
+          if (route?.kind !== 'exact' || !EXPECTED_HOST_ROUTES.has(route.path) || typeof route.handler !== 'function') {
+            throw new Error(`desktop composition registered an unexpected Web route: ${String(route?.path)}`)
           }
-          registeredWorkbenchRoutes.add(route.path)
-          return () => {}
+          if (registeredHostRoutes.has(route.path)) {
+            throw new Error(`desktop composition registered a duplicate Web route: ${route.path}`)
+          }
+          registeredHostRoutes.add(route.path)
+          return () => { registeredHostRoutes.delete(route.path) }
         },
       })
       host.provide('webRuntime', {})
@@ -146,8 +155,8 @@ try {
   )
   await runtime.mountScheduled()
 
-  if (registeredWorkbenchRoutes.size !== EXPECTED_WORKBENCH_ROUTES.size || [...EXPECTED_WORKBENCH_ROUTES].some(path => !registeredWorkbenchRoutes.has(path))) {
-    throw new Error(`desktop Workbench did not register the expected route set: ${[...registeredWorkbenchRoutes].join(', ')}`)
+  if (registeredHostRoutes.size !== EXPECTED_HOST_ROUTES.size || [...EXPECTED_HOST_ROUTES].some(path => !registeredHostRoutes.has(path))) {
+    throw new Error(`desktop composition did not register the expected route set: ${[...registeredHostRoutes].join(', ')}`)
   }
 
   const desktopEntry = ctx.loader.resolve('include:desktop-shell')
@@ -165,7 +174,7 @@ try {
   if (mountedSpec?.mode !== 'compatibility') {
     throw new Error(`desktop plugin produced an unexpected shell mode: ${String(mountedSpec?.mode)}`)
   }
-  if (mountedSpec?.url !== 'http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin') {
+  if (mountedSpec?.url !== `http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin&dsh-desktop-version=${desktopPackageVersion}`) {
     throw new Error(`desktop plugin produced an unexpected renderer URL: ${String(mountedSpec?.url)}`)
   }
 } finally {

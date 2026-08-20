@@ -53,7 +53,7 @@ describe('electronPlatformStrategy', () => {
     const icon = {} as Parameters<typeof strategy.configureApplication>[0]
 
     expect(strategy.platform).toBe('darwin')
-    expect(strategy.updateDownloadPlatform).toBe('darwin')
+    expect(strategy.updateDownloadPlatform).toBeUndefined()
     expect(strategy.canPickDirectory).toBe(false)
     expect(strategy.canToggleShellMode).toBe(true)
 

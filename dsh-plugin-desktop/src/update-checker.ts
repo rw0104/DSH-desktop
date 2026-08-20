@@ -1,10 +1,10 @@
-/** Headless version checks against the public DSH Desktop release service. */
+/** Headless version checks against the product-owned GitHub release channel. */
 
 /** Public endpoint returning the latest stable DSH Desktop version. */
-export const DESKTOP_VERSION_ENDPOINT = 'https://www.dshdesktop.cn/api/desktop/version'
+export const DESKTOP_VERSION_ENDPOINT = 'https://api.github.com/repos/rw0104/DSH-desktop/releases/latest'
 
 /** Maximum response body bytes accepted from the version service. */
-export const MAX_VERSION_RESPONSE_BYTES = 4 * 1024
+export const MAX_VERSION_RESPONSE_BYTES = 256 * 1024
 
 /** Strictly parsed SemVer components. Numeric components remain strings to avoid overflow. */
 export interface ParsedSemVer {
@@ -97,7 +97,10 @@ export async function checkForStableUpdate(
 
   const init: RequestInit = {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
     cache: 'no-store',
     redirect: 'error',
     ...(options.signal === undefined ? {} : { signal: options.signal }),
@@ -169,8 +172,13 @@ function parseVersionResponse(body: string): ParsedSemVer | null {
   } catch {
     return null
   }
-  if (!isRecord(value) || typeof value.version !== 'string') return null
-  return parseCanonicalStableVersion(value.version)
+  if (!isRecord(value)
+    || value.draft !== false
+    || value.prerelease !== false
+    || typeof value.tag_name !== 'string'
+    || !value.tag_name.startsWith('v')) return null
+  const parsed = parseCanonicalStableVersion(value.tag_name.slice(1))
+  return parsed !== null && value.tag_name === `v${parsed.version}` ? parsed : null
 }
 
 function parseCanonicalStableVersion(input: string): ParsedSemVer | null {

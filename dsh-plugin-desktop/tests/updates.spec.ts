@@ -19,7 +19,7 @@ const testConfig: UpdateConfig = {
 }
 
 function versionResponse(version: unknown): Response {
-  return Response.json({ version })
+  return Response.json({ tag_name: typeof version === 'string' ? `v${version}` : version, draft: false, prerelease: false })
 }
 
 interface Harness {

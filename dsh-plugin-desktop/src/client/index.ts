@@ -6,13 +6,15 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 // The desktop client does not load or register a settings surface.
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
+import { DesktopAboutSection, DESKTOP_ABOUT_LOCALE } from './about-section.tsx'
 import { applyAdvancedShell } from './advanced-shell.ts'
 import { startRendererBootReporter } from './boot-health.ts'
 import { installDesktopDirectoryPickerBridge, requestDesktopDirectoryValidation } from './directory-picker.ts'
 import { parseDesktopClientEnvironment } from './environment.ts'
+import { DESKTOP_ABOUT_LOCALE_DICTIONARY } from './release-metadata.ts'
 import { installWorkspaceFolderDrop } from './workspace-folder-drop.ts'
 import { WorkspaceChangesTab } from './WorkspaceChangesTab.tsx'
-import { installWorkspaceChangesStyles } from './styles.ts'
+import { installDesktopAboutStyles, installWorkspaceChangesStyles } from './styles.ts'
 
 type DesktopSidebarRegistry = {
   registerTab(descriptor: {
@@ -38,6 +40,7 @@ export type { DesktopClientEnvironment, DesktopClientMode, DesktopClientPlatform
 /** Services required by advanced presentation. */
 export const inject = [
   'slots',
+  'locale',
   'sessions',
   'theme',
   'workspaces',
@@ -83,5 +86,24 @@ export function apply(ctx: ClientContext): void {
     () => installWorkspaceChangesStyles(),
     'desktop: Workspace Changes styles',
   )
+  ctx.effect(() => {
+    const removeStyles = installDesktopAboutStyles()
+    const disposeLocaleZh = ctx.locale.register(DESKTOP_ABOUT_LOCALE, 'zh', DESKTOP_ABOUT_LOCALE_DICTIONARY.zh)
+    const disposeLocaleEn = ctx.locale.register(DESKTOP_ABOUT_LOCALE, 'en', DESKTOP_ABOUT_LOCALE_DICTIONARY.en)
+    const t = ctx.locale.bind(DESKTOP_ABOUT_LOCALE)
+    const disposeSlot = ctx.slots.inject('settings.section', () => ctx.slots.register({
+      name: 'settings.section',
+      id: 'desktop-about',
+      order: 900,
+      label: () => t('nav'),
+      inject: () => ({ about: { t }, productVersion: environment.productVersion }),
+    }, DesktopAboutSection))
+    return () => {
+      disposeSlot()
+      disposeLocaleZh()
+      disposeLocaleEn()
+      removeStyles()
+    }
+  }, 'desktop: About settings section')
   if (environment.mode === 'advanced') applyAdvancedShell(ctx, environment)
 }
