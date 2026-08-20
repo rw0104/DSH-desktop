@@ -2,7 +2,7 @@
 
 [English](faq.en.md)
 
-本页回答当前正式版本最常见的安装、平台、运行环境和插件问题。功能范围以[最新 GitHub Release](https://github.com/anywhere-labs/deepseek-harness-desktop/releases/latest)和[用户指南](user-guide.md)为准。
+本页回答当前正式版本最常见的安装、平台、运行环境和插件问题。功能范围以[最新 GitHub Release](https://github.com/rw0104/DSH-desktop/releases/latest)和[用户指南](user-guide.md)为准。
 
 ## DSH Desktop 是什么？
 

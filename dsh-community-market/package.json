@@ -10,12 +10,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/anywhere-labs/deepseek-harness-desktop.git",
+    "url": "git+https://github.com/rw0104/DSH-desktop.git",
     "directory": "dsh-community-market"
   },
-  "homepage": "https://github.com/anywhere-labs/deepseek-harness-desktop/tree/master/dsh-community-market#readme",
+  "homepage": "https://github.com/rw0104/DSH-desktop/tree/main/dsh-community-market#readme",
   "bugs": {
-    "url": "https://github.com/anywhere-labs/deepseek-harness-desktop/issues"
+    "url": "https://github.com/rw0104/DSH-desktop/issues"
   },
   "type": "module",
   "main": "lib/index.js",

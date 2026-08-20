@@ -179,7 +179,7 @@ describe('published package surface', () => {
     }
   })
 
-  it('marks the upstream Workspace browser as the desktop folder-drop target', () => {
+  it('marks the upstream Workspace browser and project rows for desktop folder actions', () => {
     const patchPath = './patches/dsh-client-ui-workspace@0.1.0-rc.8.patch'
     expect(workspaceManifest.resolutions).toMatchObject({
       '@deepseek-ai/dsh-client-ui-workspace@npm:0.1.0-rc.8': expect.stringContaining(patchPath),
@@ -192,6 +192,8 @@ describe('published package surface', () => {
     ), 'utf8')
     expect(patch).toContain('data-dsh-workspace-drop-target')
     expect(installedClient).toContain('data-dsh-workspace-drop-target')
+    expect(patch).toContain('data-dsh-workspace-path')
+    expect(installedClient).toContain('data-dsh-workspace-path')
   })
 
   it('builds public Host plugins and their private native bootstraps', () => {

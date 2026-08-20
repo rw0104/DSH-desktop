@@ -2,7 +2,7 @@
 
 [中文](faq.md)
 
-This page answers common questions about installation, supported platforms, the bundled runtime, and plugins in the current stable release. The [latest GitHub Release](https://github.com/anywhere-labs/deepseek-harness-desktop/releases/latest) and [user guide](user-guide.en.md) define the shipped product scope.
+This page answers common questions about installation, supported platforms, the bundled runtime, and plugins in the current stable release. The [latest GitHub Release](https://github.com/rw0104/DSH-desktop/releases/latest) and [user guide](user-guide.en.md) define the shipped product scope.
 
 ## What is DSH Desktop?
 

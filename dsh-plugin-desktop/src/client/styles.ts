@@ -6,6 +6,7 @@ import {
   WINDOWS_TITLEBAR_HEIGHT,
 } from '../window-chrome.ts'
 import { SIDEBAR_COLLAPSED } from './layout-state.ts'
+import { WORKBENCH_MAX_WIDTH, WORKBENCH_MIN_WIDTH } from './DesktopWorkbench.tsx'
 
 const WORKSPACE_CHANGES_STYLES = `
 .dshWorkspaceChanges { display:flex; flex-direction:column; min-height:100%; color:var(--dsw-alias-label-primary); }
@@ -66,6 +67,56 @@ const DESKTOP_ABOUT_STYLES = `
 .dshDesktopAboutAction:hover { background:var(--dsw-alias-interactive-bg-hover); }
 `
 
+const DESKTOP_WORKBENCH_STYLES = `
+.dshDesktopWorkbenchLauncher { position:fixed; z-index:72; right:12px; top:50%; display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; padding:0; border:1px solid var(--dsw-alias-border-l2); border-radius:7px; color:var(--dsw-alias-label-secondary); background:var(--dsw-alias-bg-layer-1); box-shadow:var(--dsw-shadow-elevation-2); cursor:pointer; transform:translateY(-50%); pointer-events:auto; }
+.dshDesktopWorkbenchLauncher:hover, .dshDesktopWorkbenchIcon:hover { color:var(--dsw-alias-label-primary); background:var(--dsw-alias-interactive-bg-hover); }
+body[data-dsh-desktop-workbench-open] #root { box-sizing:border-box; padding-right:var(--dsh-desktop-workbench-width); }
+.dshDesktopWorkbench { position:fixed; z-index:70; top:0; right:0; bottom:0; display:flex; flex-direction:column; box-sizing:border-box; min-width:${String(WORKBENCH_MIN_WIDTH)}px; max-width:min(${String(WORKBENCH_MAX_WIDTH)}px, calc(100vw - 64px)); color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-base); border-left:1px solid var(--dsw-alias-border-l1); box-shadow:-12px 0 28px color-mix(in srgb, var(--dsw-alias-label-primary) 9%, transparent); pointer-events:auto; }
+body[data-dsh-desktop-mode="advanced"][data-dsh-desktop-platform="win32"] .dshDesktopWorkbench { top:${WINDOWS_TITLEBAR_HEIGHT}px; }
+body[data-dsh-desktop-mode="advanced"][data-dsh-desktop-platform="darwin"] .dshDesktopWorkbench { top:${MACOS_TITLEBAR_HEIGHT}px; }
+.dshDesktopWorkbenchResize { position:absolute; z-index:2; top:0; bottom:0; left:-5px; width:10px; cursor:col-resize; touch-action:none; }
+.dshDesktopWorkbenchHeader, .dshDesktopWorkbenchPanelToolbar { display:flex; align-items:center; justify-content:space-between; min-height:40px; padding:0 10px 0 12px; border-bottom:1px solid var(--dsw-alias-border-l2); }
+.dshDesktopWorkbenchHeader strong, .dshDesktopWorkbenchPanelToolbar strong { font:var(--dsw-font-xs-strong-13); }
+.dshDesktopWorkbenchIcon { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; padding:0; border:0; border-radius:6px; color:var(--dsw-alias-label-secondary); background:transparent; cursor:pointer; }
+.dshDesktopWorkbenchIcon:disabled { opacity:.45; cursor:default; }
+.dshDesktopWorkbenchTabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:2px; padding:6px 8px; border-bottom:1px solid var(--dsw-alias-border-l2); }
+.dshDesktopWorkbenchTab { display:flex; align-items:center; justify-content:center; gap:5px; min-width:0; min-height:30px; padding:0 6px; border:0; border-radius:6px; color:var(--dsw-alias-label-tertiary); background:transparent; font:var(--dsw-font-xxxs-11); cursor:pointer; }
+.dshDesktopWorkbenchTab span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dshDesktopWorkbenchTab:hover, .dshDesktopWorkbenchTab.is-active { color:var(--dsw-alias-label-primary); background:var(--dsw-alias-interactive-bg-hover); }
+.dshDesktopWorkbenchTab.is-active { box-shadow:inset 0 -2px 0 var(--dsw-alias-state-business-primary); }
+.dshDesktopWorkbenchBody { min-height:0; flex:1; overflow:auto; }
+.dshDesktopWorkbenchBody > .dshWorkspaceChanges { min-height:100%; }
+.dshDesktopWorkbenchPanel { min-height:100%; }
+.dshDesktopWorkbenchEmpty, .dshDesktopWorkbenchError { padding:18px 14px; color:var(--dsw-alias-label-tertiary); font:var(--dsw-font-xxs-12); line-height:1.5; }
+.dshDesktopWorkbenchError { color:var(--dsw-alias-state-error-primary); }
+.dshDesktopTerminalRow { display:flex; flex-direction:column; gap:5px; padding:10px 12px; border-bottom:1px solid var(--dsw-alias-border-l2); }
+.dshDesktopTerminalRow > div { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.dshDesktopTerminalRow strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:var(--dsw-font-xxs-strong-12); }
+.dshDesktopTerminalRow code, .dshDesktopWorktreeFacts code { overflow-wrap:anywhere; color:var(--dsw-alias-label-tertiary); font:var(--dsw-font-xxxs-11); }
+.dshDesktopTerminalRow pre { max-height:130px; margin:2px 0 0; padding:7px; overflow:auto; border-radius:5px; color:var(--dsw-alias-label-secondary); background:var(--dsw-alias-bg-secondary); font:var(--dsw-font-xxxs-11); white-space:pre-wrap; }
+.dshDesktopTerminalStatus { flex:none; padding:1px 5px; border-radius:4px; color:var(--dsw-alias-label-tertiary); background:var(--dsw-alias-bg-secondary); font:var(--dsw-font-xxxs-11); }
+.dshDesktopTerminalStatus.is-running { color:var(--dsw-alias-state-success-primary); }
+.dshDesktopTerminalStatus.is-disconnected, .dshDesktopTerminalStatus.is-exited { color:var(--dsw-alias-state-warning-primary); }
+.dshDesktopWorktreeFacts { display:flex; flex-direction:column; margin:0; }
+.dshDesktopWorktreeFacts > div { display:grid; grid-template-columns:92px minmax(0,1fr); gap:10px; padding:9px 12px; border-bottom:1px solid var(--dsw-alias-border-l2); }
+.dshDesktopWorktreeFacts dt { color:var(--dsw-alias-label-tertiary); font:var(--dsw-font-xxxs-11); }
+.dshDesktopWorktreeFacts dd { min-width:0; margin:0; color:var(--dsw-alias-label-secondary); font:var(--dsw-font-xxs-12); overflow-wrap:anywhere; }
+.dshDesktopWorktreeAction { display:flex; gap:7px; padding:12px; }
+.dshDesktopWorktreeAction input { min-width:0; min-height:30px; flex:1; padding:0 8px; border:1px solid var(--dsw-alias-border-l2); border-radius:6px; color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-primary); }
+.dshDesktopWorktreeAction button, .dshDesktopWorktreeConfirm button { min-height:30px; padding:0 9px; border:1px solid var(--dsw-alias-border-l2); border-radius:6px; color:var(--dsw-alias-label-secondary); background:var(--dsw-alias-bg-layer-1); cursor:pointer; }
+.dshDesktopWorktreeAction button:hover, .dshDesktopWorktreeConfirm button:hover { color:var(--dsw-alias-label-primary); background:var(--dsw-alias-interactive-bg-hover); }
+.dshDesktopWorktreeAction button:disabled, .dshDesktopWorktreeConfirm button:disabled { opacity:.45; cursor:default; }
+.dshDesktopWorktreeConfirm { margin:0 12px 12px; padding:10px; border:1px solid var(--dsw-alias-border-l2); border-radius:7px; background:var(--dsw-alias-bg-secondary); }
+.dshDesktopWorktreeConfirm p { margin:0 0 8px; color:var(--dsw-alias-label-secondary); font:var(--dsw-font-xxs-12); }
+.dshDesktopWorktreeConfirm > div { display:flex; gap:7px; justify-content:flex-end; }
+.dshDesktopWorkspaceContextMenu { position:fixed; z-index:1200; width:188px; padding:4px; border:1px solid var(--dsw-alias-border-l2); border-radius:7px; background:var(--dsw-alias-bg-layer-1); box-shadow:var(--dsw-shadow-elevation-3); pointer-events:auto; }
+.dshDesktopWorkspaceContextMenu button { display:flex; align-items:center; gap:9px; width:100%; min-height:34px; padding:0 9px; border:0; border-radius:5px; color:var(--dsw-alias-label-primary); background:transparent; font:var(--dsw-font-xs-13); text-align:left; cursor:pointer; }
+.dshDesktopWorkspaceContextMenu button:hover, .dshDesktopWorkspaceContextMenu button:focus-visible { background:var(--dsw-alias-interactive-bg-hover); outline:none; }
+.dshDesktopWorkbenchToast { position:fixed; z-index:1200; right:16px; bottom:16px; max-width:min(420px,calc(100vw - 32px)); padding:10px 12px; border:1px solid var(--dsw-alias-state-error-primary); border-radius:7px; color:var(--dsw-alias-state-error-primary); background:var(--dsw-alias-bg-layer-1); box-shadow:var(--dsw-shadow-elevation-2); pointer-events:auto; }
+@media (max-width:760px) { body[data-dsh-desktop-workbench-open] #root { padding-right:0; } .dshDesktopWorkbench { width:calc(100vw - 48px) !important; min-width:0; } .dshDesktopWorkbenchResize { display:none; } .dshDesktopWorkbenchTab span { display:none; } }
+@media (prefers-reduced-motion:reduce) { .dshDesktopWorkbench, .dshDesktopWorkbenchLauncher { transition:none; } }
+`
+
 /** Advanced-shell stylesheet kept as a plain string so the package client bundle stays self-contained. */
 const ADVANCED_STYLES = `
 html, body, #root { width: 100%; height: 100%; }
@@ -119,6 +170,16 @@ export function installDesktopAboutStyles(): () => void {
   style.dataset.plugin = 'dsh-plugin-desktop'
   style.dataset.pluginCss = 'dsh-plugin-desktop/about'
   style.textContent = DESKTOP_ABOUT_STYLES
+  document.head.appendChild(style)
+  return () => { style.remove() }
+}
+
+/** Install and remove the desktop-owned Workbench and context-menu styles. */
+export function installDesktopWorkbenchStyles(): () => void {
+  const style = document.createElement('style')
+  style.dataset.plugin = 'dsh-plugin-desktop'
+  style.dataset.pluginCss = 'dsh-plugin-desktop/workbench'
+  style.textContent = DESKTOP_WORKBENCH_STYLES
   document.head.appendChild(style)
   return () => { style.remove() }
 }

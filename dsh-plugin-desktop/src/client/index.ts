@@ -1,5 +1,4 @@
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import { createElement } from 'react'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type convergence only: locale/theme declarations expose settings slot rows.
@@ -13,18 +12,8 @@ import { installDesktopDirectoryPickerBridge, requestDesktopDirectoryValidation 
 import { parseDesktopClientEnvironment } from './environment.ts'
 import { DESKTOP_ABOUT_LOCALE_DICTIONARY } from './release-metadata.ts'
 import { installWorkspaceFolderDrop } from './workspace-folder-drop.ts'
-import { WorkspaceChangesTab } from './WorkspaceChangesTab.tsx'
-import { installDesktopAboutStyles, installWorkspaceChangesStyles } from './styles.ts'
-
-type DesktopSidebarRegistry = {
-  registerTab(descriptor: {
-    id: string
-    title: () => string
-    order: number
-    single: boolean
-    component: (props: Parameters<typeof WorkspaceChangesTab>[0]) => unknown
-  }): () => void
-}
+import { DesktopWorkbench } from './DesktopWorkbench.tsx'
+import { installDesktopAboutStyles, installDesktopWorkbenchStyles, installWorkspaceChangesStyles } from './styles.ts'
 
 export { applyAdvancedShell } from './advanced-shell.ts'
 export {
@@ -70,20 +59,24 @@ export function apply(ctx: ClientContext): void {
       'dsh-plugin-desktop: native directory picker bridge',
     )
   }
-  ctx.effect(() => {
-    const descriptor = {
-      id: 'desktop:changes',
-      title: () => 'Changes',
-      order: 5,
-      single: true,
-      component: (props: Parameters<typeof WorkspaceChangesTab>[0]) => createElement(WorkspaceChangesTab, props),
-    }
-    const sidebar = ctx.get('betterSidebar') as DesktopSidebarRegistry | undefined
-    return sidebar?.registerTab(descriptor) ?? (() => {})
-  }, 'desktop: Workspace Changes tab')
+  ctx.effect(() => ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay',
+    id: 'desktop-workbench',
+    order: 40,
+    inject: () => ({
+      desktopWorkbench: {
+        environment,
+        openPath: (path: string) => ctx.workspaces.openPath(path),
+      },
+    }),
+  }, DesktopWorkbench)), 'desktop: Workbench and workspace context menu')
   ctx.effect(
     () => installWorkspaceChangesStyles(),
     'desktop: Workspace Changes styles',
+  )
+  ctx.effect(
+    () => installDesktopWorkbenchStyles(),
+    'desktop: Workbench styles',
   )
   ctx.effect(() => {
     const removeStyles = installDesktopAboutStyles()
