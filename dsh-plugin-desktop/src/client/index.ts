@@ -78,7 +78,7 @@ export function apply(ctx: ClientContext): void {
       single: true,
       component: (props: Parameters<typeof WorkspaceChangesTab>[0]) => createElement(WorkspaceChangesTab, props),
     }
-    const sidebar = (ctx as ClientContext & { betterSidebar?: DesktopSidebarRegistry }).betterSidebar
+    const sidebar = ctx.get('betterSidebar') as DesktopSidebarRegistry | undefined
     return sidebar?.registerTab(descriptor) ?? (() => {})
   }, 'desktop: Workspace Changes tab')
   ctx.effect(
