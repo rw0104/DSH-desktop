@@ -108,6 +108,8 @@ describe('desktop profile composition', {
       '@deepseek-ai/dsh-base',
       'third-party-one',
       DESKTOP_PACKAGE_NAME,
+      '@anionex/dsh-vision-toolkit',
+      'dsh-better-sidebar',
       'third-party-two',
     ])).toEqual([
       '@deepseek-ai/dsh-base',
@@ -157,6 +159,8 @@ describe('desktop profile composition', {
             '@deepseek-ai/dsh-base',
             '@deepseek-ai/dsh-web-app',
             '@deepseek-ai/dsh-desktop-app',
+            '@anionex/dsh-vision-toolkit',
+            'dsh-better-sidebar',
           ],
         },
       },

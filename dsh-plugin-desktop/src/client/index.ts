@@ -44,7 +44,6 @@ export const inject = [
   'sessions',
   'theme',
   'workspaces',
-  'betterSidebar',
 ]
 
 /** Register desktop-owned client surfaces for the current BrowserWindow mode. @param ctx - browser Cordis context. */
