@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { promisify } from 'node:util'
@@ -232,9 +232,19 @@ function parseWorktreeList(raw: string): readonly WorkspaceWorktreeEntry[] {
 }
 
 function samePath(left: string, right: string): boolean {
-  const normalizedLeft = resolve(left)
-  const normalizedRight = resolve(right)
+  const normalizedLeft = canonicalPath(left)
+  const normalizedRight = canonicalPath(right)
   return process.platform === 'win32' ? normalizedLeft.toLowerCase() === normalizedRight.toLowerCase() : normalizedLeft === normalizedRight
+}
+
+/** Git may return a full path while Node receives an equivalent 8.3 short path on Windows. */
+function canonicalPath(value: string): string {
+  const normalized = resolve(value)
+  try {
+    return realpathSync.native(normalized)
+  } catch {
+    return normalized
+  }
 }
 
 function isWithin(root: string, target: string): boolean {
