@@ -48,8 +48,6 @@ jobs:
           if-no-files-found: error
           path: |
             dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Setup.exe
-            dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Update.exe
-            dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Update.exe.blockmap
             dsh-plugin-desktop/dist/latest.yml
 
   publish-release:
