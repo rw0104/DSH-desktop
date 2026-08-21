@@ -42,7 +42,7 @@
 
 ## 报告安全问题
 
-如果发现可能的安全问题，请通过 [t4wefan@qq.com](mailto:t4wefan@qq.com) 私下联系我们。请提供受影响的版本或 commit、操作系统、复现步骤、预期影响，以及可以安全分享的最小 proof of concept。
+如果发现可能的安全问题，请通过 [1576186341@qq.com](mailto:1576186341@qq.com) 私下联系我们。请提供受影响的版本或 commit、操作系统、复现步骤、预期影响，以及可以安全分享的最小 proof of concept。
 
 不要发送 secret 或个人数据；未修复漏洞也不要直接提交公开 issue。普通 bug、目录元数据修正和功能建议可以使用仓库的公开 issue tracker。
 

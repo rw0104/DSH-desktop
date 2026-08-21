@@ -166,7 +166,7 @@ Choose whichever platform you prefer to discuss usage, plugin development, and p
 
 Discord: [Join the DSH Desktop community](https://discord.gg/TJeGqKRNM)
 
-If you would like to join our technical team, contact us at [t4wefan@qq.com](mailto:t4wefan@qq.com).
+If you would like to join our technical team, contact us at [1576186341@qq.com](mailto:1576186341@qq.com).
 
 ## Related Links
 

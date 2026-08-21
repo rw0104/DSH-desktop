@@ -48,7 +48,7 @@ corepack yarn dev     # 有图形环境时启动应用
 
 ## 加入技术团队
 
-如果你希望加入我们的技术团队，欢迎通过 [t4wefan@qq.com](mailto:t4wefan@qq.com) 联系我们。
+如果你希望加入我们的技术团队，欢迎通过 [1576186341@qq.com](mailto:1576186341@qq.com) 联系我们。
 
 ## 行为准则
 

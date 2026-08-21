@@ -42,7 +42,7 @@ Only one source is selected for browsing at a time. Its failure may be shown bes
 
 ## Reporting a vulnerability
 
-Please report a suspected vulnerability privately to [t4wefan@qq.com](mailto:t4wefan@qq.com). Include the affected version or commit, operating system, reproduction steps, expected impact, and any proof of concept that can be shared safely.
+Please report a suspected vulnerability privately to [1576186341@qq.com](mailto:1576186341@qq.com). Include the affected version or commit, operating system, reproduction steps, expected impact, and any proof of concept that can be shared safely.
 
 Do not include secrets or personal data. Please do not open a public issue for an unpatched vulnerability. Ordinary bugs, catalog metadata corrections, and feature requests can use the repository's public issue tracker.
 
