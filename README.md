@@ -8,7 +8,7 @@
 
 当前 Windows x64 安装包：
 
-[下载 DSH Desktop v1.0.5](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.5) · [直接下载 Windows 安装器](https://github.com/rw0104/DSH-desktop/releases/download/v1.0.5/DSH-Desktop-1.0.5-x64-Setup.exe)
+[下载 DSH Desktop v2.0.5](https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.5) · [直接下载 Windows 安装器](https://github.com/rw0104/DSH-desktop/releases/download/v2.0.5/DSH-Desktop-2.0.5-x64-Setup.exe)
 
 安装包支持当前用户安装、选择安装目录、开始菜单和桌面快捷方式。当前安装包未进行 Authenticode 签名，Windows 可能显示 SmartScreen 或 Unknown Publisher 提示。
 
@@ -44,7 +44,7 @@ DSH Desktop 使用官方 [DeepSeek Harness](https://github.com/deepseek-ai/deeps
 
 ## 安装与首次启动
 
-1. 从 [v1.0.5 Release](https://github.com/rw0104/DSH-desktop/releases/tag/v1.0.5) 下载 Windows x64 安装器。
+1. 从 [v2.0.5 Release](https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.5) 下载 Windows x64 安装器。
 2. 选择安装目录并完成安装。
 3. 启动 DSH Desktop。首次启动会显示 Vision Toolkit 隐私提示；中文 Windows 会显示中文提示。
 4. 在 DSH Settings 中配置模型、凭据和视觉服务。Python 是 Vision 本地工具的前置条件；Chrome、Chromium 或 Edge 只在使用 HTML 截图时需要。
