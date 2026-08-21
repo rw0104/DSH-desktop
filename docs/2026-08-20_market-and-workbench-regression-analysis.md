@@ -75,6 +75,7 @@ flowchart LR
 | E-008 | 左侧目录右键 | 同一 smoke 右键真实 `data-dsh-workspace-path="D:\\Demo\\DHS"` row | Desktop 菜单 1 个，显示“打开目录” |
 | E-009 | 上游 Tab 注册 | 点击上游侧栏新建 Tab 菜单 | 菜单包含 `Changes` |
 | E-010 | patched upstream bundle | `rg -n "open-directory|workspaceTerminal|terminal process exited" node_modules/dsh-better-sidebar/lib` | Explorer open-directory 和 UI terminal adapter 已进入实际 client/host bundle |
+| E-011 | Windows x64 release artifact | `corepack yarn dist:win` + `verify-win-installer.ts` | `DSH-Desktop-2.0.5-x64-Setup.exe`，253,630,501 bytes，SHA-256 `F756AD105DCC11B2AD1B6CFD9180DA959AC5C32D26CEE51A6D42BFA448D99755`；verifier passed |
 
 ### Findings
 
@@ -128,7 +129,13 @@ corepack yarn workspace dsh-plugin-desktop vitest run tests/open-directory.spec.
 corepack yarn package:dir
 ```
 
-正式 gate 和 `v2.0.5` NSIS 构建完成后，补充以下证据：安装包路径、SHA-256、`verify-win-installer` 结果、Git commit 和 GitHub Release URL。
+正式 gate、NSIS 构建和安装包 verifier 已完成：
+
+- 安装包：`dsh-plugin-desktop/dist/DSH-Desktop-2.0.5-x64-Setup.exe`
+- 大小：253,630,501 bytes
+- SHA-256：`F756AD105DCC11B2AD1B6CFD9180DA959AC5C32D26CEE51A6D42BFA448D99755`
+- `verify-win-installer.ts`：通过
+- 发布提交：`5367c102df`（后续 release metadata commit 见 Git history）
 
 ## 非目标与后续
 
