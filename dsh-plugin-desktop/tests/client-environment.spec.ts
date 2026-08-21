@@ -16,8 +16,8 @@ import {
 } from '../src/window-chrome.ts'
 
 describe('desktop client environment', () => {
-  it('does not require the removed Better Sidebar service for renderer boot', () => {
-    expect(inject).not.toContain('betterSidebar')
+  it('waits for the maintained upstream Better Sidebar before registering Desktop tabs', () => {
+    expect(inject).toContain('betterSidebar')
   })
 
   it('does not activate desktop effects for an ordinary browser URL', () => {

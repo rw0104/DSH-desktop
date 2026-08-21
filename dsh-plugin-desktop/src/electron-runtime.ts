@@ -324,6 +324,12 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
   }
 
   /** @inheritdoc */
+  async openDirectory(path: string): Promise<void> {
+    const error = await shell.openPath(path)
+    if (error !== '') throw new Error(`dsh-plugin-desktop: failed to open directory: ${error}`)
+  }
+
+  /** @inheritdoc */
   exportDiagnostics(): Promise<void> {
     if (this.diagnosticExport !== undefined) return this.diagnosticExport
     const operation = this.performDiagnosticExport().finally(() => {

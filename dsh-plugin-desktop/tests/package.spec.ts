@@ -443,6 +443,7 @@ describe('published package surface', () => {
     expect(manifest.scripts?.build).toContain('node scripts/generate-mac-app-icon.mjs')
     expect(manifest.scripts?.['package:dir']).toBe('yarn run build && node scripts/package-dir.mjs')
     expect(packageDir).toContain("CSC_IDENTITY_AUTO_DISCOVERY: 'false'")
+    expect(packageDir).toContain("'--config.npmRebuild=false'")
     expect(manifest.scripts?.['dist:mac']).toBe('node scripts/release-mac.ts')
     expect(manifest.scripts?.['dist:mac-smoke']).toBe('node scripts/package-mac.ts')
     expect(manifest.scripts?.['dist:win']).toBe('node scripts/package-win.ts')
@@ -581,6 +582,13 @@ describe('published package surface', () => {
     expect(manifest.peerDependencies?.electron).toBe('43.4.0')
     expect(manifest.devDependencies?.electron).toBe('43.4.0')
     expect(manifest.dependencies?.pnpm).toBe('11.7.0')
+  })
+
+  it('pins the maintained rc8 Better Sidebar as the product Workbench', () => {
+    expect(manifest.dependencies?.['dsh-better-sidebar'])
+      .toContain('patch:dsh-better-sidebar@npm%3A0.14.0')
+    expect(manifest.dependencies?.cordis).toBe('4.0.0-rc.8')
+    expect(manifest.dependencies?.['react-dom']).toBe('18.3.1')
   })
 
   it('packages the native-compiled Koffi Windows runtime', () => {

@@ -8,7 +8,10 @@ import { fileURLToPath } from 'node:url'
 const require = createRequire(import.meta.url)
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 const builderCli = require.resolve('electron-builder/cli.js')
-const result = spawnSync(process.execPath, [builderCli, '--dir'], {
+// Match release packaging: published node-pty prebuilds are part of the
+// dependency closure, so smoke packaging must not invoke a machine-specific
+// MSBuild toolchain and silently produce a different native runtime.
+const result = spawnSync(process.execPath, [builderCli, '--dir', '--config.npmRebuild=false'], {
   cwd: packageRoot,
   env: {
     ...process.env,

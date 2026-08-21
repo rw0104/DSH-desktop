@@ -48,10 +48,12 @@ export const DESKTOP_PROFILE_ROOT = 'cordis.yml'
 const BIN_NAME = DESKTOP_PACKAGE_NAME
 const REQUIRED_BUNDLES = requiredWebBundles()
 const REQUIRED_BUNDLE_SET = new Set(REQUIRED_BUNDLES)
+/** Product Workbench restored from its maintained rc8-compatible upstream package. */
+export const DEFAULT_DESKTOP_PLUGIN_BUNDLES = ['dsh-better-sidebar'] as const
+const DEFAULT_DESKTOP_PLUGIN_BUNDLE_SET = new Set<string>(DEFAULT_DESKTOP_PLUGIN_BUNDLES)
 const OBSOLETE_DESKTOP_BUNDLE_SET = new Set([
   '@deepseek-ai/dsh-desktop-app',
   '@anionex/dsh-vision-toolkit',
-  'dsh-better-sidebar',
 ])
 const INSTALL_ANCHOR = unpackedAsarPath(fileURLToPath(new URL('../package.json', import.meta.url)))
 const DESKTOP_PATCH_PATH = fileURLToPath(new URL('../cordis.patch.yml', import.meta.url))
@@ -205,9 +207,10 @@ export interface SkippedOptionalEntry {
  */
 export function desktopBundleList(current: readonly string[]): string[] {
   const thirdParty = current.filter(name => !REQUIRED_BUNDLE_SET.has(name)
+    && !DEFAULT_DESKTOP_PLUGIN_BUNDLE_SET.has(name)
     && name !== DESKTOP_PACKAGE_NAME
     && !OBSOLETE_DESKTOP_BUNDLE_SET.has(name))
-  return [...REQUIRED_BUNDLES, ...thirdParty]
+  return [...REQUIRED_BUNDLES, ...DEFAULT_DESKTOP_PLUGIN_BUNDLES, ...thirdParty]
 }
 
 /** Return whether two ordered string lists are identical. */

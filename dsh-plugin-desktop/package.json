@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-desktop",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "DSH Desktop: an Electron shell composed as a DeepSeek Harness Cordis plugin",
   "license": "MIT",
   "publishConfig": {
@@ -231,11 +231,14 @@
     "@deepseek-ai/dsh-workflow": "0.1.0-rc.8",
     "@deepseek-ai/schemastery": "^3.18.1",
     "adm-zip": "^0.6.0",
+    "cordis": "4.0.0-rc.8",
+    "dsh-better-sidebar": "patch:dsh-better-sidebar@npm%3A0.14.0#~/.yarn/patches/dsh-better-sidebar-npm-0.14.0-2667792587.patch",
     "dsh-community-market": "0.1.0-dev.0",
     "koffi": "3.1.5",
     "node-addon-require-builtin": "^0.1.4",
     "pnpm": "11.7.0",
     "react": "18.3.1",
+    "react-dom": "18.3.1",
     "yaml": "^2.9.0"
   },
   "peerDependencies": {

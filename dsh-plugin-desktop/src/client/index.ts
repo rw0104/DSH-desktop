@@ -1,4 +1,5 @@
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import { createElement } from 'react'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type convergence only: locale/theme declarations expose settings slot rows.
@@ -12,8 +13,20 @@ import { installDesktopDirectoryPickerBridge, requestDesktopDirectoryValidation 
 import { parseDesktopClientEnvironment } from './environment.ts'
 import { DESKTOP_ABOUT_LOCALE_DICTIONARY } from './release-metadata.ts'
 import { installWorkspaceFolderDrop } from './workspace-folder-drop.ts'
-import { DesktopWorkbench } from './DesktopWorkbench.tsx'
-import { installDesktopAboutStyles, installDesktopWorkbenchStyles, installWorkspaceChangesStyles } from './styles.ts'
+import { WorkspaceDirectoryMenu } from './WorkspaceDirectoryMenu.tsx'
+import { WorkspaceChangesTab } from './WorkspaceChangesTab.tsx'
+import { installDesktopAboutStyles, installWorkspaceChangesStyles, installWorkspaceDirectoryMenuStyles } from './styles.ts'
+
+/** Minimal upstream service face; avoids importing the public `cordis` type graph into NodeNext. */
+interface BetterSidebarRegistry {
+  registerTab(descriptor: {
+    id: string
+    title: string | (() => string)
+    order?: number
+    single?: boolean
+    component(props: { scope: { sessionId: string; cwd?: string } }): unknown
+  }): () => void
+}
 
 export { applyAdvancedShell } from './advanced-shell.ts'
 export {
@@ -33,6 +46,7 @@ export const inject = [
   'sessions',
   'theme',
   'workspaces',
+  'betterSidebar',
 ]
 
 /** Register desktop-owned client surfaces for the current BrowserWindow mode. @param ctx - browser Cordis context. */
@@ -59,24 +73,34 @@ export function apply(ctx: ClientContext): void {
       'dsh-plugin-desktop: native directory picker bridge',
     )
   }
+  ctx.effect(() => {
+    const sidebar = ctx.get('betterSidebar') as BetterSidebarRegistry | undefined
+    if (sidebar === undefined) throw new Error('dsh-plugin-desktop: upstream Better Sidebar service is unavailable')
+    return sidebar.registerTab({
+      id: 'desktop:changes',
+      title: () => 'Changes',
+      order: 35,
+      single: true,
+      component: ({ scope }) => createElement(WorkspaceChangesTab, { scope }),
+    })
+  }, 'desktop: Workspace Changes tab in upstream Better Sidebar')
   ctx.effect(() => ctx.slots.inject('shell.overlay', () => ctx.slots.register({
     name: 'shell.overlay',
-    id: 'desktop-workbench',
+    id: 'desktop-workspace-directory-menu',
     order: 40,
     inject: () => ({
-      desktopWorkbench: {
-        environment,
+      workspaceDirectoryMenu: {
         openPath: (path: string) => ctx.workspaces.openPath(path),
       },
     }),
-  }, DesktopWorkbench)), 'desktop: Workbench and workspace context menu')
+  }, WorkspaceDirectoryMenu)), 'desktop: upstream Workspace directory context menu')
   ctx.effect(
     () => installWorkspaceChangesStyles(),
     'desktop: Workspace Changes styles',
   )
   ctx.effect(
-    () => installDesktopWorkbenchStyles(),
-    'desktop: Workbench styles',
+    () => installWorkspaceDirectoryMenuStyles(),
+    'desktop: Workspace directory context menu styles',
   )
   ctx.effect(() => {
     const removeStyles = installDesktopAboutStyles()

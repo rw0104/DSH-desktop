@@ -181,6 +181,9 @@ export interface DesktopRuntime {
   /** Open a native terminal containing packaged DSH command shims. */
   openTerminal(): void
 
+  /** Open one Host-validated directory in the native file manager. */
+  openDirectory?(path: string): Promise<void>
+
   /** Export a diagnostics zip and reveal it in the system file manager. */
   exportDiagnostics(): Promise<void>
 

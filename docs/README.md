@@ -46,4 +46,4 @@
 
 ## 状态约定
 
-文档会明确区分已实现能力、平台限制和 roadmap。Desktop 的兼容模式保留上游默认 Web 客户端，同时以标准 overlay 挂载 Desktop-owned Workbench；高级模式额外安装 Desktop 自有的布局和原生材质。插件市场已提供目录、预览、受管安装和恢复页面；手机远程和 Channels 仍是独立 roadmap，不代表当前安装包已经提供这些产品入口。
+文档会明确区分已实现能力、平台限制和 roadmap。Desktop 的兼容模式保留上游默认 Web 客户端，同时恢复维护中的 `dsh-better-sidebar` 完整右侧工作台；Desktop 只通过标准 service/Host route 做薄适配。高级模式额外安装 Desktop 自有的布局和原生材质。插件市场已提供目录、预览、受管安装和恢复页面；手机远程和 Channels 仍是独立 roadmap，不代表当前安装包已经提供这些产品入口。

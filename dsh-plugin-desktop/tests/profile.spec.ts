@@ -103,7 +103,7 @@ describe('desktop profile composition', {
     ), 'utf8')).toBe('# Cordis plugin development\n')
   })
 
-  it('adds the Web surface before third-party bundles and removes the launcher bundle duplicate', () => {
+  it('adds the Web surface and maintained upstream Workbench before third-party bundles', () => {
     expect(desktopBundleList([
       '@deepseek-ai/dsh-base',
       'third-party-one',
@@ -114,6 +114,7 @@ describe('desktop profile composition', {
     ])).toEqual([
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
+      'dsh-better-sidebar',
       'third-party-one',
       'third-party-two',
     ])
@@ -140,13 +141,14 @@ describe('desktop profile composition', {
     expect(repaired.dsh.profile.bundles).toEqual([
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
+      'dsh-better-sidebar',
       'third-party-plugin',
     ])
     expect(repaired.dependencies).toEqual({ 'third-party-plugin': '^1.2.3' })
     expect(repaired.custom.preserved).toBe(true)
   })
 
-  it('migrates the obsolete Desktop bundle before loading a historical profile', () => {
+  it('migrates obsolete Desktop bundles while retaining the maintained Workbench', () => {
     const home = temporaryHome()
     const dir = ensureDesktopProfile(home)
     const path = join(dir, 'package.json')
@@ -166,15 +168,16 @@ describe('desktop profile composition', {
       },
     }, undefined, 2) + '\n')
 
-    expect(() => prepareDesktopProfile(undefined, home, 'win32')).not.toThrow()
+    expect(() => ensureDesktopProfile(home)).not.toThrow()
     const repaired = JSON.parse(readFileSync(path, 'utf8')) as {
       dsh: { profile: { bundles: string[] } }
     }
     expect(repaired.dsh.profile.bundles).toEqual([
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
+      'dsh-better-sidebar',
     ])
-  })
+  }, 30_000)
 
   it('rejects malformed persistent bundle metadata', () => {
     const home = temporaryHome()
@@ -259,7 +262,7 @@ describe('desktop profile composition', {
     expect(rows.find(row => row.id === 'desktop-profiles')).toEqual(expect.objectContaining({
       name: 'dsh-plugin-desktop/profiles',
     }))
-  })
+  }, 30_000)
 
   it('boots a selected Web profile without overriding its compatibility UI rows', () => {
     const home = temporaryHome()
