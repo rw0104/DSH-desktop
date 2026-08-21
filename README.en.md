@@ -17,7 +17,6 @@
   <a href="https://github.com/rw0104/DSH-desktop/releases"><img src="https://img.shields.io/github/downloads/rw0104/DSH-desktop/total?style=flat&amp;label=downloads&amp;color=4D6BFE" alt="Total downloads"></a>
   <a href="https://github.com/rw0104/DSH-desktop"><img src="https://img.shields.io/github/stars/rw0104/DSH-desktop?style=flat&amp;label=%E2%98%85&amp;color=08C" alt="GitHub stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat" alt="MIT License"></a>
-  <a href="https://discord.gg/TJeGqKRNM"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&amp;logo=discord&amp;logoColor=white" alt="Join Discord"></a>
   <img src="https://img.shields.io/badge/macOS%20%7C%20Windows-4493F8?style=flat-square" alt="Supported platforms: macOS and Windows">
 </p>
 
@@ -147,24 +146,9 @@ Use `corepack yarn check` for the headless gate. The [architecture](docs/archite
 
 ## Community
 
-Choose whichever platform you prefer to discuss usage, plugin development, and project updates.
+DSH Desktop QQ group: **1106941154**.
 
-<table>
-  <thead>
-    <tr>
-      <th align="center">WeCom</th>
-      <th align="center">QQ Group</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center"><img src="assets/community-wechat-group.png" alt="DSH Desktop WeCom QR code" title="Scan to add us on WeCom" width="180" height="180"></td>
-      <td align="center"><img src="assets/community-qq-group.jpg" alt="DSH Desktop QQ group QR code" width="180" height="180"></td>
-    </tr>
-  </tbody>
-</table>
-
-Discord: [Join the DSH Desktop community](https://discord.gg/TJeGqKRNM)
+![DSH Desktop QQ group QR code](assets/dsh-desktop-qq-group.png)
 
 If you would like to join our technical team, contact us at [1576186341@qq.com](mailto:1576186341@qq.com).
 
