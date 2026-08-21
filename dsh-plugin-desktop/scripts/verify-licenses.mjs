@@ -28,6 +28,8 @@ const ALLOWED_LICENSES = new Set([
   '0BSD',
   'Unlicense',
   'MPL-2.0',
+  'MPL-2.0 OR Apache-2.0',
+  '(MPL-2.0 OR Apache-2.0)',
   'CC0-1.0',
   'Zlib',
   'Python-2.0',
