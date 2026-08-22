@@ -36,9 +36,11 @@ describe('desktop client environment', () => {
 
   it('accepts the Electron-owned kebab query markers', () => {
     expect(parseDesktopClientEnvironment('?dsh-desktop-mode=advanced&dsh-desktop-platform=darwin'))
-      .toEqual({ mode: 'advanced', platform: 'darwin', productVersion: 'unknown' })
+      .toEqual({ mode: 'advanced', platform: 'darwin', productVersion: 'unknown', driveLetters: [] })
     expect(parseDesktopClientEnvironment('?dsh-desktop-platform=win32&dsh-desktop-mode=compatibility&dsh-desktop-version=2.0.2'))
-      .toEqual({ mode: 'compatibility', platform: 'win32', productVersion: '2.0.2' })
+      .toEqual({ mode: 'compatibility', platform: 'win32', productVersion: '2.0.2', driveLetters: [] })
+    expect(parseDesktopClientEnvironment('?dsh-desktop-platform=win32&dsh-desktop-mode=compatibility&dsh-desktop-drives=cDdc'))
+      .toEqual({ mode: 'compatibility', platform: 'win32', productVersion: 'unknown', driveLetters: ['C', 'D'] })
   })
 
   it.each([

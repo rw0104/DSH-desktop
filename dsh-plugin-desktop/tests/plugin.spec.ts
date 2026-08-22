@@ -10,6 +10,7 @@ import {
   apply,
   Config,
   DESKTOP_SETTINGS_NAMESPACE,
+  detectWindowsDriveLetters,
   desktopRendererUrl,
   DesktopSettingsSchema,
   inject,
@@ -161,6 +162,18 @@ function createHarness(platform: DesktopRuntime['platform'] = 'darwin'): PluginH
 }
 
 describe('desktop Host plugin', () => {
+  it('detects only mounted Windows drives and never probes other platforms', () => {
+    const probes: string[] = []
+    expect(detectWindowsDriveLetters('win32', path => {
+      probes.push(path)
+      return path === 'C:\\' || path === 'E:\\'
+    })).toEqual(['C', 'E'])
+    expect(probes).toHaveLength(26)
+    expect(detectWindowsDriveLetters('darwin', path => {
+      throw new Error(`unexpected probe ${path}`)
+    })).toEqual([])
+  })
+
   it('defaults to compatibility mode and validates both schemas', () => {
     expect(Config({} as DesktopConfig)).toEqual(config)
     expect(Config({ mode: 'advanced' } as DesktopConfig)).toEqual({ ...config, mode: 'advanced' })

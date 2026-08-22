@@ -1,5 +1,6 @@
 /** DSH Desktop Host plugin: owns the selected native shell generation. */
 
+import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
@@ -27,7 +28,7 @@ import {
   handleDesktopDirectoryPickerRequest,
   handleDesktopDirectoryValidationRequest,
 } from './directory-picker-route.ts'
-import type { DesktopShellMode } from './runtime.ts'
+import type { DesktopPlatform, DesktopShellMode } from './runtime.ts'
 import type {} from './runtime.ts'
 import { installWorkspaceWorkbench } from './workspace-workbench.ts'
 
@@ -40,6 +41,25 @@ export const inject = ['webServer', 'webRuntime', 'appExit', 'settings', 'agents
 
 /** Standard settings namespace shared by tray and configuration surfaces. */
 export const DESKTOP_SETTINGS_NAMESPACE = settingsNamespace('dsh-desktop')
+
+/** Probe one filesystem path when resolving the Windows drive list. */
+export type WindowsDriveProbe = (path: string) => boolean
+
+/** Return mounted Windows drive letters visible to this desktop process. */
+export function detectWindowsDriveLetters(
+  platform: DesktopPlatform,
+  exists: WindowsDriveProbe = existsSync,
+): string[] {
+  if (platform !== 'win32') return []
+  return Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index))
+    .filter(letter => {
+      try {
+        return exists(`${letter}:\\`)
+      } catch {
+        return false
+      }
+    })
+}
 
 const UI_THEME_SETTINGS_NAMESPACE = settingsNamespace(THEME_SETTINGS_NAMESPACE)
 const UI_LOCALE_SETTINGS_NAMESPACE = settingsNamespace(LOCALE_SETTINGS_NAMESPACE)
@@ -104,6 +124,8 @@ export function desktopRendererUrl(
   url.searchParams.set('dsh-desktop-mode', mode)
   url.searchParams.set('dsh-desktop-platform', platform)
   if (productVersion !== 'unknown') url.searchParams.set('dsh-desktop-version', productVersion)
+  const drives = detectWindowsDriveLetters(platform)
+  if (drives.length > 0) url.searchParams.set('dsh-desktop-drives', drives.join(''))
   return url.href
 }
 

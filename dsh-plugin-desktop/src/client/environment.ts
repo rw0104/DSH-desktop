@@ -10,6 +10,8 @@ export interface DesktopClientEnvironment {
   mode: DesktopClientMode
   /** Electron Host platform used for native spacing and drag regions. */
   platform: DesktopClientPlatform
+  /** Windows drive letters detected by the Electron Host. */
+  driveLetters: readonly string[]
   /** Installed product version supplied by the Electron Host. */
   productVersion: string
 }
@@ -17,6 +19,12 @@ export interface DesktopClientEnvironment {
 const MODES = new Set<DesktopClientMode>(['compatibility', 'advanced'])
 const PLATFORMS = new Set<DesktopClientPlatform>(['darwin', 'win32', 'linux'])
 const PRODUCT_VERSION = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/u
+
+/** Accept only one-letter Windows volume identifiers from the Host URL. */
+function parseDriveLetters(value: string | null): string[] {
+  if (value === null) return []
+  return [...new Set(value.toUpperCase().split('').filter(letter => /^[A-Z]$/u.test(letter)))]
+}
 
 /**
  * Validate the Electron-owned query marker before any desktop client effects run.
@@ -38,5 +46,10 @@ export function parseDesktopClientEnvironment(search: string): DesktopClientEnvi
   if (productVersion !== 'unknown' && !PRODUCT_VERSION.test(productVersion)) {
     throw new Error(`dsh-plugin-desktop: invalid dsh-desktop-version ${JSON.stringify(productVersion)}`)
   }
-  return { mode: mode as DesktopClientMode, platform: platform as DesktopClientPlatform, productVersion }
+  return {
+    mode: mode as DesktopClientMode,
+    platform: platform as DesktopClientPlatform,
+    productVersion,
+    driveLetters: platform === 'win32' ? parseDriveLetters(params.get('dsh-desktop-drives')) : [],
+  }
 }

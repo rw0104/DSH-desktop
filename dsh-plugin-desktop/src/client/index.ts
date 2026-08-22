@@ -10,6 +10,7 @@ import { DesktopAboutSection, DESKTOP_ABOUT_LOCALE } from './about-section.tsx'
 import { applyAdvancedShell } from './advanced-shell.ts'
 import { startRendererBootReporter } from './boot-health.ts'
 import { installDesktopDirectoryPickerBridge, requestDesktopDirectoryValidation } from './directory-picker.ts'
+import { installWindowsDrivePickerEnhancement } from './drive-picker-enhancement.ts'
 import { parseDesktopClientEnvironment } from './environment.ts'
 import { DESKTOP_ABOUT_LOCALE_DICTIONARY } from './release-metadata.ts'
 import { installWorkspaceFolderDrop } from './workspace-folder-drop.ts'
@@ -81,6 +82,10 @@ export function apply(ctx: ClientContext): void {
     'dsh-plugin-desktop: workspace folder drop',
   )
   if (environment.platform === 'win32') {
+    ctx.effect(
+      () => installWindowsDrivePickerEnhancement(environment.platform, ctx.locale, environment.driveLetters),
+      'dsh-plugin-desktop: Windows drive picker enhancement',
+    )
     ctx.effect(
       () => installDesktopDirectoryPickerBridge(),
       'dsh-plugin-desktop: native directory picker bridge',
