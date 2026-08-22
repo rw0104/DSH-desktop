@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react'
+import { useState } from 'react'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { RELEASES_URL, REPOSITORY_URL } from './release-metadata.ts'
 
@@ -8,15 +9,22 @@ export const DESKTOP_ABOUT_LOCALE = 'dsh-desktop-about'
 export type DesktopAboutSectionProps = PropsRuntime<'settings.section'> & {
   about: { t: (key: string) => string }
   productVersion: string
+  checkForUpdates: () => Promise<void>
 }
 
 /** Render product identity, update behavior, repository, and release notes. */
-export function DesktopAboutSection({ about, productVersion }: DesktopAboutSectionProps) {
+export function DesktopAboutSection({ about, productVersion, checkForUpdates }: DesktopAboutSectionProps) {
   const { t } = about
+  const [checking, setChecking] = useState(false)
   const releaseUrl = productVersion === 'unknown' ? RELEASES_URL : `${RELEASES_URL}/tag/v${productVersion}`
   const openExternal = (event: MouseEvent<HTMLAnchorElement>): void => {
     event.preventDefault()
     window.open(event.currentTarget.href, '_blank', 'noopener,noreferrer')
+  }
+  const runCheck = (): void => {
+    if (checking) return
+    setChecking(true)
+    void checkForUpdates().finally(() => { setChecking(false) })
   }
   return (
     <section className="dshDesktopAbout" aria-labelledby="dsh-desktop-about-title">
@@ -39,6 +47,9 @@ export function DesktopAboutSection({ about, productVersion }: DesktopAboutSecti
         </div>
       </div>
       <div className="dshDesktopAboutActions">
+        <button className="dshDesktopAboutAction" type="button" disabled={checking} onClick={runCheck}>
+          {checking ? t('checkingUpdates') : t('checkUpdates')}
+        </button>
         <a className="dshDesktopAboutAction" href={releaseUrl} target="_blank" rel="noreferrer" onClick={openExternal}>{t('viewRelease')}</a>
       </div>
     </section>

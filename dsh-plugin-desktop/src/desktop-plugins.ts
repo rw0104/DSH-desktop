@@ -41,6 +41,7 @@ const IMMUTABLE_BUNDLES = new Set([
   'dsh-plugin-desktop',
   'dsh-community-market',
   'dsh-better-sidebar',
+  '@anionex/dsh-vision-toolkit',
 ])
 
 /** One direct bundle declared by the active profile. */

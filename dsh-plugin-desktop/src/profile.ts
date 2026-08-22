@@ -48,12 +48,14 @@ export const DESKTOP_PROFILE_ROOT = 'cordis.yml'
 const BIN_NAME = DESKTOP_PACKAGE_NAME
 const REQUIRED_BUNDLES = requiredWebBundles()
 const REQUIRED_BUNDLE_SET = new Set(REQUIRED_BUNDLES)
-/** Product Workbench restored from its maintained rc8-compatible upstream package. */
-export const DEFAULT_DESKTOP_PLUGIN_BUNDLES = ['dsh-better-sidebar'] as const
+/** Product plugins mounted in the managed desktop profile. */
+export const DEFAULT_DESKTOP_PLUGIN_BUNDLES = [
+  '@anionex/dsh-vision-toolkit',
+  'dsh-better-sidebar',
+] as const
 const DEFAULT_DESKTOP_PLUGIN_BUNDLE_SET = new Set<string>(DEFAULT_DESKTOP_PLUGIN_BUNDLES)
 const OBSOLETE_DESKTOP_BUNDLE_SET = new Set([
   '@deepseek-ai/dsh-desktop-app',
-  '@anionex/dsh-vision-toolkit',
 ])
 const INSTALL_ANCHOR = unpackedAsarPath(fileURLToPath(new URL('../package.json', import.meta.url)))
 const DESKTOP_PATCH_PATH = fileURLToPath(new URL('../cordis.patch.yml', import.meta.url))

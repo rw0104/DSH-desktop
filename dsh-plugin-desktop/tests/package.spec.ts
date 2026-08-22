@@ -598,6 +598,10 @@ describe('published package surface', () => {
     expect(manifest.dependencies?.['react-dom']).toBe('18.3.1')
   })
 
+  it('keeps the Vision Toolkit product plugin in the desktop dependency graph', () => {
+    expect(manifest.dependencies?.['@anionex/dsh-vision-toolkit']).toBe('0.1.38')
+  })
+
   it('packages the native-compiled Koffi Windows runtime', () => {
     const lockfile = readFileSync(new URL('yarn.lock', workspaceRoot), 'utf8')
 

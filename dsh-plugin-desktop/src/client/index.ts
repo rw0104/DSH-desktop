@@ -16,6 +16,20 @@ import { installWorkspaceFolderDrop } from './workspace-folder-drop.ts'
 import { WorkspaceChangesTab } from './WorkspaceChangesTab.tsx'
 import { installDesktopAboutStyles, installWorkspaceChangesStyles } from './styles.ts'
 
+async function requestDesktopUpdateCheck(): Promise<void> {
+  const response = await fetch('/dsh-desktop/api/check-updates', {
+    method: 'POST',
+    headers: { 'x-dsh-desktop-action': 'check-updates' },
+  })
+  if (!response.ok) {
+    const value: unknown = await response.json().catch(() => null)
+    const detail = value !== null && typeof value === 'object' && typeof (value as { error?: unknown }).error === 'string'
+      ? (value as { error: string }).error
+      : `HTTP ${String(response.status)}`
+    throw new Error(`update check failed: ${detail}`)
+  }
+}
+
 /** Minimal upstream service face; avoids importing the public `cordis` type graph into NodeNext. */
 interface BetterSidebarRegistry {
   registerTab(descriptor: {
@@ -97,7 +111,11 @@ export function apply(ctx: ClientContext): void {
       id: 'desktop-about',
       order: 900,
       label: () => t('nav'),
-      inject: () => ({ about: { t }, productVersion: environment.productVersion }),
+      inject: () => ({
+        about: { t },
+        productVersion: environment.productVersion,
+        checkForUpdates: requestDesktopUpdateCheck,
+      }),
     }, DesktopAboutSection))
     return () => {
       disposeSlot()

@@ -114,6 +114,7 @@ describe('desktop profile composition', {
     ])).toEqual([
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
+      '@anionex/dsh-vision-toolkit',
       'dsh-better-sidebar',
       'third-party-one',
       'third-party-two',
@@ -141,6 +142,7 @@ describe('desktop profile composition', {
     expect(repaired.dsh.profile.bundles).toEqual([
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
+      '@anionex/dsh-vision-toolkit',
       'dsh-better-sidebar',
       'third-party-plugin',
     ])
@@ -148,7 +150,7 @@ describe('desktop profile composition', {
     expect(repaired.custom.preserved).toBe(true)
   })
 
-  it('migrates obsolete Desktop bundles while retaining the maintained Workbench', () => {
+  it('migrates obsolete Desktop bundles while retaining maintained product plugins', () => {
     const home = temporaryHome()
     const dir = ensureDesktopProfile(home)
     const path = join(dir, 'package.json')
@@ -175,6 +177,7 @@ describe('desktop profile composition', {
     expect(repaired.dsh.profile.bundles).toEqual([
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
+      '@anionex/dsh-vision-toolkit',
       'dsh-better-sidebar',
     ])
   }, 30_000)

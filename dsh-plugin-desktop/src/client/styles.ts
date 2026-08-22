@@ -64,6 +64,7 @@ const DESKTOP_ABOUT_STYLES = `
 .dshDesktopAboutActions { display:flex; flex-wrap:wrap; gap:8px; }
 .dshDesktopAboutAction { display:inline-flex; align-items:center; min-height:32px; padding:0 12px; border:1px solid var(--dsw-alias-border-l2); border-radius:7px; color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-layer-1); text-decoration:none; cursor:pointer; }
 .dshDesktopAboutAction:hover { background:var(--dsw-alias-interactive-bg-hover); }
+.dshDesktopAboutAction:disabled { opacity:.55; cursor:wait; }
 `
 
 /** Advanced-shell stylesheet kept as a plain string so the package client bundle stays self-contained. */

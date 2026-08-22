@@ -35,6 +35,8 @@ export interface DesktopUpdateLifecycleOptions {
 
 /** Lifecycle handle for one generation's update operations. */
 export interface DesktopUpdateLifecycle {
+  /** Run the same user-confirmed check used by the native tray command. */
+  checkNow(): Promise<void>
   dispose(): Promise<void>
 }
 
@@ -95,6 +97,11 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
     if (this.checkTask !== undefined) pending.push(this.checkTask)
     this.disposeTask = Promise.allSettled(pending).then(() => {})
     return this.disposeTask
+  }
+
+  /** Run a user-triggered check immediately, reusing the in-flight guard. */
+  checkNow(): Promise<void> {
+    return this.runManualCheck()
   }
 
   private async loadState(): Promise<void> {

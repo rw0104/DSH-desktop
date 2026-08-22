@@ -4,6 +4,7 @@ Each package ships with its own license text in the application files; this list
 the package names, versions, and licenses for transparency.
 | Package | Version | License |
 | --- | --- | --- |
+| @anionex/dsh-vision-toolkit | 0.1.38 | MIT |
 | @antfu/install-pkg | 1.1.0 | MIT |
 | @anthropic-ai/sdk | 0.91.1 | MIT |
 | @aws-crypto/sha256-browser | 5.2.0 | Apache-2.0 |
@@ -263,6 +264,7 @@ the package names, versions, and licenses for transparency.
 | @img/colour | 1.1.0 | MIT |
 | @img/sharp-win32-arm64 | 0.35.3 | Apache-2.0 AND LGPL-3.0-or-later |
 | @img/sharp-win32-x64 | 0.35.3 | Apache-2.0 AND LGPL-3.0-or-later |
+| @isaacs/fs-minipass | 4.0.1 | ISC |
 | @joplin/turndown-plugin-gfm | 1.0.67 | MIT |
 | @koromix/koffi-win32-arm64 | 3.1.5 | MIT |
 | @koromix/koffi-win32-x64 | 3.1.5 | MIT |
@@ -396,6 +398,7 @@ the package names, versions, and licenses for transparency.
 | character-entities-html4 | 2.1.0 | MIT |
 | character-entities-legacy | 3.0.0 | MIT |
 | chokidar | 4.0.3 | MIT |
+| chownr | 3.0.0 | BlueOak-1.0.0 |
 | clsx | 2.1.1 | MIT |
 | comma-separated-tokens | 2.0.3 | MIT |
 | commander | 15.0.0 | MIT |
@@ -585,6 +588,8 @@ the package names, versions, and licenses for transparency.
 | micromark-util-types | 2.0.2 | MIT |
 | mime-db | 1.54.0 | MIT |
 | mime-types | 3.0.2 | MIT |
+| minipass | 7.1.3 | BlueOak-1.0.0 |
+| minizlib | 3.1.0 | MIT |
 | ms | 2.1.3 | MIT |
 | negotiator | 1.0.0 | MIT |
 | node-addon-api | 7.1.1 | MIT |
@@ -639,6 +644,7 @@ the package names, versions, and licenses for transparency.
 | rxjs | 7.8.2 | Apache-2.0 |
 | safe-buffer | 5.2.1 | MIT |
 | safer-buffer | 2.1.2 | MIT |
+| saxes | 6.0.0 | ISC |
 | scheduler | 0.23.2 | MIT |
 | schemastery | 3.18.0 | MIT |
 | semver | 7.8.5 | ISC |
@@ -659,6 +665,7 @@ the package names, versions, and licenses for transparency.
 | stringify-entities | 4.0.4 | MIT |
 | style-mod | 4.1.3 | MIT |
 | stylis | 4.4.0 | MIT |
+| tar | 7.5.22 | BlueOak-1.0.0 |
 | tinyexec | 1.3.0 | MIT |
 | toidentifier | 1.0.1 | MIT |
 | trim-lines | 3.0.1 | MIT |
@@ -668,6 +675,7 @@ the package names, versions, and licenses for transparency.
 | turndown | 7.2.4 | MIT |
 | type-is | 2.1.0 | MIT |
 | typebox | 1.1.38 | MIT |
+| undici | 8.10.0 | MIT |
 | undici-types | 8.3.0 | MIT |
 | unist-util-is | 6.0.1 | MIT |
 | unist-util-position | 5.0.0 | MIT |
@@ -687,6 +695,8 @@ the package names, versions, and licenses for transparency.
 | wrappy | 1.0.2 | ISC |
 | ws | 8.21.3 | MIT |
 | wsl-utils | 1.0.0 | MIT |
+| xmlchars | 2.2.0 | MIT |
+| yallist | 5.0.0 | BlueOak-1.0.0 |
 | yaml | 2.9.0 | ISC |
 | zod | 4.4.3 | MIT |
 | zod-to-json-schema | 3.25.2 | ISC |

@@ -1,7 +1,7 @@
 # 社区市场与右侧工作台回归修复记录
 
 > 日期：2026-08-21
-> 修复版本：`v2.0.6`
+> 修复版本：`v2.0.7`
 > 基线：`sync/upstream-composed`，rc8，`723c9c3bdf`
 > 范围：不修改 `deepseek-harness/`；桌面行为由 `dsh-plugin-desktop/`、产品 profile 和受控 Yarn patch 负责。
 
@@ -81,7 +81,7 @@ flowchart LR
 | ID | Finding | 状态 |
 | --- | --- | --- |
 | F-001 | 自写简化 Workbench 不等价于上游完整侧栏，并造成窄窗口布局风险 | 已修复：删除并恢复上游包 |
-| F-002 | rc8 profile 把维护中的 Better Sidebar 错误列入 obsolete，导致右侧入口消失 | 已修复：固定 0.14.0 并自动回填 bundle |
+| F-002 | rc8 profile 把维护中的 Better Sidebar 和 Vision Toolkit 错误列入 obsolete，导致右侧入口及视觉能力消失 | 已修复：固定 Better Sidebar 0.14.0、恢复 Vision Toolkit 0.1.38，并自动回填两个 bundle |
 | F-003 | 既有 Host Workbench 能力与侧栏 UI 断开 | 已修复：Changes registerTab、Terminal adapter 重新接线 |
 | F-004 | 左侧 Workspace 与 Better Sidebar Explorer 缺少安全的系统目录打开动作 | 已修复：两条 UI 路径都经 Host containment 校验 |
 | F-005 | 旧 webview 特化 patch 与上游 iframe sandbox 语义不同 | 接受差异：保留上游安全 iframe，后续单独做 webview 安全 RFC |
@@ -111,6 +111,8 @@ flowchart LR
 - `dsh-plugin-desktop/package.json`：固定 `dsh-better-sidebar@0.14.0`、`cordis@4.0.0-rc.8`、`react-dom@18.3.1`。
 - `dsh-plugin-desktop/src/profile.ts`：移除 Better Sidebar obsolete 规则，自动把维护中的 bundle 放入 desktop profile。
 - `dsh-plugin-desktop/src/client/index.ts`：删除自写 Workbench 注册，改为 upstream `betterSidebar.registerTab`；删除 Desktop 自写 Workspace 浮层。
+- `dsh-plugin-desktop/src/client/about-section.tsx`、`updates.ts`：新增可见“检查更新”按钮和同源 Host route，复用托盘版本检查流程。
+- `dsh-plugin-desktop/src/profile.ts`、`dsh-plugin-desktop/package.json`：恢复 `@anionex/dsh-vision-toolkit@0.1.38` 默认 bundle。
 - `dsh-plugin-desktop/src/open-directory.ts`：新增 Session containment 保护的 native directory route。
 - `dsh-plugin-desktop/src/workspace-workbench.ts`、`runtime.ts`、`electron-runtime.ts`：挂载 route 并提供 Electron `openDirectory` 能力。
 - `.yarn/patches/dsh-better-sidebar-npm-0.14.0-2667792587.patch`：迁移 Explorer 目录打开和 UI terminal adapter 到上游 0.14.0 compiled/source bundle。
@@ -135,7 +137,7 @@ corepack yarn package:dir
 - 大小：253,628,327 bytes
 - SHA-256：`62CE5F6E685E4FCD627B26B0C201FD2A637CC907C62E5DC17B16A7B9EDC9296D`
 - `verify-win-installer.ts`：通过
-- GitHub Release：[DSH Desktop v2.0.6](https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.6)
+- v2.0.7 的安装包、校验值和 Release URL 将在构建后写入发行说明。
 
 ## 非目标与后续
 
