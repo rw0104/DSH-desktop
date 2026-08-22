@@ -137,7 +137,11 @@ corepack yarn package:dir
 - 大小：253,628,327 bytes
 - SHA-256：`62CE5F6E685E4FCD627B26B0C201FD2A637CC907C62E5DC17B16A7B9EDC9296D`
 - `verify-win-installer.ts`：通过
-- v2.0.7 的安装包、校验值和 Release URL 将在构建后写入发行说明。
+- 安装包：`dsh-plugin-desktop/dist/DSH-Desktop-2.0.7-x64-Setup.exe`
+- 大小：262,311,753 bytes
+- SHA-256：`9B49A2BA706811DCECB36044415EB68EAA9FBB246D895D88F62C2F928C5DBFAE`
+- `verify-win-installer.ts`：通过
+- GitHub Release：[DSH Desktop v2.0.7](https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.7)
 
 ## 非目标与后续
 
