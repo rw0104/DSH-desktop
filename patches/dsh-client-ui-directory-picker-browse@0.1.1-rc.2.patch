@@ -1,5 +1,5 @@
 diff --git a/lib/client.js b/lib/client.js
-index 3d67601..6477a52 100644
+index 3d67601..f3181c7 100644
 --- a/lib/client.js
 +++ b/lib/client.js
 @@ -24,13 +24,13 @@ window.__ModuleLoader__.load({
@@ -18,14 +18,14 @@ index 3d67601..6477a52 100644
  			document.head.appendChild(tag);
  		}
  		var DirectoryBrowser_module_css_default = {
-@@ -55,6 +55,7 @@ window.__ModuleLoader__.load({
+@@ -51,6 +51,7 @@ window.__ModuleLoader__.load({
+ 			"crumbTrail": "ZuhsRW_crumbTrail",
+ 			"dialog": "ZuhsRW_dialog",
+ 			"divider": "ZuhsRW_divider",
++			"nativePickerButton": "ZuhsRW_nativePickerButton",
+ 			"editorScope": "ZuhsRW_editorScope",
  			"error": "ZuhsRW_error",
  			"footerAction": "ZuhsRW_footerAction",
- 			"footerBar": "ZuhsRW_footerBar",
-+			"nativePickerButton": "ZuhsRW_nativePickerButton",
- 			"footerGap": "ZuhsRW_footerGap",
- 			"header": "ZuhsRW_header",
- 			"loadingFloat": "ZuhsRW_loadingFloat",
 @@ -279,7 +280,7 @@ window.__ModuleLoader__.load({
  		* @param props - owner-controlled browser props.
  		* @returns the dialog element (null while closed, via Modal).
