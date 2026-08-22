@@ -108,7 +108,11 @@ if (upstreamPackage.version !== upstream.sourceVersion) {
   fail('deepseek-harness package version differs from upstream.json')
 }
 for (const name of Object.keys(plugin.dependencies).filter(name => name === '@deepseek-ai/dsh' || name.startsWith('@deepseek-ai/dsh-'))) {
-  if (plugin.dependencies[name] !== upstream.runtimePackageVersion) {
+  const declared = plugin.dependencies[name]
+  const runtimeVersion = typeof declared === 'string' && declared.startsWith('patch:')
+    ? /^patch:@deepseek-ai\/[^@]+@npm%3A([^#]+)/u.exec(declared)?.[1]
+    : declared
+  if (runtimeVersion !== upstream.runtimePackageVersion) {
     fail(`${name} must use the recorded DSH runtime package family`)
   }
 }

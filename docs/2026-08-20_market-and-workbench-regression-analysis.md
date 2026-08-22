@@ -1,7 +1,7 @@
 # 社区市场与右侧工作台回归修复记录
 
 > 日期：2026-08-21
-> 修复版本：`v2.0.5`
+> 修复版本：`v2.0.6`
 > 基线：`sync/upstream-composed`，rc8，`723c9c3bdf`
 > 范围：不修改 `deepseek-harness/`；桌面行为由 `dsh-plugin-desktop/`、产品 profile 和受控 Yarn patch 负责。
 
@@ -21,7 +21,7 @@ Desktop 自己只保留三类薄适配：
 
 ### 不是整个侧栏被重写
 
-左侧会话/Workspace 栏一直来自官方 `@deepseek-ai/dsh-client-ui-sidebar` 与 `@deepseek-ai/dsh-client-ui-workspace`。本轮只在根仓库 patch 中给官方 Workspace project row 增加 `data-dsh-workspace-path`，没有改上游源码。
+左侧会话/Workspace 栏一直来自官方 `@deepseek-ai/dsh-client-ui-sidebar` 与 `@deepseek-ai/dsh-client-ui-workspace`。本轮通过受控 Yarn patch 给官方 Workspace project row 增加稳定路径标记，并把“在资源管理器中打开”加入官方 Workspace 菜单；没有修改上游源码，也没有再渲染 Desktop 自己的浮层。
 
 右侧完整工作台来自 `dsh-better-sidebar`。上游包公开 `betterSidebar` service，外部插件通过 `registerTab` / `registerFileViewer` 接入。它的 0.14.0 package manifest 声明 `@deepseek-ai/*` rc8 peer，bundle patch 负责插入 `better-sidebar` Loader row。
 
@@ -46,11 +46,10 @@ Desktop 自己只保留三类薄适配：
 
 ```mermaid
 flowchart LR
-  A[官方 Workspace Sidebar] --> B[data-dsh-workspace-path]
-  B --> C[Desktop WorkspaceDirectoryMenu]
-  C --> D[Host open-directory route]
-  D --> E[Session cwd / symlink / containment 校验]
-  E --> F[Electron shell.openPath]
+  A[官方 Workspace Sidebar] --> B[官方 Workspace 菜单：在资源管理器中打开]
+  B --> C[Host open-directory route]
+  C --> D[Session cwd / symlink / containment 校验]
+  D --> E[Electron shell.openPath]
 
   G[dsh-better-sidebar 0.14.0] --> H[betterSidebar service]
   H --> I[Desktop Changes registerTab]
@@ -67,15 +66,15 @@ flowchart LR
 | --- | --- | --- | --- |
 | E-001 | 上游 package manifest 与公开 contract | 浏览 [DSH-better-sidebar package.json](https://github.com/omdsh-dev/DSH-better-sidebar/blob/main/package.json) | MIT；当前 main 0.14.1，npm 固定 0.14.0；peer 为 DSH rc8 |
 | E-002 | 产品依赖/profile | `rg -n "dsh-better-sidebar|DEFAULT_DESKTOP_PLUGIN_BUNDLES|betterSidebar" dsh-plugin-desktop package.json src` | package 固定 0.14.0，profile 自动保留 `better-sidebar` bundle |
-| E-003 | Desktop client 接线 | `rg -n "registerTab|WorkspaceDirectoryMenu|betterSidebar" dsh-plugin-desktop/src/client` | Changes 注册到上游 service；无 `DesktopWorkbench`、无 root padding |
+| E-003 | Desktop client 接线 | `rg -n "registerTab|betterSidebar" dsh-plugin-desktop/src/client` | Changes 注册到上游 service；无 `DesktopWorkbench`、无 root padding、无自写目录浮层 |
 | E-004 | 安全目录路由 | `corepack yarn workspace dsh-plugin-desktop vitest run tests/open-directory.spec.ts` | 只允许绑定 Session checkout 内的真实目录 |
-| E-005 | 针对性测试 | `corepack yarn workspace dsh-plugin-desktop vitest run tests/open-directory.spec.ts tests/sidebar-terminal-lifecycle.spec.ts tests/client-workspace-directory-menu.spec.ts tests/package.spec.ts tests/profile.spec.ts --maxWorkers=1` | 5 files，49 tests passed；完整 targeted set 72 tests passed |
+| E-005 | 针对性测试 | `corepack yarn workspace dsh-plugin-desktop vitest run tests/open-directory.spec.ts tests/package.spec.ts tests/profile.spec.ts --maxWorkers=1` | 3 files，47 tests passed；完整 targeted set 仍需 packaged smoke 覆盖 |
 | E-006 | packaged upstream smoke | Playwright CDP 连接新 unpacked `DSH Desktop.exe` | `data-dsh-panel-host=1`，自写 Workbench=0，root padding=0px；官方 Files 树显示 `DHS` |
 | E-007 | 左侧交互 | 同一 smoke 中点击官方 `button[class*="newSession"]` | 命中真实 `SPAN`/button，点击成功；不是被透明 overlay 拦截 |
-| E-008 | 左侧目录右键 | 同一 smoke 右键真实 `data-dsh-workspace-path="D:\\Demo\\DHS"` row | Desktop 菜单 1 个，显示“打开目录” |
+| E-008 | 左侧目录右键 | packaged Electron smoke 右键官方 Workspace row | 官方菜单显示“在资源管理器中打开”，请求走 Desktop native route，不进入 Files tab；route 200，无 `is a directory` 错误 |
 | E-009 | 上游 Tab 注册 | 点击上游侧栏新建 Tab 菜单 | 菜单包含 `Changes` |
 | E-010 | patched upstream bundle | `rg -n "open-directory|workspaceTerminal|terminal process exited" node_modules/dsh-better-sidebar/lib` | Explorer open-directory 和 UI terminal adapter 已进入实际 client/host bundle |
-| E-011 | Windows x64 release artifact | `corepack yarn dist:win` + `verify-win-installer.ts` | `DSH-Desktop-2.0.5-x64-Setup.exe`，253,630,501 bytes，SHA-256 `F756AD105DCC11B2AD1B6CFD9180DA959AC5C32D26CEE51A6D42BFA448D99755`；verifier passed |
+| E-011 | Windows x64 release artifact | `corepack yarn dist:win` + `verify-win-installer.ts` | `DSH-Desktop-2.0.6-x64-Setup.exe`，253,628,327 bytes，SHA-256 `62CE5F6E685E4FCD627B26B0C201FD2A637CC907C62E5DC17B16A7B9EDC9296D`；verifier passed |
 
 ### Findings
 
@@ -97,8 +96,8 @@ flowchart LR
 
 #### P-002 目录打开
 
-1. 官方 Workspace row 和上游 Explorer directory row 提供路径；前者由根 patch 标记，后者由上游 FileTree context menu 提供，证据 E-006、E-008、E-010。
-2. Desktop route 绑定 `sessionId`，拒绝跨 cwd、父级逃逸、符号链接和非目录，证据 E-004。
+1. 官方 Workspace row 和上游 Explorer directory row 提供路径；前者由 Workspace patch 标记并进入官方 actions menu，后者由上游 FileTree context menu 提供，证据 E-006、E-008、E-010。
+2. Explorer 请求带 `sessionId`；Workspace 根目录请求按已绑定 checkout 做最长根匹配。两条路径都拒绝跨 cwd、父级逃逸、符号链接和非目录，证据 E-004。
 3. Electron Host 调用 `shell.openPath`，Renderer 不执行 shell 命令，证据 E-004、E-008。
 
 #### P-003 终端投影
@@ -111,10 +110,11 @@ flowchart LR
 
 - `dsh-plugin-desktop/package.json`：固定 `dsh-better-sidebar@0.14.0`、`cordis@4.0.0-rc.8`、`react-dom@18.3.1`。
 - `dsh-plugin-desktop/src/profile.ts`：移除 Better Sidebar obsolete 规则，自动把维护中的 bundle 放入 desktop profile。
-- `dsh-plugin-desktop/src/client/index.ts`：删除自写 Workbench 注册，改为 upstream `betterSidebar.registerTab`；保留左侧 WorkspaceDirectoryMenu。
+- `dsh-plugin-desktop/src/client/index.ts`：删除自写 Workbench 注册，改为 upstream `betterSidebar.registerTab`；删除 Desktop 自写 Workspace 浮层。
 - `dsh-plugin-desktop/src/open-directory.ts`：新增 Session containment 保护的 native directory route。
 - `dsh-plugin-desktop/src/workspace-workbench.ts`、`runtime.ts`、`electron-runtime.ts`：挂载 route 并提供 Electron `openDirectory` 能力。
-- `.yarn/patches/dsh-better-sidebar-npm-0.14.0-2667792587.patch`：迁移目录打开和 UI terminal adapter 到上游 0.14.0 compiled/source bundle。
+- `.yarn/patches/dsh-better-sidebar-npm-0.14.0-2667792587.patch`：迁移 Explorer 目录打开和 UI terminal adapter 到上游 0.14.0 compiled/source bundle。
+- `.yarn/patches/@deepseek-ai-dsh-client-ui-workspace-npm-0.1.0-rc.8-1e7b7c614c.patch`：把系统 Explorer 动作放进官方 Workspace 菜单，并保留 Workspace drop target 标记。
 - `dsh-plugin-desktop/scripts/package-dir.mjs`：与正式 Windows 打包一致，关闭本机 npmRebuild，避免依赖本机 Spectre MSBuild 库。
 - 删除 `dsh-plugin-desktop/src/client/DesktopWorkbench.tsx` 及其测试，删除上一版误导性的 Workbench 截图证据。
 
@@ -125,18 +125,17 @@ flowchart LR
 ```powershell
 corepack yarn install --immutable
 corepack yarn workspace dsh-plugin-desktop typecheck
-corepack yarn workspace dsh-plugin-desktop vitest run tests/open-directory.spec.ts tests/sidebar-terminal-lifecycle.spec.ts tests/client-workspace-directory-menu.spec.ts tests/package.spec.ts tests/profile.spec.ts --maxWorkers=1
+corepack yarn workspace dsh-plugin-desktop vitest run tests/open-directory.spec.ts tests/package.spec.ts tests/profile.spec.ts --maxWorkers=1
 corepack yarn package:dir
 ```
 
 正式 gate、NSIS 构建和安装包 verifier 已完成：
 
-- 安装包：`dsh-plugin-desktop/dist/DSH-Desktop-2.0.5-x64-Setup.exe`
-- 大小：253,630,501 bytes
-- SHA-256：`F756AD105DCC11B2AD1B6CFD9180DA959AC5C32D26CEE51A6D42BFA448D99755`
+- 安装包：`dsh-plugin-desktop/dist/DSH-Desktop-2.0.6-x64-Setup.exe`
+- 大小：253,628,327 bytes
+- SHA-256：`62CE5F6E685E4FCD627B26B0C201FD2A637CC907C62E5DC17B16A7B9EDC9296D`
 - `verify-win-installer.ts`：通过
-- 发布提交：`d1029b4078`
-- GitHub Release：[DSH Desktop v2.0.5](https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.5)
+- GitHub Release：[DSH Desktop v2.0.6](https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.6)
 
 ## 非目标与后续
 

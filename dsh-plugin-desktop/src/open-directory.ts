@@ -20,12 +20,18 @@ export function installOpenDirectoryRoute(ctx: Context, workbench: WorkspaceWork
           return writeJson(res, 403, { error: 'action header rejected' })
         }
         const body = await readJson(req)
-        const sessionId = typeof body.sessionId === 'string' ? body.sessionId : ''
+        const sessionId = typeof body.sessionId === 'string' ? body.sessionId.trim() : ''
         const requested = typeof body.path === 'string' ? body.path : ''
-        const binding = workbench.binding(sessionId)
-        if (binding === undefined) return writeJson(res, 404, { error: 'session-not-found' })
+        if (requested.trim() === '') return writeJson(res, 400, { error: 'path-required' })
+        const requestedAbsolute = sessionId === '' && !isAbsolute(requested)
+          ? undefined
+          : resolve(requested)
+        const binding = sessionId === ''
+          ? requestedAbsolute === undefined ? undefined : bindingForPath(workbench, requestedAbsolute)
+          : workbench.binding(sessionId)
+        if (binding === undefined) return writeJson(res, 404, { error: sessionId === '' ? 'workspace-not-found' : 'session-not-found' })
         const root = resolve(binding.worktreePath ?? binding.cwd)
-        const target = resolve(root, requested)
+        const target = requestedAbsolute ?? resolve(root, requested)
         if (!isWithin(root, target)) return writeJson(res, 403, { error: 'path-outside-session' })
         const info = await lstat(target)
         if (!info.isDirectory() || info.isSymbolicLink()) {
@@ -46,6 +52,17 @@ export function installOpenDirectoryRoute(ctx: Context, workbench: WorkspaceWork
 function isWithin(root: string, target: string): boolean {
   const child = relative(root, target)
   return child === '' || child !== '..' && !child.startsWith(`..${sep}`) && !isAbsolute(child)
+}
+
+/** Resolve a workspace-row absolute path without trusting a renderer-supplied session id. */
+function bindingForPath(workbench: WorkspaceWorkbenchService, target: string) {
+  return workbench.snapshot().bindings
+    .filter(binding => isWithin(resolve(binding.worktreePath ?? binding.cwd), target))
+    .sort((left, right) => {
+      const leftRoot = resolve(left.worktreePath ?? left.cwd)
+      const rightRoot = resolve(right.worktreePath ?? right.cwd)
+      return rightRoot.length - leftRoot.length
+    })[0]
 }
 
 function sameOrigin(ctx: Context, req: IncomingMessage): boolean {

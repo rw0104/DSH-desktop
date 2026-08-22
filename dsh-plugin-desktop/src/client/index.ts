@@ -13,9 +13,8 @@ import { installDesktopDirectoryPickerBridge, requestDesktopDirectoryValidation 
 import { parseDesktopClientEnvironment } from './environment.ts'
 import { DESKTOP_ABOUT_LOCALE_DICTIONARY } from './release-metadata.ts'
 import { installWorkspaceFolderDrop } from './workspace-folder-drop.ts'
-import { WorkspaceDirectoryMenu } from './WorkspaceDirectoryMenu.tsx'
 import { WorkspaceChangesTab } from './WorkspaceChangesTab.tsx'
-import { installDesktopAboutStyles, installWorkspaceChangesStyles, installWorkspaceDirectoryMenuStyles } from './styles.ts'
+import { installDesktopAboutStyles, installWorkspaceChangesStyles } from './styles.ts'
 
 /** Minimal upstream service face; avoids importing the public `cordis` type graph into NodeNext. */
 interface BetterSidebarRegistry {
@@ -84,23 +83,9 @@ export function apply(ctx: ClientContext): void {
       component: ({ scope }) => createElement(WorkspaceChangesTab, { scope }),
     })
   }, 'desktop: Workspace Changes tab in upstream Better Sidebar')
-  ctx.effect(() => ctx.slots.inject('shell.overlay', () => ctx.slots.register({
-    name: 'shell.overlay',
-    id: 'desktop-workspace-directory-menu',
-    order: 40,
-    inject: () => ({
-      workspaceDirectoryMenu: {
-        openPath: (path: string) => ctx.workspaces.openPath(path),
-      },
-    }),
-  }, WorkspaceDirectoryMenu)), 'desktop: upstream Workspace directory context menu')
   ctx.effect(
     () => installWorkspaceChangesStyles(),
     'desktop: Workspace Changes styles',
-  )
-  ctx.effect(
-    () => installWorkspaceDirectoryMenuStyles(),
-    'desktop: Workspace directory context menu styles',
   )
   ctx.effect(() => {
     const removeStyles = installDesktopAboutStyles()

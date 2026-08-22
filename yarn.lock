@@ -2019,9 +2019,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deepseek-ai/dsh-client-ui-workspace@patch:@deepseek-ai/dsh-client-ui-workspace@npm%3A0.1.0-rc.8#./patches/dsh-client-ui-workspace@0.1.0-rc.8.patch::locator=deepseek-harness-desktop%40workspace%3A.":
+"@deepseek-ai/dsh-client-ui-workspace@patch:@deepseek-ai/dsh-client-ui-workspace@npm%3A0.1.0-rc.8#~/.yarn/patches/@deepseek-ai-dsh-client-ui-workspace-npm-0.1.0-rc.8-1e7b7c614c.patch":
   version: 0.1.0-rc.8
-  resolution: "@deepseek-ai/dsh-client-ui-workspace@patch:@deepseek-ai/dsh-client-ui-workspace@npm%3A0.1.0-rc.8#./patches/dsh-client-ui-workspace@0.1.0-rc.8.patch::version=0.1.0-rc.8&hash=52a152&locator=deepseek-harness-desktop%40workspace%3A."
+  resolution: "@deepseek-ai/dsh-client-ui-workspace@patch:@deepseek-ai/dsh-client-ui-workspace@npm%3A0.1.0-rc.8#~/.yarn/patches/@deepseek-ai-dsh-client-ui-workspace-npm-0.1.0-rc.8-1e7b7c614c.patch::version=0.1.0-rc.8&hash=baac13"
   dependencies:
     clsx: "npm:^2.0.0"
   peerDependencies:
@@ -2032,7 +2032,7 @@ __metadata:
     "@deepseek-ai/dsh-client-ui-conversation": ^0.1.0-rc.8
     "@deepseek-ai/dsh-client-ui-sidebar": ^0.1.0-rc.8
     "@deepseek-ai/dsh-invariants": ^0.1.0-rc.8
-  checksum: 10c0/b40b38462dee80576895d91a3b57fd1638cdd559acb7f9ad6e7c6a0776a5c6261f462e06e0f5b97bdf1905f4435a3a458bf3724be988ee810bc33a748b202203
+  checksum: 10c0/9a0e102ccb2467e0cf060f5e74c52959d94518f2f2d31bfdf4b6a91615881e88547456a54571e8d396fb0e135a0e9bf9bd8f0c467220a75454b831456f4a557d
   languageName: node
   linkType: hard
 
@@ -8629,7 +8629,7 @@ __metadata:
     "@deepseek-ai/dsh-client-ui-slots": "npm:0.1.0-rc.8"
     "@deepseek-ai/dsh-client-ui-theme": "npm:0.1.0-rc.8"
     "@deepseek-ai/dsh-client-ui-tool": "npm:0.1.0-rc.8"
-    "@deepseek-ai/dsh-client-ui-workspace": "npm:0.1.0-rc.8"
+    "@deepseek-ai/dsh-client-ui-workspace": "patch:@deepseek-ai/dsh-client-ui-workspace@npm%3A0.1.0-rc.8#~/.yarn/patches/@deepseek-ai-dsh-client-ui-workspace-npm-0.1.0-rc.8-1e7b7c614c.patch"
     "@deepseek-ai/dsh-cmdline": "npm:0.1.0-rc.8"
     "@deepseek-ai/dsh-code-runtime": "npm:0.1.0-rc.8"
     "@deepseek-ai/dsh-command-feedback": "npm:0.1.0-rc.8"

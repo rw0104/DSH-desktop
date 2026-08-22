@@ -179,11 +179,12 @@ describe('published package surface', () => {
     }
   })
 
-  it('marks the upstream Workspace browser and project rows for desktop folder actions', () => {
-    const patchPath = './patches/dsh-client-ui-workspace@0.1.0-rc.8.patch'
+  it('adds the system Explorer action to the official Workspace menu', () => {
+    const patchFilename = '@deepseek-ai-dsh-client-ui-workspace-npm-0.1.0-rc.8-1e7b7c614c.patch'
+    const patchPath = `.yarn/patches/${patchFilename}`
     expect(workspaceManifest.resolutions).toMatchObject({
-      '@deepseek-ai/dsh-client-ui-workspace@npm:0.1.0-rc.8': expect.stringContaining(patchPath),
-      '@deepseek-ai/dsh-client-ui-workspace@npm:^0.1.0-rc.8': expect.stringContaining(patchPath),
+      '@deepseek-ai/dsh-client-ui-workspace@npm:0.1.0-rc.8': expect.stringContaining(patchFilename),
+      '@deepseek-ai/dsh-client-ui-workspace@npm:^0.1.0-rc.8': expect.stringContaining(patchFilename),
     })
     const patch = readFileSync(new URL(patchPath, workspaceRoot), 'utf8')
     const installedClient = readFileSync(new URL(
@@ -194,6 +195,12 @@ describe('published package surface', () => {
     expect(installedClient).toContain('data-dsh-workspace-drop-target')
     expect(patch).toContain('data-dsh-workspace-path')
     expect(installedClient).toContain('data-dsh-workspace-path')
+    expect(patch).toContain('在资源管理器中打开')
+    expect(installedClient).toContain('在资源管理器中打开')
+    expect(patch).toContain('/dsh-desktop/api/open-directory')
+    expect(installedClient).toContain('/dsh-desktop/api/open-directory')
+    expect(patch).toContain('onContextMenu: (event) =>')
+    expect(installedClient).toContain('onContextMenu: (event) =>')
   })
 
   it('builds public Host plugins and their private native bootstraps', () => {

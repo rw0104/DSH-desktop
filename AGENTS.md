@@ -27,3 +27,62 @@ This repository owns the desktop product around an unmodified DeepSeek Harness c
 - Keep graphical application launch explicit. Builds, typechecks, unit tests, and Loader smokes must remain headless-safe.
 - Commit before major changes of direction and keep the submodule pin update separate from desktop behavior changes.
 - Keep the repository topology and package-manager split consistent with the [owning Agent Note](.agents/notes/implemented/process/2026-08-15-pinned-upstream-and-isolated-yarn-workspace.md).
+
+## Authoritative upstream repositories and update discipline
+
+The desktop product must track these three repositories explicitly; do not
+silently substitute a fork, stale package, or hand-written replacement:
+
+- Official Harness runtime: `https://github.com/deepseek-ai/deepseek-harness` —
+  pinned by the `deepseek-harness/` submodule and its published
+  `@deepseek-ai/dsh-*` family.
+- Maintained sidebar/workbench: `https://github.com/omdsh-dev/DSH-better-sidebar` —
+  product dependency `dsh-better-sidebar`, with only audited Yarn patches.
+- Desktop reference implementation: `https://github.com/anywhere-labs/deepseek-harness-desktop` —
+  read-only comparison source for Electron bootstrap, packaging, and release
+  behavior; it is not a runtime dependency of this fork.
+
+Before every upstream, dependency, sidebar, or release change:
+
+1. Check the three remotes and package registries (`git ls-remote`, GitHub
+   tags/heads, and `npm view`) and record the result in
+   `docs/upstream-sync.md`.
+2. Update the submodule pin, published package family, sidebar patch baseline,
+   and desktop comparison commit together only when compatibility is proven.
+   Keep the submodule pin update in its own commit.
+3. Run `corepack yarn install --immutable`, typecheck, the focused regression
+   suite, `corepack yarn check`, and the packaged smoke before tagging.
+4. If upstream is newer but incompatible, do not silently keep the old pin:
+   record the incompatibility, affected contracts, and the next migration
+   step in the sync ledger and release notes.
+
+The current audit snapshot and exact commands are maintained in
+[`docs/upstream-sync.md`](docs/upstream-sync.md).
+
+## Product README ownership
+
+- Root `README.md`, `README.en.md`, and `README.i18n.yaml` belong exclusively
+  to `https://github.com/rw0104/DSH-desktop` and describe this fork's product,
+  downloads, releases, screenshots, features, and repository links.
+- Never copy, restore, merge, or overwrite the root README files from
+  `deepseek-ai/deepseek-harness`, `omdsh-dev/DSH-better-sidebar`,
+  `anywhere-labs/deepseek-harness-desktop`, or any other upstream repository.
+- Upstream README content may be used only as a cited reference while manually
+  editing this product's own documentation; retain `rw0104/DSH-desktop`
+  identity and links.
+- During upstream synchronization, treat any root README diff that replaces
+  this product's identity or points primary download/repository links at an
+  upstream project as a release blocker. Do not resolve it by accepting the
+  upstream side.
+
+## Packaging cache and artifact hygiene
+
+- Reuse the machine-level Electron cache (`%LOCALAPPDATA%\electron\Cache` on
+  Windows); do not download or copy Electron archives into the repository.
+- Do not accumulate repeated `win-unpacked`, isolated `DSH_HOME`, user-data,
+  profile `node_modules`, or installer copies under the repository. Temporary
+  copies must be clearly named, excluded from commits/releases, and reported
+  for cleanup after the release succeeds.
+- A GitHub Release uploads only the verified versioned installer (and other
+  explicitly required release artifacts), never unpacked directories, caches,
+  diagnostic profiles, or `.tmp-*` trees.

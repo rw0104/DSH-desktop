@@ -66,13 +66,6 @@ const DESKTOP_ABOUT_STYLES = `
 .dshDesktopAboutAction:hover { background:var(--dsw-alias-interactive-bg-hover); }
 `
 
-const WORKSPACE_DIRECTORY_MENU_STYLES = `
-.dshDesktopWorkspaceContextMenu { position:fixed; z-index:1200; width:188px; padding:4px; border:1px solid var(--dsw-alias-border-l2); border-radius:7px; background:var(--dsw-alias-bg-layer-1); box-shadow:var(--dsw-shadow-elevation-3); pointer-events:auto; }
-.dshDesktopWorkspaceContextMenu button { display:flex; align-items:center; gap:9px; width:100%; min-height:34px; padding:0 9px; border:0; border-radius:5px; color:var(--dsw-alias-label-primary); background:transparent; font:var(--dsw-font-xs-13); text-align:left; cursor:pointer; }
-.dshDesktopWorkspaceContextMenu button:hover, .dshDesktopWorkspaceContextMenu button:focus-visible { background:var(--dsw-alias-interactive-bg-hover); outline:none; }
-.dshDesktopWorkspaceContextToast { position:fixed; z-index:1200; right:16px; bottom:16px; max-width:min(420px,calc(100vw - 32px)); padding:10px 12px; border:1px solid var(--dsw-alias-state-error-primary); border-radius:7px; color:var(--dsw-alias-state-error-primary); background:var(--dsw-alias-bg-layer-1); box-shadow:var(--dsw-shadow-elevation-2); pointer-events:auto; }
-`
-
 /** Advanced-shell stylesheet kept as a plain string so the package client bundle stays self-contained. */
 const ADVANCED_STYLES = `
 html, body, #root { width: 100%; height: 100%; }
@@ -126,16 +119,6 @@ export function installDesktopAboutStyles(): () => void {
   style.dataset.plugin = 'dsh-plugin-desktop'
   style.dataset.pluginCss = 'dsh-plugin-desktop/about'
   style.textContent = DESKTOP_ABOUT_STYLES
-  document.head.appendChild(style)
-  return () => { style.remove() }
-}
-
-/** Install and remove the desktop-owned Workbench and context-menu styles. */
-export function installWorkspaceDirectoryMenuStyles(): () => void {
-  const style = document.createElement('style')
-  style.dataset.plugin = 'dsh-plugin-desktop'
-  style.dataset.pluginCss = 'dsh-plugin-desktop/workspace-directory-menu'
-  style.textContent = WORKSPACE_DIRECTORY_MENU_STYLES
   document.head.appendChild(style)
   return () => { style.remove() }
 }
