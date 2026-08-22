@@ -73,3 +73,7 @@ $env:HTTPS_PROXY='http://127.0.0.1:10808'; npm view dsh-better-sidebar version d
 - 视觉模型误警告：需要在模型设置入口补齐 `input`/`inputModalities` 声明和刷新链路，不能简单放宽 Host 门禁。
 
 这两个问题在新版安装包构建完成后单独开发，避免与本轮上游迁移混在同一个发布变量中。
+
+## 发布结果
+
+本轮迁移和恢复已完成并发布为 `v2.0.8`。Windows packaged smoke 检查到真实盘符选项 `C盘 (C:)`、`D盘 (D:)`、`E盘 (E:)`，选择 C 后路径为 `C:\` 且无错误；安装器 verifier 通过。安装包校验和及兼容性差异记录在 [`docs/releases/v2.0.8.md`](releases/v2.0.8.md)。
