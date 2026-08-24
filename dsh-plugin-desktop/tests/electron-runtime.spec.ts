@@ -1482,17 +1482,13 @@ describe('Electron desktop runtime', () => {
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
     const runtime = new ElectronDesktopRuntime(async () => {})
     runtime.schedule({ ...spec, requestQuit })
-    electron.dialog.showSaveDialog.mockResolvedValueOnce({
-      canceled: false,
-      filePath: 'C:\\Updates\\DSH-Desktop-2.1.0-windows.exe',
-    })
 
     const pending = runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal)
     await vi.waitFor(() => { expect(childProcess.spawn).toHaveBeenCalledOnce() })
     expect(updater.download).toHaveBeenCalledWith(expect.objectContaining({
       platform: 'win32',
       version: '2.1.0',
-      destinationPath: 'C:\\Updates\\DSH-Desktop-2.1.0-windows.exe',
+      destinationPath: join('/tmp/dsh-desktop-user-data', 'updates', 'downloads', 'DSH-Desktop-2.1.0-x64-Setup.exe'),
       artifact: updateArtifactMetadata(),
     }))
     expect(childProcess.spawn).toHaveBeenCalledWith(
@@ -1525,10 +1521,6 @@ describe('Electron desktop runtime', () => {
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
     const runtime = new ElectronDesktopRuntime(async () => {})
     runtime.schedule({ ...spec, requestQuit })
-    electron.dialog.showSaveDialog.mockResolvedValueOnce({
-      canceled: false,
-      filePath: 'C:\\Updates\\DSH-Desktop-2.1.0-windows.exe',
-    })
 
     const pending = runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal)
     await vi.waitFor(() => { expect(childProcess.spawn).toHaveBeenCalledOnce() })
@@ -1551,10 +1543,6 @@ describe('Electron desktop runtime', () => {
     electron.dialog.showMessageBox.mockResolvedValueOnce({ response: 1, checkboxChecked: false })
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
     const runtime = new ElectronDesktopRuntime(async () => {})
-    electron.dialog.showSaveDialog.mockResolvedValueOnce({
-      canceled: false,
-      filePath: 'C:\\Updates\\DSH-Desktop-2.1.0-windows.exe',
-    })
 
     await runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal)
 
@@ -1567,10 +1555,6 @@ describe('Electron desktop runtime', () => {
     updater.download.mockResolvedValueOnce('C:\\Updates\\DSH-Desktop-2.1.0-windows.exe')
     updater.record.mockRejectedValueOnce(new Error('read-only user data'))
     electron.dialog.showMessageBox.mockResolvedValueOnce({ response: 1, checkboxChecked: false })
-    electron.dialog.showSaveDialog.mockResolvedValueOnce({
-      canceled: false,
-      filePath: 'C:\\Updates\\DSH-Desktop-2.1.0-windows.exe',
-    })
     const logger = { error: vi.fn(), errorCause: vi.fn() }
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
     const runtime = new ElectronDesktopRuntime(async () => {}, undefined, logger)
@@ -1584,15 +1568,17 @@ describe('Electron desktop runtime', () => {
     expect(childProcess.spawn).not.toHaveBeenCalled()
   })
 
-  it('does not download when the update destination picker is cancelled', async () => {
+  it('downloads into the private update directory without a destination picker', async () => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
+    updater.download.mockResolvedValueOnce('C:\\Updates\\private.exe')
+    electron.dialog.showMessageBox.mockResolvedValueOnce({ response: 1, checkboxChecked: false })
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
     const runtime = new ElectronDesktopRuntime(async () => {})
 
     await runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal)
 
-    expect(electron.dialog.showSaveDialog).toHaveBeenCalledOnce()
-    expect(updater.download).not.toHaveBeenCalled()
+    expect(electron.dialog.showSaveDialog).not.toHaveBeenCalled()
+    expect(updater.download).toHaveBeenCalledOnce()
   })
 
   it.each([

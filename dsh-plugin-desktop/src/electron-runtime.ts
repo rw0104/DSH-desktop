@@ -11,6 +11,7 @@ import {
 } from 'electron'
 import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { chmod, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { desktopTerminalStateDirectory, openDesktopTerminal } from './desktop-terminal.ts'
@@ -46,7 +47,6 @@ import {
   desktopTrayLabel,
 } from './tray-locale.ts'
 import {
-  desktopUpdateFilename,
   downloadDesktopUpdate,
   pendingDesktopUpdateArtifact,
   recordDesktopUpdateArtifact,
@@ -583,8 +583,10 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
     if (platform === undefined) {
       throw new Error(`dsh-plugin-desktop: updates are unavailable on ${this.platform}`)
     }
-    const destinationPath = await this.chooseUpdateDestination(version)
-    if (destinationPath === undefined) return
+    const destinationDirectory = join(app.getPath('userData'), 'updates', 'downloads')
+    await mkdir(destinationDirectory, { recursive: true, mode: 0o700 })
+    await chmod(destinationDirectory, 0o700)
+    const destinationPath = join(destinationDirectory, `DSH-Desktop-${version}-x64-Setup.exe`)
     signal.throwIfAborted()
     const artifactPath = await downloadDesktopUpdate({
       platform,
@@ -636,26 +638,6 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
     await this.launchWindowsUpdateInstaller(artifactPath)
     this.quitting = true
     spec.requestQuit(0)
-  }
-
-  private async chooseUpdateDestination(version: string): Promise<string | undefined> {
-    if (this.platform !== 'darwin' && this.platform !== 'win32') return undefined
-    const zh = this.currentLocale === 'zh'
-    const filename = desktopUpdateFilename(this.platform, version)
-    const extension = this.platform === 'darwin' ? 'dmg' : 'exe'
-    const result = await dialog.showSaveDialog({
-      title: zh ? '保存更新安装包' : 'Save Update Installer',
-      defaultPath: join(app.getPath('downloads'), filename),
-      buttonLabel: zh ? '保存并下载' : 'Save and Download',
-      filters: [{
-        name: this.platform === 'darwin'
-          ? zh ? '磁盘映像' : 'Disk Image'
-          : zh ? 'Windows 安装程序' : 'Windows Installer',
-        extensions: [extension],
-      }],
-      properties: ['createDirectory', 'showOverwriteConfirmation', 'dontAddToRecent'],
-    })
-    return result.canceled ? undefined : result.filePath
   }
 
   private offerUpdateArtifactCleanup(): Promise<void> {

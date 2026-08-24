@@ -41,6 +41,41 @@ jobs:
         shell: pwsh
         run: corepack yarn dist:win
 
+      - name: Sign and verify Windows artifacts
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
+          WINDOWS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
+          WINDOWS_SIGNING_TIMESTAMP_URL: ${{ secrets.WINDOWS_SIGNING_TIMESTAMP_URL }}
+        run: |
+          $required = @{
+            WINDOWS_SIGNING_CERTIFICATE_BASE64 = $env:WINDOWS_SIGNING_CERTIFICATE_BASE64
+            WINDOWS_SIGNING_CERTIFICATE_PASSWORD = $env:WINDOWS_SIGNING_CERTIFICATE_PASSWORD
+          }
+          foreach ($entry in $required.GetEnumerator()) {
+            if ([string]::IsNullOrWhiteSpace($entry.Value)) {
+              throw "Missing protected Windows signing secret: $($entry.Key)"
+            }
+          }
+          $signtool = (Get-Command signtool.exe -ErrorAction SilentlyContinue).Source
+          if ([string]::IsNullOrWhiteSpace($signtool)) {
+            throw 'signtool.exe is required on the Windows release runner.'
+          }
+          $certificate = Join-Path $env:RUNNER_TEMP 'dsh-desktop-release-signing.pfx'
+          [IO.File]::WriteAllBytes($certificate, [Convert]::FromBase64String($env:WINDOWS_SIGNING_CERTIFICATE_BASE64))
+          $timestamp = if ([string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_TIMESTAMP_URL)) { 'http://timestamp.digicert.com' } else { $env:WINDOWS_SIGNING_TIMESTAMP_URL }
+          $files = @(
+            (Get-ChildItem -LiteralPath 'dsh-plugin-desktop/dist/win-unpacked/DSH Desktop.exe' -File),
+            (Get-ChildItem -LiteralPath 'dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Setup.exe' -File)
+          )
+          foreach ($file in $files) {
+            & $signtool sign /fd SHA256 /f $certificate /p $env:WINDOWS_SIGNING_CERTIFICATE_PASSWORD /tr $timestamp /td SHA256 /d 'DSH Desktop' $file.FullName
+            if ($LASTEXITCODE -ne 0) { throw "signtool sign failed for $($file.Name)" }
+            & $signtool verify /pa /all $file.FullName
+            if ($LASTEXITCODE -ne 0) { throw "signtool verify failed for $($file.Name)" }
+          }
+          Remove-Item -LiteralPath $certificate -Force
+
       - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v4
         with:

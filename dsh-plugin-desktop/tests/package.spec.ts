@@ -56,6 +56,8 @@ describe('published package surface', () => {
     expect(releaseWorkflow).toContain('Get-FileHash -Algorithm SHA256')
     expect(releaseWorkflow).toContain('digest')
     expect(releaseWorkflow).toContain('size')
+    expect(releaseWorkflow).toContain('WINDOWS_SIGNING_CERTIFICATE_BASE64')
+    expect(releaseWorkflow).toContain('signtool verify /pa /all')
   })
 
   it('runs desktop and community market typechecks from the root command', () => {
