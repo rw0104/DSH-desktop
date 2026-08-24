@@ -1,12 +1,11 @@
 /** Fail-loud verification of the runtime entries sealed into Electron's app.asar. */
 
-import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, relative, sep } from 'node:path'
 import { Worker } from 'node:worker_threads'
-import { extractFile, listPackage, statFile } from '@electron/asar'
+import { listPackage } from '@electron/asar'
 import AdmZip from 'adm-zip'
 import {
   FORBIDDEN_MACOS_UNIVERSAL_ENTRIES,
@@ -126,9 +125,6 @@ export const REQUIRED_UNPACKED_PACKAGE_SPECIFIERS = [
 /** Injectable archive listing seam used by focused tests. */
 export type ArchiveLister = (archivePath: string, options: { isPack: boolean }) => readonly string[]
 
-/** Injectable archive file reader used by product Bundle integrity checks. */
-export type ArchiveFileReader = (archivePath: string, filename: string) => Buffer
-
 /** Injectable physical-file probe used by focused tests. */
 export type FileProbe = (filename: string) => boolean
 
@@ -160,29 +156,10 @@ type PackagedDiagnosticWorkerResult =
 
 const PACKAGED_DIAGNOSTIC_WORKER_TIMEOUT_MS = 30_000
 
-interface ProductBundleIntegrityManifestSpec {
-  readonly packageName: string
-  readonly manifestEntry: string
-  readonly fileRootEntry: string
-  readonly displayRoot: string
-}
-
-const PRODUCT_BUNDLE_INTEGRITY_MANIFESTS: readonly ProductBundleIntegrityManifestSpec[] = [{
-  packageName: '@anionex/dsh-vision-toolkit',
-  manifestEntry: 'node_modules/@anionex/dsh-vision-toolkit/vendor/agent-vision-toolkit/UPSTREAM_MANIFEST.json',
-  fileRootEntry: 'node_modules/@anionex/dsh-vision-toolkit/vendor/agent-vision-toolkit',
-  displayRoot: 'vendor/agent-vision-toolkit',
-}]
-
-function readPackagedArchiveFile(archivePath: string, filename: string): Buffer {
-  const info = statFile(archivePath, filename, false)
-  if ('files' in info || 'link' in info) {
-    throw new Error(`packaged archive entry is not a regular file: ${filename}`)
-  }
-  return info.unpacked
-    ? readFileSync(join(`${archivePath}.unpacked`, filename))
-    : extractFile(archivePath, filename, false)
-}
+/** Product bundles removed from the official Desktop runtime. */
+const FORBIDDEN_PACKAGED_BUNDLE_PREFIXES = [
+  'node_modules/@anionex/dsh-vision-toolkit/',
+] as const
 
 /** Start the physical packaged diagnostics Worker and wait for its terminal result. */
 async function launchPackagedDiagnosticWorker(
@@ -322,68 +299,15 @@ export function verifyPackagedAsar(
   return present
 }
 
-/** Verify that every file declared by a packaged product Bundle manifest exists in the ASAR. */
-export function verifyProductBundleIntegrityManifests(
-  archivePath: string,
+/** Reject removed product bundles from the official ASAR. */
+export function verifyRemovedProductBundles(
   archiveEntries: ReadonlySet<string>,
-  read: ArchiveFileReader = readPackagedArchiveFile,
 ): void {
-  for (const spec of PRODUCT_BUNDLE_INTEGRITY_MANIFESTS) {
-    if (!archiveEntries.has(spec.manifestEntry)) continue
-    let value: unknown
-    try {
-      value = JSON.parse(read(archivePath, spec.manifestEntry.replaceAll('/', sep)).toString('utf8')) as unknown
-    } catch (cause) {
-      throw new Error(
-        `dsh-plugin-desktop: product bundle ${spec.packageName} integrity manifest is unreadable`,
-        { cause },
-      )
-    }
-    if (typeof value !== 'object' || value === null || !Array.isArray((value as { files?: unknown }).files)) {
-      throw new Error(
-        `dsh-plugin-desktop: product bundle ${spec.packageName} integrity manifest has no files array`,
-      )
-    }
-    for (const entry of (value as { files: unknown[] }).files) {
-      const record = typeof entry === 'object' && entry !== null
-        ? entry as { path?: unknown; bytes?: unknown; sha256?: unknown }
-        : undefined
-      const path = record?.path
-      if (typeof path !== 'string'
-        || path.length === 0
-        || !Number.isSafeInteger(record?.bytes)
-        || (record?.bytes as number) < 0
-        || typeof record?.sha256 !== 'string'
-        || !/^[a-f0-9]{64}$/u.test(record.sha256)) {
-        throw new Error(
-          `dsh-plugin-desktop: product bundle ${spec.packageName} integrity manifest has an invalid file entry`,
-        )
-      }
-      const archiveEntry = `${spec.fileRootEntry}/${path}`
-      if (!archiveEntries.has(archiveEntry)) {
-        throw new Error(
-          `dsh-plugin-desktop: product bundle ${spec.packageName} integrity manifest is missing packaged file: `
-          + `${spec.displayRoot}/${path}`,
-        )
-      }
-      let bytes: Buffer
-      try {
-        bytes = read(archivePath, archiveEntry.replaceAll('/', sep))
-      } catch (cause) {
-        throw new Error(
-          `dsh-plugin-desktop: product bundle ${spec.packageName} packaged file is unreadable: `
-          + `${spec.displayRoot}/${path}`,
-          { cause },
-        )
-      }
-      const digest = createHash('sha256').update(bytes).digest('hex')
-      if (bytes.length !== record.bytes || digest !== record.sha256) {
-        throw new Error(
-          `dsh-plugin-desktop: product bundle ${spec.packageName} packaged file failed integrity check: `
-          + `${spec.displayRoot}/${path}`,
-        )
-      }
-    }
+  const forbidden = [...archiveEntries].filter(entry => FORBIDDEN_PACKAGED_BUNDLE_PREFIXES.some(prefix => entry.startsWith(prefix)))
+  if (forbidden.length > 0) {
+    throw new Error(
+      `dsh-plugin-desktop: packaged runtime contains removed Vision Toolkit entries: ${forbidden.slice(0, 8).join(', ')}`,
+    )
   }
 }
 
@@ -460,7 +384,7 @@ export function verifyPackagedRuntime(
   resolvePackage?: PackageResolver,
 ): void {
   const archiveEntries = verifyPackagedAsar(resolvePackagedAsarPath(context), list)
-  verifyProductBundleIntegrityManifests(resolvePackagedAsarPath(context), archiveEntries)
+  verifyRemovedProductBundles(archiveEntries)
   const unpackedRoot = resolvePackagedUnpackedRoot(context)
   const requiredPhysicalEntries = context.electronPlatformName === 'win32'
     ? [...REQUIRED_UNPACKED_RUNTIME_ENTRIES, ...REQUIRED_WINDOWS_X64_NODE_PTY_ENTRIES]

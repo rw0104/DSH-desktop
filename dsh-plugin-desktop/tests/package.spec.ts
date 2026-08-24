@@ -612,7 +612,7 @@ describe('published package surface', () => {
     expect(manifest.dependencies?.['react-dom']).toBe('18.3.1')
   })
 
-  it('keeps optional Vision Toolkit out of the desktop dependency graph', () => {
+  it('keeps removed Vision Toolkit out of the desktop dependency graph', () => {
     expect(manifest.dependencies).not.toHaveProperty('@anionex/dsh-vision-toolkit')
   })
 

@@ -1,8 +1,6 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { createPackage } from '@electron/asar'
 import AdmZip from 'adm-zip'
 import {
   afterPack,
@@ -14,10 +12,9 @@ import {
   resolvePackagedAsarPath,
   resolvePackagedUnpackedRoot,
   smokePackagedDiagnosticWorker,
-  verifyProductBundleIntegrityManifests,
+  verifyRemovedProductBundles,
   verifyUnpackedArchiveMirror,
   verifyPackagedRuntime,
-  type ArchiveFileReader,
   type ArchiveLister,
   type FileProbe,
   type PackageResolver,
@@ -48,64 +45,12 @@ function completePackageResolver(unpackedRoot: string): PackageResolver {
 }
 
 describe('packaged desktop runtime verification', () => {
-  it('rejects a product bundle file whose bytes do not match its integrity manifest', () => {
-    const manifestEntry = 'node_modules/@anionex/dsh-vision-toolkit/vendor/agent-vision-toolkit/UPSTREAM_MANIFEST.json'
-    const changelogEntry = 'node_modules/@anionex/dsh-vision-toolkit/vendor/agent-vision-toolkit/CHANGELOG.md'
-    const read = vi.fn<ArchiveFileReader>((_archivePath, filename) => {
-      const normalized = filename.replaceAll('\\', '/')
-      if (normalized === manifestEntry) {
-        return Buffer.from(JSON.stringify({
-          schemaVersion: 1,
-          files: [{ path: 'CHANGELOG.md', bytes: 1, sha256: 'a'.repeat(64) }],
-        }))
-      }
-      if (normalized === changelogEntry) return Buffer.from('x')
-      throw new Error(`unexpected archive read ${filename}`)
-    })
-
-    expect(() => verifyProductBundleIntegrityManifests(
-      '/build/resources/app.asar',
-      new Set([manifestEntry, changelogEntry]),
-      read,
-    )).toThrow(
-      'product bundle @anionex/dsh-vision-toolkit packaged file failed integrity check: '
-      + 'vendor/agent-vision-toolkit/CHANGELOG.md',
-    )
-  })
-
-  it('rejects a product bundle whose integrity manifest names a missing packaged file', async () => {
-    const appOutDir = mkdtempSync(join(tmpdir(), 'dsh-packaged-bundle-manifest-'))
-    const archiveRoot = join(appOutDir, 'archive')
-    const archivePath = resolvePackagedAsarPath(context(appOutDir, 'win32'))
-    const manifestPath = 'node_modules/@anionex/dsh-vision-toolkit/vendor/agent-vision-toolkit/UPSTREAM_MANIFEST.json'
-    try {
-      for (const entry of REQUIRED_PACKAGED_RUNTIME_ENTRIES) {
-        const path = join(archiveRoot, ...entry.split('/'))
-        mkdirSync(dirname(path), { recursive: true })
-        writeFileSync(path, `fixture for ${entry}\n`)
-      }
-      const path = join(archiveRoot, ...manifestPath.split('/'))
-      mkdirSync(dirname(path), { recursive: true })
-      writeFileSync(path, JSON.stringify({
-        schemaVersion: 1,
-        files: [{ path: 'CHANGELOG.md', bytes: 1, sha256: 'a'.repeat(64) }],
-      }))
-      mkdirSync(dirname(archivePath), { recursive: true })
-      await createPackage(archiveRoot, archivePath)
-      const unpackedRoot = resolvePackagedUnpackedRoot(context(appOutDir, 'win32'))
-
-      expect(() => verifyPackagedRuntime(
-        context(appOutDir, 'win32'),
-        undefined,
-        () => true,
-        completePackageResolver(unpackedRoot),
-      )).toThrow(
-        'product bundle @anionex/dsh-vision-toolkit integrity manifest is missing packaged file: '
-        + 'vendor/agent-vision-toolkit/CHANGELOG.md',
-      )
-    } finally {
-      rmSync(appOutDir, { recursive: true, force: true })
-    }
+  it('rejects any removed Vision Toolkit entry from the official package', () => {
+    expect(() => verifyRemovedProductBundles(new Set([
+      'package.json',
+      'node_modules/@anionex/dsh-vision-toolkit/package.json',
+    ]))).toThrow('packaged runtime contains removed Vision Toolkit entries')
+    expect(() => verifyRemovedProductBundles(new Set(['package.json']))).not.toThrow()
   })
 
   it('fails the diagnostic Worker smoke when its archive omits the crash dump', async () => {

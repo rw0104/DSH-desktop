@@ -55,7 +55,7 @@ git submodule status -- deepseek-harness
 | DeepSeek Harness | `master`、`dsh-v0.1.1-rc.2` 和本地 submodule 均为 `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；npm `latest`/`next` 均为 `0.1.1-rc.2` | 不更新 submodule 或 package family |
 | Better Sidebar | `main` 为 `4631a02d…`；新 tag/npm `0.15.2` 为 `d9b8f15d…`；本产品仍为 `0.15.1` | 新版尚未通过本产品 Yarn patch、peer closure 和 packaged smoke；单独迁移，不混入 Vision hotfix |
 | Desktop reference | `master` 前进到 `b13e1fa4…`；最新 tag 仍是 `v2.0.2` / `9d18856d…` | 只记录对照提交，不引入依赖 |
-| Vision Toolkit | npm `latest` 仍为 `0.1.38`，registry 修改时间 `2026-08-20T20:49:34.911Z` | 当前 v2.0.8 成品缺运行时文件且默认不可禁用；从产品默认/不可变/直接依赖中移除，保留用户显式安装的可选生态路径 |
+| Vision Toolkit | npm `latest` 仍为 `0.1.38`，registry 修改时间 `2026-08-20T20:49:34.911Z` | v2.0.8 成品缺运行时文件且默认不可禁用；v2.0.9 正式产品彻底移除 Bundle、依赖、设置入口和安装包，不再保留可启用路径 |
 
 直连 GitHub 在本机返回 connection reset，按项目既有网络配置使用 `127.0.0.1:10808` 代理后成功：
 
@@ -69,7 +69,7 @@ npm view @anionex/dsh-vision-toolkit version dist-tags time.modified peerDepende
 git submodule status -- deepseek-harness
 ```
 
-已完成：Vision Toolkit 默认依赖移除、immutable install、Profile/Loader、模型能力/原生图片安全门禁聚焦测试、完整 Desktop check 和真实 Windows unpacked afterPack smoke。Better Sidebar `0.15.2` 仍另开依赖批次，必须先证明其 `dsh.bundle.patch`、`betterSidebar.registerTab` 和 rc2 peer 解析兼容；本轮不静默升级。
+已完成：Vision Toolkit 正式产品移除、旧 Profile 清理、immutable install、Profile/Loader、模型能力/原生图片安全门禁聚焦测试、完整 Desktop check 和真实 Windows unpacked afterPack smoke。Better Sidebar `0.15.2` 仍另开依赖批次，必须先证明其 `dsh.bundle.patch`、`betterSidebar.registerTab` 和 rc2 peer 解析兼容；本轮不静默升级。
 
 ### rc2 模型能力补丁边界
 

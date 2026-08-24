@@ -178,14 +178,18 @@ describe('desktop profile composition', {
     ])
   }, 30_000)
 
-  it('preserves Vision Toolkit when the profile explicitly owns its dependency', () => {
+  it('removes Vision Toolkit from explicitly installed profile dependencies', () => {
     const home = temporaryHome()
     const dir = ensureDesktopProfile(home)
     const path = join(dir, 'package.json')
     const manifest = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>
     writeFileSync(path, JSON.stringify({
       ...manifest,
-      dependencies: { '@anionex/dsh-vision-toolkit': '0.1.38' },
+      dependencies: {
+        '@anionex/dsh-vision-toolkit': '0.1.38',
+        'third-party-plugin': '^1.0.0',
+      },
+      optionalDependencies: { '@anionex/dsh-vision-toolkit': '0.1.38' },
       dsh: {
         profile: {
           bundles: [
@@ -202,14 +206,15 @@ describe('desktop profile composition', {
 
     const repaired = JSON.parse(readFileSync(path, 'utf8')) as {
       dependencies: Record<string, string>
+      optionalDependencies: Record<string, string>
       dsh: { profile: { bundles: string[] } }
     }
-    expect(repaired.dependencies).toEqual({ '@anionex/dsh-vision-toolkit': '0.1.38' })
+    expect(repaired.dependencies).toEqual({ 'third-party-plugin': '^1.0.0' })
+    expect(repaired.optionalDependencies).toEqual({})
     expect(repaired.dsh.profile.bundles).toEqual([
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
       'dsh-better-sidebar',
-      '@anionex/dsh-vision-toolkit',
     ])
   })
 

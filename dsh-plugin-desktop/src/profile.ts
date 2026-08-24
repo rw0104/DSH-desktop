@@ -56,7 +56,8 @@ const DEFAULT_DESKTOP_PLUGIN_BUNDLE_SET = new Set<string>(DEFAULT_DESKTOP_PLUGIN
 const OBSOLETE_DESKTOP_BUNDLE_SET = new Set([
   '@deepseek-ai/dsh-desktop-app',
 ])
-const LEGACY_DEFAULT_OPTIONAL_BUNDLE_SET = new Set([
+/** Bundles removed from the official product; old profile manifests are scrubbed on boot. */
+const REMOVED_DESKTOP_BUNDLE_SET = new Set([
   '@anionex/dsh-vision-toolkit',
 ])
 const INSTALL_ANCHOR = unpackedAsarPath(fileURLToPath(new URL('../package.json', import.meta.url)))
@@ -207,19 +208,35 @@ export interface SkippedOptionalEntry {
 /**
  * Normalize the installation-owned prefix while preserving third-party order.
  * @param current - current persistent bundle list.
- * @param explicitlyInstalled - package dependencies the profile itself owns.
  * @returns base, Web carrier, then every third-party bundle in prior order.
  */
 export function desktopBundleList(
   current: readonly string[],
-  explicitlyInstalled: ReadonlySet<string> = new Set(),
 ): string[] {
   const thirdParty = current.filter(name => !REQUIRED_BUNDLE_SET.has(name)
     && !DEFAULT_DESKTOP_PLUGIN_BUNDLE_SET.has(name)
     && name !== DESKTOP_PACKAGE_NAME
     && !OBSOLETE_DESKTOP_BUNDLE_SET.has(name)
-    && (!LEGACY_DEFAULT_OPTIONAL_BUNDLE_SET.has(name) || explicitlyInstalled.has(name)))
+    && !REMOVED_DESKTOP_BUNDLE_SET.has(name))
   return [...REQUIRED_BUNDLES, ...DEFAULT_DESKTOP_PLUGIN_BUNDLES, ...thirdParty]
+}
+
+/** Remove product bundles that are no longer supported from every profile dependency section. */
+function scrubRemovedDesktopDependencies(manifest: ProfileManifest): ProfileManifest {
+  let changed = false
+  const next = { ...manifest } as ProfileManifest & Record<string, unknown>
+  for (const sectionName of ['dependencies', 'optionalDependencies', 'devDependencies'] as const) {
+    const section = next[sectionName]
+    if (section === null || typeof section !== 'object' || Array.isArray(section)) continue
+    const values = section as Record<string, unknown>
+    const filtered = Object.fromEntries(Object.entries(values).filter(([name]) => {
+      const keep = !REMOVED_DESKTOP_BUNDLE_SET.has(name)
+      if (!keep) changed = true
+      return keep
+    })) as Record<string, string>
+    if (Object.keys(filtered).length !== Object.keys(values).length) next[sectionName] = filtered
+  }
+  return changed ? next : manifest
 }
 
 /** Return whether two ordered string lists are identical. */
@@ -242,18 +259,15 @@ export function ensureDesktopProfile(home: string = resolveDshHome()): string {
     throw new Error(`${BIN_NAME}: dsh.profile.bundles must be an array of package names`)
   }
   const current = rawBundles === undefined ? [] : rawBundles as string[]
-  const dependencies = (manifest as { dependencies?: unknown }).dependencies
-  const explicitlyInstalled = dependencies !== null && typeof dependencies === 'object' && !Array.isArray(dependencies)
-    ? new Set(Object.keys(dependencies))
-    : new Set<string>()
-  const bundles = desktopBundleList(current, explicitlyInstalled)
-  if (!sameList(current, bundles)) {
+  const scrubbed = scrubRemovedDesktopDependencies(manifest)
+  const bundles = desktopBundleList(current)
+  if (!sameList(current, bundles) || scrubbed !== manifest) {
     writeProfileManifest(dir, {
-      ...manifest,
+      ...scrubbed,
       dsh: {
-        ...manifest.dsh,
+        ...scrubbed.dsh,
         profile: {
-          ...manifest.dsh?.profile,
+          ...scrubbed.dsh?.profile,
           bundles,
         },
       },
