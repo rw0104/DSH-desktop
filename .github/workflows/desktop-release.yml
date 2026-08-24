@@ -17,6 +17,10 @@ jobs:
   build-windows:
     name: Build Windows x64 Setup installer
     runs-on: windows-latest
+    env:
+      WINDOWS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
+      WINDOWS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
+      WINDOWS_SIGNING_TIMESTAMP_URL: ${{ secrets.WINDOWS_SIGNING_TIMESTAMP_URL }}
     steps:
       - name: Check out desktop and pinned upstream
         uses: actions/checkout@v6
@@ -42,11 +46,8 @@ jobs:
         run: corepack yarn dist:win
 
       - name: Sign and verify Windows artifacts
+        if: env.WINDOWS_SIGNING_CERTIFICATE_BASE64 != ''
         shell: pwsh
-        env:
-          WINDOWS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
-          WINDOWS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
-          WINDOWS_SIGNING_TIMESTAMP_URL: ${{ secrets.WINDOWS_SIGNING_TIMESTAMP_URL }}
         run: |
           $required = @{
             WINDOWS_SIGNING_CERTIFICATE_BASE64 = $env:WINDOWS_SIGNING_CERTIFICATE_BASE64
@@ -75,6 +76,24 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "signtool verify failed for $($file.Name)" }
           }
           Remove-Item -LiteralPath $certificate -Force
+
+      - name: Verify and disclose unsigned Windows artifacts
+        if: env.WINDOWS_SIGNING_CERTIFICATE_BASE64 == ''
+        shell: pwsh
+        run: |
+          $files = @(
+            (Get-ChildItem -LiteralPath 'dsh-plugin-desktop/dist/win-unpacked/DSH Desktop.exe' -File),
+            (Get-ChildItem -LiteralPath 'dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Setup.exe' -File)
+          )
+          foreach ($file in $files) {
+            $signature = Get-AuthenticodeSignature -LiteralPath $file.FullName
+            if ($signature.Status -ne 'NotSigned') {
+              throw "Unsigned release path expected NotSigned for $($file.Name), got $($signature.Status)."
+            }
+          }
+          '### Windows signing' | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+          '' | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+          'No protected signing certificate was configured. Artifacts are explicitly verified as `NotSigned`; SHA-256 and immutable GitHub asset checks still apply.' | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
 
       - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v4

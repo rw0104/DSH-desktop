@@ -58,6 +58,8 @@ describe('published package surface', () => {
     expect(releaseWorkflow).toContain('size')
     expect(releaseWorkflow).toContain('WINDOWS_SIGNING_CERTIFICATE_BASE64')
     expect(releaseWorkflow).toContain('signtool verify /pa /all')
+    expect(releaseWorkflow).toContain("if: env.WINDOWS_SIGNING_CERTIFICATE_BASE64 == ''")
+    expect(releaseWorkflow).toContain("$signature.Status -ne 'NotSigned'")
   })
 
   it('runs desktop and community market typechecks from the root command', () => {
