@@ -96,6 +96,8 @@ Ordinary users can start with the [user guide](docs/user-guide.en.md); the devel
 
 Plugins are extensions that add capabilities to DSH — models, tools, interfaces, and workflows can all be plugins, combined like building blocks.
 
+Models that explicitly declare image input use the native DeepSeek Harness attachment path. DSH Desktop does not bundle or automatically activate a third-party vision service; OCR, grounding, pixel-diff, and similar enhancements remain optional plugins that users install and control themselves.
+
 DSH Desktop does not modify upstream source, and it is not a fixed, hardcoded shell. A pinned upstream DeepSeek Harness version runs unchanged; the desktop shell itself — the window, tray, terminal, updates, and work profiles — integrates as a DSH plugin through the plugin mechanism provided by DeepSeek Harness. From the core agent to the desktop shell, the whole product follows the same "everything is a plugin" rule: plugins compatible with the pinned upstream version can be used, while desktop capabilities are composed, replaced, and evolved in the same way.
 
 We want the plugin ecosystem to work like a phone app store: every plugin is built against the same set of rules, so plugins can be installed together and work together without interfering with each other.

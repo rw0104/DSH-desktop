@@ -594,8 +594,8 @@ describe('published package surface', () => {
     expect(manifest.dependencies?.['react-dom']).toBe('18.3.1')
   })
 
-  it('keeps the Vision Toolkit product plugin in the desktop dependency graph', () => {
-    expect(manifest.dependencies?.['@anionex/dsh-vision-toolkit']).toBe('0.1.38')
+  it('keeps optional Vision Toolkit out of the desktop dependency graph', () => {
+    expect(manifest.dependencies).not.toHaveProperty('@anionex/dsh-vision-toolkit')
   })
 
   it('packages the native-compiled Koffi Windows runtime', () => {

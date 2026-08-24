@@ -103,18 +103,16 @@ describe('desktop profile composition', {
     ), 'utf8')).toBe('# Cordis plugin development\n')
   })
 
-  it('adds the Web surface and maintained upstream Workbench before third-party bundles', () => {
+  it('adds the Web surface and maintained upstream Workbench without injecting optional vision', () => {
     expect(desktopBundleList([
       '@deepseek-ai/dsh-base',
       'third-party-one',
       DESKTOP_PACKAGE_NAME,
-      '@anionex/dsh-vision-toolkit',
       'dsh-better-sidebar',
       'third-party-two',
     ])).toEqual([
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
-      '@anionex/dsh-vision-toolkit',
       'dsh-better-sidebar',
       'third-party-one',
       'third-party-two',
@@ -142,7 +140,6 @@ describe('desktop profile composition', {
     expect(repaired.dsh.profile.bundles).toEqual([
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
-      '@anionex/dsh-vision-toolkit',
       'dsh-better-sidebar',
       'third-party-plugin',
     ])
@@ -150,7 +147,7 @@ describe('desktop profile composition', {
     expect(repaired.custom.preserved).toBe(true)
   })
 
-  it('migrates obsolete Desktop bundles while retaining maintained product plugins', () => {
+  it('migrates the legacy default vision bundle when the profile did not install it', () => {
     const home = temporaryHome()
     const dir = ensureDesktopProfile(home)
     const path = join(dir, 'package.json')
@@ -177,10 +174,44 @@ describe('desktop profile composition', {
     expect(repaired.dsh.profile.bundles).toEqual([
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
-      '@anionex/dsh-vision-toolkit',
       'dsh-better-sidebar',
     ])
   }, 30_000)
+
+  it('preserves Vision Toolkit when the profile explicitly owns its dependency', () => {
+    const home = temporaryHome()
+    const dir = ensureDesktopProfile(home)
+    const path = join(dir, 'package.json')
+    const manifest = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>
+    writeFileSync(path, JSON.stringify({
+      ...manifest,
+      dependencies: { '@anionex/dsh-vision-toolkit': '0.1.38' },
+      dsh: {
+        profile: {
+          bundles: [
+            '@deepseek-ai/dsh-base',
+            '@deepseek-ai/dsh-web-app',
+            '@anionex/dsh-vision-toolkit',
+            'dsh-better-sidebar',
+          ],
+        },
+      },
+    }, undefined, 2) + '\n')
+
+    ensureDesktopProfile(home)
+
+    const repaired = JSON.parse(readFileSync(path, 'utf8')) as {
+      dependencies: Record<string, string>
+      dsh: { profile: { bundles: string[] } }
+    }
+    expect(repaired.dependencies).toEqual({ '@anionex/dsh-vision-toolkit': '0.1.38' })
+    expect(repaired.dsh.profile.bundles).toEqual([
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+      'dsh-better-sidebar',
+      '@anionex/dsh-vision-toolkit',
+    ])
+  })
 
   it('rejects malformed persistent bundle metadata', () => {
     const home = temporaryHome()
