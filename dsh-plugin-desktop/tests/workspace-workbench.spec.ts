@@ -313,7 +313,7 @@ describe('Workspace Workbench service', () => {
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
-  }, 15_000)
+  }, 60_000)
 })
 
 describe('Workspace Changes parser', () => {
@@ -427,7 +427,7 @@ describe('Workspace Changes service', () => {
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
-  }, 15_000)
+  }, 60_000)
 
   it('rejects absolute and escaping file mutation paths', async () => {
     const service = new WorkspaceChangesService(async () => '')

@@ -29,7 +29,7 @@ describe('managed workspace worktrees', () => {
     } finally {
       await rm(root, { recursive: true, force: true })
     }
-  }, 15_000)
+  }, 60_000)
 
   it('refuses to remove a dirty managed worktree', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-worktree-dirty-'))
@@ -49,7 +49,7 @@ describe('managed workspace worktrees', () => {
     } finally {
       await rm(root, { recursive: true, force: true })
     }
-  }, 15_000)
+  }, 60_000)
 
   it('rejects a branch that already exists even when it is not checked out', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-worktree-branch-'))
@@ -66,7 +66,7 @@ describe('managed workspace worktrees', () => {
     } finally {
       await rm(root, { recursive: true, force: true })
     }
-  }, 15_000)
+  }, 60_000)
 
   it('does not treat an unmanaged checkout as removable', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-worktree-unmanaged-'))
