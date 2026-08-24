@@ -53,6 +53,7 @@ import {
   type DesktopUpdateArtifact,
 } from './update-download.ts'
 import type { UpdateCheckResult } from './update-checker.ts'
+import type { DesktopUpdateArtifactMetadata } from './update-checker.ts'
 import {
   type WindowsVolumeQuery,
 } from './windows-volume-diagnostics.ts'
@@ -139,7 +140,8 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
       request: (url, init) => net.fetch(url, init),
       confirmDownload: version => this.confirmUpdateDownload(version),
       showManualCheckResult: result => this.showManualUpdateCheckResult(result),
-      downloadAndOpen: (version, signal) => this.downloadAndOpenUpdate(version, signal),
+      showDownloadFailure: () => this.showUpdateDownloadFailure(),
+      downloadAndOpen: (artifact, signal) => this.downloadAndOpenUpdate(artifact, signal),
       notify: notification => { this.showNotification(notification) },
     }
   }
@@ -547,8 +549,30 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
     })
   }
 
+  /** Report one confirmed download/verification failure without exposing paths or response data. */
+  private async showUpdateDownloadFailure(): Promise<void> {
+    const zh = this.currentLocale === 'zh'
+    await dialog.showMessageBox({
+      type: 'error',
+      title: zh ? '更新下载失败' : 'Update Download Failed',
+      message: zh
+        ? 'DSH Desktop 无法下载或验证更新安装包。'
+        : 'DSH Desktop could not download or verify the update installer.',
+      detail: zh
+        ? '当前版本没有改变。请检查网络和磁盘空间，然后从托盘重试。'
+        : 'The current version was not changed. Check the network and disk space, then retry from the tray.',
+      buttons: [zh ? '确定' : 'OK'],
+      defaultId: 0,
+      noLink: true,
+    })
+  }
+
   /** Download a confirmed installer and hand it to the native installation flow. */
-  private async downloadAndOpenUpdate(version: string, signal: AbortSignal): Promise<void> {
+  private async downloadAndOpenUpdate(
+    artifactMetadata: DesktopUpdateArtifactMetadata,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const version = artifactMetadata.version
     const platform = this.platformStrategy.updateDownloadPlatform
     if (platform === undefined) {
       throw new Error(`dsh-plugin-desktop: updates are unavailable on ${this.platform}`)
@@ -560,6 +584,7 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
       platform,
       version,
       destinationPath,
+      artifact: artifactMetadata,
       request: (url, init) => net.fetch(url, init),
       signal,
     })

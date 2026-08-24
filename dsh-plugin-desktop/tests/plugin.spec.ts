@@ -77,6 +77,7 @@ function createHarness(platform: DesktopRuntime['platform'] = 'darwin'): PluginH
       request: async () => new Response(null, { status: 304 }),
       confirmDownload: async () => false,
       showManualCheckResult: async () => {},
+      showDownloadFailure: async () => {},
       downloadAndOpen: async () => {},
       notify: () => {},
     },

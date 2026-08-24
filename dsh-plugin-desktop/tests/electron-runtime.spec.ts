@@ -245,6 +245,17 @@ const spec: DesktopShellSpec = {
   requestModeChange: vi.fn(async () => {}),
 }
 
+function updateArtifactMetadata(version = '2.1.0') {
+  const name = `DSH-Desktop-${version}-x64-Setup.exe`
+  return {
+    version,
+    name,
+    size: 512,
+    sha256: 'a'.repeat(64),
+    url: `https://github.com/rw0104/DSH-desktop/releases/download/v${version}/${name}`,
+  }
+}
+
 describe('Electron desktop runtime', () => {
   beforeEach(() => {
     electron.app.isPackaged = false
@@ -1422,11 +1433,20 @@ describe('Electron desktop runtime', () => {
       buttons: ['OK'],
     }))
 
+    await runtime.updates.showDownloadFailure()
+    expect(electron.dialog.showMessageBox).toHaveBeenLastCalledWith(expect.objectContaining({
+      type: 'error',
+      title: 'Update Download Failed',
+      message: 'DSH Desktop could not download or verify the update installer.',
+      buttons: ['OK'],
+      noLink: true,
+    }))
+
     electron.dialog.showMessageBox.mockResolvedValueOnce({ response: 1, checkboxChecked: false })
     await expect(runtime.updates.confirmDownload('2.1.0')).resolves.toBe(false)
     expect(updater.download).not.toHaveBeenCalled()
 
-    await expect(runtime.updates.downloadAndOpen('2.1.0', new AbortController().signal))
+    await expect(runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal))
       .rejects.toThrow('updates are unavailable on darwin')
     expect(updater.download).not.toHaveBeenCalled()
 
@@ -1455,8 +1475,14 @@ describe('Electron desktop runtime', () => {
       filePath: 'C:\\Updates\\DSH-Desktop-2.1.0-windows.exe',
     })
 
-    const pending = runtime.updates.downloadAndOpen('2.1.0', new AbortController().signal)
+    const pending = runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal)
     await vi.waitFor(() => { expect(childProcess.spawn).toHaveBeenCalledOnce() })
+    expect(updater.download).toHaveBeenCalledWith(expect.objectContaining({
+      platform: 'win32',
+      version: '2.1.0',
+      destinationPath: 'C:\\Updates\\DSH-Desktop-2.1.0-windows.exe',
+      artifact: updateArtifactMetadata(),
+    }))
     expect(childProcess.spawn).toHaveBeenCalledWith(
       'C:\\Updates\\DSH-Desktop-2.1.0-windows.exe',
       ['--updated', '--force-run'],
@@ -1492,7 +1518,7 @@ describe('Electron desktop runtime', () => {
       filePath: 'C:\\Updates\\DSH-Desktop-2.1.0-windows.exe',
     })
 
-    const pending = runtime.updates.downloadAndOpen('2.1.0', new AbortController().signal)
+    const pending = runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal)
     await vi.waitFor(() => { expect(childProcess.spawn).toHaveBeenCalledOnce() })
     childProcess.emit('error', new Error('blocked'))
 
@@ -1518,7 +1544,7 @@ describe('Electron desktop runtime', () => {
       filePath: 'C:\\Updates\\DSH-Desktop-2.1.0-windows.exe',
     })
 
-    await runtime.updates.downloadAndOpen('2.1.0', new AbortController().signal)
+    await runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal)
 
     expect(childProcess.spawn).not.toHaveBeenCalled()
     expect(updater.record).toHaveBeenCalledOnce()
@@ -1537,7 +1563,7 @@ describe('Electron desktop runtime', () => {
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
     const runtime = new ElectronDesktopRuntime(async () => {}, undefined, logger)
 
-    await expect(runtime.updates.downloadAndOpen('2.1.0', new AbortController().signal))
+    await expect(runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal))
       .resolves.toBeUndefined()
 
     expect(logger.error).toHaveBeenCalledWith(
@@ -1551,7 +1577,7 @@ describe('Electron desktop runtime', () => {
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
     const runtime = new ElectronDesktopRuntime(async () => {})
 
-    await runtime.updates.downloadAndOpen('2.1.0', new AbortController().signal)
+    await runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal)
 
     expect(electron.dialog.showSaveDialog).toHaveBeenCalledOnce()
     expect(updater.download).not.toHaveBeenCalled()
@@ -1589,7 +1615,7 @@ describe('Electron desktop runtime', () => {
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
     const runtime = new ElectronDesktopRuntime(async () => {})
 
-    await expect(runtime.updates.downloadAndOpen('2.1.0', new AbortController().signal))
+    await expect(runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal))
       .rejects.toThrow('updates are unavailable on darwin')
     expect(electron.dialog.showSaveDialog).not.toHaveBeenCalled()
     expect(updater.download).not.toHaveBeenCalled()

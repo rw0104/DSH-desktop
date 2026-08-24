@@ -1,6 +1,10 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { RendererBootReport } from './renderer-boot-contract.ts'
-import type { UpdateCheckResult, UpdateRequest } from './update-checker.ts'
+import type {
+  DesktopUpdateArtifactMetadata,
+  UpdateCheckResult,
+  UpdateRequest,
+} from './update-checker.ts'
 
 /** Electron platforms supported by the DSH Desktop native adapter. */
 export type DesktopPlatform = 'darwin' | 'win32' | 'linux'
@@ -101,8 +105,10 @@ export interface DesktopUpdateAdapter {
   confirmDownload(version: string): Promise<boolean>
   /** Present the outcome of a user-triggered version check. */
   showManualCheckResult(result: UpdateCheckResult | null): Promise<void>
+  /** Explain that a confirmed installer could not be downloaded or verified. */
+  showDownloadFailure(): Promise<void>
   /** Download and hand one confirmed update to the platform installer. */
-  downloadAndOpen(version: string, signal: AbortSignal): Promise<void>
+  downloadAndOpen(artifact: DesktopUpdateArtifactMetadata, signal: AbortSignal): Promise<void>
   /** Present a native status notification without blocking the Host tree. */
   notify(notification: DesktopNotification): void
 }

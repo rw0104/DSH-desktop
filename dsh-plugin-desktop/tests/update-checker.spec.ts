@@ -12,6 +12,17 @@ function versionResponse(version: unknown, init: ResponseInit = {}): Response {
   return Response.json({ tag_name: typeof version === 'string' ? `v${version}` : version, draft: false, prerelease: false }, init)
 }
 
+function releaseAsset(version: string): Record<string, unknown> {
+  const name = `DSH-Desktop-${version}-x64-Setup.exe`
+  return {
+    name,
+    size: 123_456,
+    digest: `sha256:${'a'.repeat(64)}`,
+    state: 'uploaded',
+    browser_download_url: `https://github.com/rw0104/DSH-desktop/releases/download/v${version}/${name}`,
+  }
+}
+
 describe('strict SemVer parsing', () => {
   it('accepts a three-part version, optional lowercase v, prerelease, and build metadata', () => {
     expect(parseSemVer('v2.10.3-alpha.1+mac.arm64')).toEqual({
@@ -52,6 +63,30 @@ describe('strict SemVer parsing', () => {
 })
 
 describe('public Desktop version check', () => {
+  it('binds a newer release to its exact Windows installer metadata', async () => {
+    const version = '2.10.0'
+    await expect(checkForStableUpdate({
+      currentVersion: '2.9.9',
+      request: async () => Response.json({
+        tag_name: `v${version}`,
+        draft: false,
+        prerelease: false,
+        assets: [releaseAsset(version)],
+      }),
+    })).resolves.toEqual({
+      status: 'update-available',
+      currentVersion: '2.9.9',
+      latestVersion: version,
+      artifact: {
+        version,
+        name: `DSH-Desktop-${version}-x64-Setup.exe`,
+        size: 123_456,
+        sha256: 'a'.repeat(64),
+        url: `https://github.com/rw0104/DSH-desktop/releases/download/v${version}/DSH-Desktop-${version}-x64-Setup.exe`,
+      },
+    })
+  })
+
   it('uses only the fixed no-cache version endpoint and reports a newer stable version', async () => {
     const controller = new AbortController()
     const calls: Array<{ url: string, init: RequestInit }> = []

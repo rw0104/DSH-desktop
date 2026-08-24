@@ -85,4 +85,35 @@ jobs:
           } else {
             gh release edit $tag --title "DSH Desktop $tag" --notes-file $notes
           }
-          gh release upload $tag (Get-ChildItem -LiteralPath release-assets -File).FullName --clobber
+          $files = @(Get-ChildItem -LiteralPath release-assets -File)
+          if ($files.Count -eq 0) {
+            throw 'No release assets were downloaded.'
+          }
+          $release = gh api "repos/${{ github.repository }}/releases/tags/$tag" | ConvertFrom-Json
+          $existing = @($release.assets | Where-Object { $_.name -in $files.Name })
+          if ($existing.Count -gt 0) {
+            throw "Release assets are immutable; refusing to replace: $($existing.name -join ', ')"
+          }
+          gh release upload $tag $files.FullName
+          if ($LASTEXITCODE -ne 0) {
+            throw 'GitHub Release asset upload failed.'
+          }
+          foreach ($file in $files) {
+            $localDigest = "sha256:$((Get-FileHash -Algorithm SHA256 -LiteralPath $file.FullName).Hash.ToLowerInvariant())"
+            $asset = $null
+            for ($attempt = 0; $attempt -lt 5; $attempt += 1) {
+              $published = gh api "repos/${{ github.repository }}/releases/tags/$tag" | ConvertFrom-Json
+              $asset = $published.assets | Where-Object name -eq $file.Name | Select-Object -First 1
+              if ($null -ne $asset -and $null -ne $asset.digest) { break }
+              Start-Sleep -Seconds 2
+            }
+            if ($null -eq $asset) {
+              throw "Uploaded asset is missing from the release: $($file.Name)"
+            }
+            if ([int64]$asset.size -ne [int64]$file.Length) {
+              throw "Uploaded asset size mismatch for $($file.Name): $($asset.size) != $($file.Length)"
+            }
+            if ($asset.digest -ne $localDigest) {
+              throw "Uploaded asset digest mismatch for $($file.Name): $($asset.digest) != $localDigest"
+            }
+          }

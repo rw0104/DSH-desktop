@@ -35,6 +35,15 @@ export interface UpdateCheckOptions {
   readonly request?: UpdateRequest
 }
 
+/** Exact Windows installer identity returned by the product-owned release service. */
+export interface DesktopUpdateArtifactMetadata {
+  readonly version: string
+  readonly name: string
+  readonly size: number
+  readonly sha256: string
+  readonly url: string
+}
+
 /** Successful comparison returned by the stable version service. */
 export type UpdateCheckResult = {
   /** Whether the service reports a version newer than the installed application. */
@@ -43,6 +52,13 @@ export type UpdateCheckResult = {
   readonly currentVersion: string
   /** Canonical latest stable version returned by the service. */
   readonly latestVersion: string
+  /** Authenticated release-asset metadata required before Windows may download. */
+  readonly artifact?: DesktopUpdateArtifactMetadata
+}
+
+interface ParsedRelease {
+  readonly version: ParsedSemVer
+  readonly artifact?: DesktopUpdateArtifactMetadata
 }
 
 const SEMVER_PATTERN =
@@ -124,10 +140,12 @@ export async function checkForStableUpdate(
 
   const latest = parseVersionResponse(body)
   if (latest === null) return null
+  const status = compareParsedSemVer(latest.version, current) > 0 ? 'update-available' : 'up-to-date'
   return {
-    status: compareParsedSemVer(latest, current) > 0 ? 'update-available' : 'up-to-date',
+    status,
     currentVersion: current.version,
-    latestVersion: latest.version,
+    latestVersion: latest.version.version,
+    ...(status === 'update-available' && latest.artifact !== undefined ? { artifact: latest.artifact } : {}),
   }
 }
 
@@ -165,7 +183,7 @@ async function readLimitedBody(response: Response): Promise<string> {
   }
 }
 
-function parseVersionResponse(body: string): ParsedSemVer | null {
+function parseVersionResponse(body: string): ParsedRelease | null {
   let value: unknown
   try {
     value = JSON.parse(body)
@@ -178,7 +196,31 @@ function parseVersionResponse(body: string): ParsedSemVer | null {
     || typeof value.tag_name !== 'string'
     || !value.tag_name.startsWith('v')) return null
   const parsed = parseCanonicalStableVersion(value.tag_name.slice(1))
-  return parsed !== null && value.tag_name === `v${parsed.version}` ? parsed : null
+  if (parsed === null || value.tag_name !== `v${parsed.version}`) return null
+  const artifact = parseWindowsArtifact(value.assets, parsed.version)
+  return { version: parsed, ...(artifact === undefined ? {} : { artifact }) }
+}
+
+function parseWindowsArtifact(value: unknown, version: string): DesktopUpdateArtifactMetadata | undefined {
+  if (!Array.isArray(value)) return undefined
+  const name = `DSH-Desktop-${version}-x64-Setup.exe`
+  const matches = value.filter(asset => isRecord(asset) && asset.name === name)
+  if (matches.length !== 1) return undefined
+  const asset = matches[0] as Record<string, unknown>
+  const expectedUrl = `https://github.com/rw0104/DSH-desktop/releases/download/v${encodeURIComponent(version)}/${encodeURIComponent(name)}`
+  if (asset.state !== 'uploaded'
+    || !Number.isSafeInteger(asset.size)
+    || (asset.size as number) <= 0
+    || typeof asset.digest !== 'string'
+    || !/^sha256:[a-f0-9]{64}$/u.test(asset.digest)
+    || asset.browser_download_url !== expectedUrl) return undefined
+  return {
+    version,
+    name,
+    size: asset.size as number,
+    sha256: asset.digest.slice('sha256:'.length),
+    url: expectedUrl,
+  }
 }
 
 function parseCanonicalStableVersion(input: string): ParsedSemVer | null {

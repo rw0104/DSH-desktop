@@ -1,10 +1,14 @@
 /** Headless, confirmation-gated downloads for DSH Desktop installers. */
 
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { chmod, lstat, mkdir, open, readFile, rename, unlink } from 'node:fs/promises'
 import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path'
 import { writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
-import { compareSemVerVersions, parseSemVer } from './update-checker.ts'
+import {
+  compareSemVerVersions,
+  parseSemVer,
+  type DesktopUpdateArtifactMetadata,
+} from './update-checker.ts'
 
 /** Desktop platforms with a fixed installer download endpoint. */
 export type DesktopDownloadPlatform = 'darwin' | 'win32'
@@ -20,6 +24,7 @@ export type UpdateDownloadErrorCode =
   | 'aborted'
   | 'empty-body'
   | 'http-status'
+  | 'integrity-mismatch'
   | 'invalid-artifact'
   | 'invalid-options'
   | 'network'
@@ -38,6 +43,8 @@ export interface DownloadDesktopUpdateOptions {
   readonly destinationPath: string
   /** Request implementation, normally backed by Electron `net.fetch`. */
   readonly request: UpdateArtifactRequest
+  /** Release-service identity used to authenticate the downloaded bytes. */
+  readonly artifact?: DesktopUpdateArtifactMetadata
   /** Optional cancellation signal owned by the update coordinator. */
   readonly signal?: AbortSignal
 }
@@ -101,13 +108,16 @@ const UPDATE_ARTIFACT_STATE_FILENAME = 'pending-installer.json'
 export async function downloadDesktopUpdate(options: DownloadDesktopUpdateOptions): Promise<string> {
   const platform = validatedPlatform(options.platform)
   validatedVersion(options.version)
+  const artifact = options.artifact === undefined
+    ? undefined
+    : validatedArtifactMetadata(options.artifact, platform, options.version)
   const destinationPath = validatedArtifactPath(options.destinationPath, platform)
   const paths = await prepareDownloadPaths(destinationPath)
   throwIfAborted(options.signal)
 
   let response: Response
   try {
-    response = await options.request(desktopUpdateDownloadUrl(platform, options.version), {
+    response = await options.request(artifact?.url ?? desktopUpdateDownloadUrl(platform, options.version), {
       method: 'GET',
       cache: 'no-store',
       redirect: 'follow',
@@ -128,11 +138,18 @@ export async function downloadDesktopUpdate(options: DownloadDesktopUpdateOption
   if (response.body === null) {
     throw new UpdateDownloadError('empty-body', 'The update download service returned an empty body.')
   }
-  assertDeclaredSize(response)
+  assertDeclaredSize(response, artifact?.size)
 
   let failure: unknown
   try {
-    await writeResponseBody(paths.temporary, response.body, options.signal)
+    const received = await writeResponseBody(paths.temporary, response.body, options.signal)
+    if (artifact !== undefined
+      && (received.bytes !== artifact.size || received.sha256 !== artifact.sha256)) {
+      throw new UpdateDownloadError(
+        'integrity-mismatch',
+        'The update installer does not match its release metadata.',
+      )
+    }
     throwIfAborted(options.signal)
     await validateArtifact(paths.temporary, platform)
     throwIfAborted(options.signal)
@@ -165,10 +182,33 @@ export function desktopUpdateFilename(platform: DesktopDownloadPlatform, version
 export function desktopUpdateDownloadUrl(platform: DesktopDownloadPlatform, version: string): string {
   validatedPlatform(platform)
   const stableVersion = validatedVersion(version)
-  const asset = platform === 'win32'
-    ? `DSH-Desktop-${stableVersion}-x64-Setup.exe`
-    : `DSH-Desktop-${stableVersion}-universal.dmg`
+  const asset = desktopUpdateAssetName(platform, stableVersion)
   return `${DESKTOP_RELEASES_DOWNLOAD_BASE}/v${encodeURIComponent(stableVersion)}/${encodeURIComponent(asset)}`
+}
+
+function desktopUpdateAssetName(platform: DesktopDownloadPlatform, version: string): string {
+  return platform === 'win32'
+    ? `DSH-Desktop-${version}-x64-Setup.exe`
+    : `DSH-Desktop-${version}-universal.dmg`
+}
+
+function validatedArtifactMetadata(
+  artifact: DesktopUpdateArtifactMetadata,
+  platform: DesktopDownloadPlatform,
+  version: string,
+): DesktopUpdateArtifactMetadata {
+  const name = desktopUpdateAssetName(platform, version)
+  const url = desktopUpdateDownloadUrl(platform, version)
+  if (artifact.version !== version
+    || artifact.name !== name
+    || artifact.url !== url
+    || !Number.isSafeInteger(artifact.size)
+    || artifact.size <= 0
+    || artifact.size > MAX_UPDATE_DOWNLOAD_BYTES
+    || !/^[a-f0-9]{64}$/u.test(artifact.sha256)) {
+    throw new UpdateDownloadError('invalid-options', 'The update release metadata is invalid.')
+  }
+  return { version, name, url, size: artifact.size, sha256: artifact.sha256 }
 }
 
 /** Remember a downloaded installer until an upgraded application resolves its retention. */
@@ -366,7 +406,7 @@ async function lstatOptional(filename: string): Promise<Awaited<ReturnType<typeo
   }
 }
 
-function assertDeclaredSize(response: Response): void {
+function assertDeclaredSize(response: Response, expectedSize?: number): void {
   const declared = response.headers.get('content-length')
   if (declared === null || !DECIMAL_BYTES.test(declared)) return
   if (BigInt(declared) > BigInt(MAX_UPDATE_DOWNLOAD_BYTES)) {
@@ -375,15 +415,22 @@ function assertDeclaredSize(response: Response): void {
       `The update installer exceeds ${String(MAX_UPDATE_DOWNLOAD_BYTES)} bytes.`,
     )
   }
+  if (expectedSize !== undefined && BigInt(declared) !== BigInt(expectedSize)) {
+    throw new UpdateDownloadError(
+      'integrity-mismatch',
+      'The update installer size does not match its release metadata.',
+    )
+  }
 }
 
 async function writeResponseBody(
   filename: string,
   body: ReadableStream<Uint8Array>,
   signal: AbortSignal | undefined,
-): Promise<void> {
+): Promise<{ readonly bytes: number; readonly sha256: string }> {
   const handle = await open(filename, 'wx', PRIVATE_FILE_MODE)
   const reader = body.getReader()
+  const hash = createHash('sha256')
   let bytesWritten = 0
   try {
     while (true) {
@@ -398,12 +445,14 @@ async function writeResponseBody(
         )
       }
       await writeAll(handle, chunk.value)
+      hash.update(chunk.value)
       bytesWritten += chunk.value.byteLength
     }
     if (bytesWritten === 0) {
       throw new UpdateDownloadError('empty-body', 'The update download service returned an empty body.')
     }
     await handle.sync()
+    return { bytes: bytesWritten, sha256: hash.digest('hex') }
   } catch (cause) {
     await reader.cancel(cause).catch(() => undefined)
     throw cause

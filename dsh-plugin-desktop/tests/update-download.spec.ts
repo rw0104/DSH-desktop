@@ -77,6 +77,30 @@ afterEach(async () => {
 })
 
 describe('desktop update installer download', () => {
+  it('rejects a structurally valid Windows installer with the wrong release digest', async () => {
+    const directory = await temporaryDirectory()
+    const version = '2.2.1'
+    const bytes = windowsArtifact()
+    const name = `DSH-Desktop-${version}-x64-Setup.exe`
+
+    await expectFailure(downloadDesktopUpdate({
+      platform: 'win32',
+      version,
+      destinationPath: destinationPath(directory, 'win32', version),
+      artifact: {
+        version,
+        name,
+        size: bytes.byteLength,
+        sha256: '0'.repeat(64),
+        url: `https://github.com/rw0104/DSH-desktop/releases/download/v${version}/${name}`,
+      },
+      request: async () => chunkedResponse([bytes]),
+    }), 'integrity-mismatch')
+
+    await expectNoPartialFiles(directory)
+    expect(await readdir(directory)).toEqual([])
+  })
+
   it('streams a macOS DMG from only the fixed endpoint and atomically completes it', async () => {
     const directory = await temporaryDirectory()
     const artifact = dmgArtifact()

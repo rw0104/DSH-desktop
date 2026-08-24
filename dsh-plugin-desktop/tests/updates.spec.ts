@@ -8,7 +8,7 @@ import type {
   DesktopRuntime,
   DesktopTrayItem,
 } from '../src/runtime.ts'
-import type { UpdateCheckResult } from '../src/update-checker.ts'
+import type { DesktopUpdateArtifactMetadata, UpdateCheckResult } from '../src/update-checker.ts'
 import { apply, Config, inject, type Config as UpdateConfig } from '../src/updates.ts'
 
 const testConfig: UpdateConfig = {
@@ -18,8 +18,22 @@ const testConfig: UpdateConfig = {
   requestTimeoutMs: 1000,
 }
 
-function versionResponse(version: unknown): Response {
-  return Response.json({ tag_name: typeof version === 'string' ? `v${version}` : version, draft: false, prerelease: false })
+function versionResponse(version: unknown, includeArtifact = true): Response {
+  const name = typeof version === 'string' ? `DSH-Desktop-${version}-x64-Setup.exe` : ''
+  return Response.json({
+    tag_name: typeof version === 'string' ? `v${version}` : version,
+    draft: false,
+    prerelease: false,
+    assets: includeArtifact && typeof version === 'string'
+      ? [{
+          name,
+          size: 123_456,
+          digest: `sha256:${'a'.repeat(64)}`,
+          state: 'uploaded',
+          browser_download_url: `https://github.com/rw0104/DSH-desktop/releases/download/v${version}/${name}`,
+        }]
+      : [],
+  })
 }
 
 interface Harness {
@@ -29,6 +43,7 @@ interface Harness {
   readonly warnings: unknown[][]
   readonly confirmDownload: ReturnType<typeof vi.fn>
   readonly showManualCheckResult: ReturnType<typeof vi.fn>
+  readonly showDownloadFailure: ReturnType<typeof vi.fn>
   readonly downloadAndOpen: ReturnType<typeof vi.fn>
   readonly refresh: ReturnType<typeof vi.fn>
   readonly registrationDispose: ReturnType<typeof vi.fn>
@@ -42,7 +57,8 @@ async function createHarness(options: {
   readonly request?: DesktopRuntime['updates']['request']
   readonly confirmDownload?: (version: string) => Promise<boolean>
   readonly showManualCheckResult?: (result: UpdateCheckResult | null) => Promise<void>
-  readonly downloadAndOpen?: (version: string, signal: AbortSignal) => Promise<void>
+  readonly showDownloadFailure?: () => Promise<void>
+  readonly downloadAndOpen?: (artifact: DesktopUpdateArtifactMetadata, signal: AbortSignal) => Promise<void>
   readonly notify?: (notification: DesktopNotification) => void
   readonly locale?: DesktopRuntime['locale']
   readonly state?: string
@@ -59,6 +75,7 @@ async function createHarness(options: {
   const registrationDispose = vi.fn()
   const confirmDownload = vi.fn(options.confirmDownload ?? (async () => false))
   const showManualCheckResult = vi.fn(options.showManualCheckResult ?? (async () => {}))
+  const showDownloadFailure = vi.fn(options.showDownloadFailure ?? (async () => {}))
   const downloadAndOpen = vi.fn(options.downloadAndOpen ?? (async () => {}))
   let tray: DesktopTrayItem | undefined
   let disposer: (() => void | Promise<void>) | undefined
@@ -72,6 +89,7 @@ async function createHarness(options: {
       request: options.request ?? (async () => versionResponse('2.0.0')),
       confirmDownload,
       showManualCheckResult,
+      showDownloadFailure,
       downloadAndOpen,
       notify: options.notify ?? ((notification: DesktopNotification) => { notifications.push(notification) }),
     },
@@ -103,6 +121,7 @@ async function createHarness(options: {
     warnings,
     confirmDownload,
     showManualCheckResult,
+    showDownloadFailure,
     downloadAndOpen,
     refresh,
     registrationDispose,
@@ -115,6 +134,36 @@ afterEach(() => {
 })
 
 describe('desktop update Host plugin', () => {
+  it('shows a stable failure after a user-confirmed download rejects', async () => {
+    const harness = await createHarness({
+      request: async () => versionResponse('2.1.0'),
+      confirmDownload: async () => true,
+      downloadAndOpen: async () => { throw new Error('disk full at private path') },
+      config: { ...testConfig, enabled: false },
+    })
+
+    await harness.tray.invoke()
+
+    expect(harness.showDownloadFailure).toHaveBeenCalledOnce()
+    expect(harness.tray.label()).toBe('DSH Desktop 2.1.0 Available')
+  })
+
+  it('does not offer a newer release without authenticated installer metadata', async () => {
+    const harness = await createHarness({
+      request: async () => versionResponse('2.1.0', false),
+    })
+
+    await harness.tray.invoke()
+
+    expect(harness.confirmDownload).not.toHaveBeenCalled()
+    expect(harness.downloadAndOpen).not.toHaveBeenCalled()
+    expect(harness.showManualCheckResult).toHaveBeenCalledWith({
+      status: 'update-available',
+      currentVersion: '2.0.0',
+      latestVersion: '2.1.0',
+    })
+  })
+
   it('exposes the packaged 60-second and six-hour background policy', () => {
     expect(inject).toEqual(['desktopRuntime', 'webServer'])
     expect(Config({} as UpdateConfig)).toEqual({
@@ -201,8 +250,8 @@ describe('desktop update Host plugin', () => {
 
     await vi.advanceTimersByTimeAsync(testConfig.initialDelayMs)
     await vi.waitFor(() => { expect(harness.downloadAndOpen).toHaveBeenCalledOnce() })
-    const [version, signal] = harness.downloadAndOpen.mock.calls[0] as [string, AbortSignal]
-    expect(version).toBe('2.1.0')
+    const [artifact, signal] = harness.downloadAndOpen.mock.calls[0] as [{ version: string; sha256: string }, AbortSignal]
+    expect(artifact).toMatchObject({ version: '2.1.0', sha256: 'a'.repeat(64) })
     expect(signal).toBeInstanceOf(AbortSignal)
     expect(signal.aborted).toBe(false)
     expect(harness.tray.label()).toBe('Downloading DSH Desktop 2.1.0…')
@@ -336,6 +385,7 @@ describe('desktop update Host plugin', () => {
       status: 'update-available',
       currentVersion: '2.0.0',
       latestVersion: '2.1.0',
+      artifact: expect.objectContaining({ version: '2.1.0', sha256: 'a'.repeat(64) }),
     })
     expect(harness.downloadAndOpen).not.toHaveBeenCalled()
     expect(harness.notifications).toEqual([])

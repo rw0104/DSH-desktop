@@ -48,8 +48,16 @@ const workspaceManifest = JSON.parse(readFileSync(new URL('package.json', worksp
   scripts?: Record<string, unknown>
 }
 const ciWorkflow = readFileSync(new URL('.github/workflows/ci.yml', workspaceRoot), 'utf8')
+const releaseWorkflow = readFileSync(new URL('.github/workflows/desktop-release.yml', workspaceRoot), 'utf8')
 
 describe('published package surface', () => {
+  it('publishes immutable release assets and verifies GitHub digest metadata', () => {
+    expect(releaseWorkflow).not.toContain('--clobber')
+    expect(releaseWorkflow).toContain('Get-FileHash -Algorithm SHA256')
+    expect(releaseWorkflow).toContain('digest')
+    expect(releaseWorkflow).toContain('size')
+  })
+
   it('runs desktop and community market typechecks from the root command', () => {
     expect(workspaceManifest.scripts?.typecheck)
       .toBe('yarn workspace dsh-plugin-desktop typecheck && yarn workspace dsh-community-market typecheck')

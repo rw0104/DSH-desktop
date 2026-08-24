@@ -12,6 +12,7 @@ import { desktopTrayLabel } from './tray-locale.ts'
 import {
   checkForStableUpdate,
   parseSemVer,
+  type DesktopUpdateArtifactMetadata,
   type UpdateCheckResult,
 } from './update-checker.ts'
 
@@ -47,6 +48,17 @@ interface UpdateStateV2 {
 
 const EMPTY_STATE: UpdateStateV2 = { version: 2 }
 
+function sameArtifact(
+  left: DesktopUpdateArtifactMetadata,
+  right: DesktopUpdateArtifactMetadata,
+): boolean {
+  return left.version === right.version
+    && left.name === right.name
+    && left.size === right.size
+    && left.sha256 === right.sha256
+    && left.url === right.url
+}
+
 /** Start one update lifecycle whose mutable state and work are released together. */
 export function startDesktopUpdateLifecycle(
   options: DesktopUpdateLifecycleOptions,
@@ -58,7 +70,7 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
   private disposed = false
   private disposeTask: Promise<void> | undefined
   private checking = false
-  private availableVersion: string | undefined
+  private availableArtifact: DesktopUpdateArtifactMetadata | undefined
   private downloadingVersion: string | undefined
   private state: UpdateStateV2 = EMPTY_STATE
   private pollTimer: ReturnType<typeof setTimeout> | undefined
@@ -164,37 +176,39 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
     return task
   }
 
-  private observeResult(result: UpdateCheckResult | null): string | undefined {
+  private observeResult(result: UpdateCheckResult | null): DesktopUpdateArtifactMetadata | undefined {
     if (this.disposed || result === null) return undefined
-    this.availableVersion = result.status === 'update-available' && this.options.adapter.canDownload
-      ? result.latestVersion
+    this.availableArtifact = result.status === 'update-available'
+      && this.options.adapter.canDownload
+      && result.artifact !== undefined
+      ? result.artifact
       : undefined
     this.registration.refresh()
-    return this.availableVersion
+    return this.availableArtifact
   }
 
-  private startDownload(version: string): Promise<void> {
+  private startDownload(artifact: DesktopUpdateArtifactMetadata): Promise<void> {
     if (this.downloadTask !== undefined) return this.downloadTask
     const task = (async () => {
       let confirmed: boolean
       try {
-        confirmed = await this.options.adapter.confirmDownload(version)
+        confirmed = await this.options.adapter.confirmDownload(artifact.version)
       } catch {
         return
       }
       if (!confirmed || this.disposed) return
 
-      const confirmedVersion = this.observeResult(await this.startCheck())
-      if (confirmedVersion !== version || this.disposed) return
+      const confirmedArtifact = this.observeResult(await this.startCheck())
+      if (confirmedArtifact === undefined || !sameArtifact(confirmedArtifact, artifact) || this.disposed) return
 
       const controller = new AbortController()
       this.downloadController = controller
-      this.downloadingVersion = version
+      this.downloadingVersion = artifact.version
       this.registration.refresh()
       try {
-        await this.options.adapter.downloadAndOpen(version, controller.signal)
+        await this.options.adapter.downloadAndOpen(confirmedArtifact, controller.signal)
       } catch {
-        // Network, filesystem, and installer-opening failures are deliberately silent.
+        if (!this.disposed) await this.options.adapter.showDownloadFailure().catch(() => undefined)
       } finally {
         if (this.downloadController === controller) this.downloadController = undefined
         this.downloadingVersion = undefined
@@ -207,25 +221,25 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
     return task
   }
 
-  private async offerDownload(version: string, automatic: boolean): Promise<void> {
+  private async offerDownload(artifact: DesktopUpdateArtifactMetadata, automatic: boolean): Promise<void> {
     if (this.disposed || !this.options.adapter.canDownload) return
     await this.stateReady
-    if (this.disposed || (automatic && this.state.lastPromptedVersion === version)) return
-    await this.rememberPrompt(version)
-    if (!this.disposed) await this.startDownload(version)
+    if (this.disposed || (automatic && this.state.lastPromptedVersion === artifact.version)) return
+    await this.rememberPrompt(artifact.version)
+    if (!this.disposed) await this.startDownload(artifact)
   }
 
   private runManualCheck(): Promise<void> {
     this.manualTask ??= (async () => {
-      if (this.availableVersion !== undefined) {
-        await this.offerDownload(this.availableVersion, false)
+      if (this.availableArtifact !== undefined) {
+        await this.offerDownload(this.availableArtifact, false)
         return
       }
       const result = await this.startCheck()
       if (this.disposed) return
-      const version = this.observeResult(result)
-      if (version !== undefined) {
-        await this.offerDownload(version, false)
+      const artifact = this.observeResult(result)
+      if (artifact !== undefined) {
+        await this.offerDownload(artifact, false)
         return
       }
       await this.options.adapter.showManualCheckResult(result)
@@ -238,8 +252,8 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
   private async runBackgroundCheck(): Promise<void> {
     if (this.checkTask !== undefined || this.disposed) return
     try {
-      const version = this.observeResult(await this.startCheck())
-      if (version !== undefined) await this.offerDownload(version, true)
+      const artifact = this.observeResult(await this.startCheck())
+      if (artifact !== undefined) await this.offerDownload(artifact, true)
     } catch {
       // Scheduled checks never surface failures to the user or the application log.
     }
@@ -258,8 +272,8 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
     if (this.downloadingVersion !== undefined) {
       return desktopTrayLabel(this.options.locale(), 'downloadingUpdate', this.downloadingVersion)
     }
-    if (this.availableVersion !== undefined) {
-      return desktopTrayLabel(this.options.locale(), 'updateAvailable', this.availableVersion)
+    if (this.availableArtifact !== undefined) {
+      return desktopTrayLabel(this.options.locale(), 'updateAvailable', this.availableArtifact.version)
     }
     return desktopTrayLabel(this.options.locale(), this.checking ? 'checkingForUpdates' : 'checkForUpdates')
   }
