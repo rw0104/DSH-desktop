@@ -1542,7 +1542,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deepseek-ai/dsh-client-ui-deliverables@npm:^0.1.1-rc.2":
+"@deepseek-ai/dsh-client-ui-deliverables@npm:0.1.1-rc.2":
   version: 0.1.1-rc.2
   resolution: "@deepseek-ai/dsh-client-ui-deliverables@npm:0.1.1-rc.2"
   peerDependencies:
@@ -1554,6 +1554,21 @@ __metadata:
     "@deepseek-ai/dsh-invariants": ^0.1.1-rc.2
     "@deepseek-ai/dsh-system-prompt": ^0.1.1-rc.2
   checksum: 10c0/4f772bb0981b92bb8afdba2554c456ec287c4e22581744d41789e15015df893b315b76e6acf6ed9f1175d18c160af12dd15e1ed51cfe6cfde6852e6aa9b3f45f
+  languageName: node
+  linkType: hard
+
+"@deepseek-ai/dsh-client-ui-deliverables@patch:@deepseek-ai/dsh-client-ui-deliverables@npm%3A0.1.1-rc.2#~/.yarn/patches/@deepseek-ai-dsh-client-ui-deliverables-npm-0.1.1-rc.2-a3ab92163a.patch":
+  version: 0.1.1-rc.2
+  resolution: "@deepseek-ai/dsh-client-ui-deliverables@patch:@deepseek-ai/dsh-client-ui-deliverables@npm%3A0.1.1-rc.2#~/.yarn/patches/@deepseek-ai-dsh-client-ui-deliverables-npm-0.1.1-rc.2-a3ab92163a.patch::version=0.1.1-rc.2&hash=909342"
+  peerDependencies:
+    "@deepseek-ai/cordis": ^4.0.1
+    "@deepseek-ai/dsh-client-connection": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-locale": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-runtime": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-ui-conversation": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-invariants": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-system-prompt": ^0.1.1-rc.2
+  checksum: 10c0/56ce5a2c39d680412f0e6ca47e6bd66b9946ba5e6f5889e3784043f9be1c119a31468684aab54a16386e55b3b0c3c83cb774dc1641749a86dbbc952b0ab4f8ec
   languageName: node
   linkType: hard
 

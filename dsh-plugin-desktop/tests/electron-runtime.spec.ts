@@ -76,6 +76,7 @@ const electron = vi.hoisted(() => {
     showSaveDialog: vi.fn(async () => ({ canceled: true, filePath: undefined as string | undefined })),
     showMessageBox: vi.fn(async () => ({ response: 0, checkboxChecked: false })),
   }
+  const clipboard = { writeText: vi.fn() }
   const appIcon = {
     isEmpty: vi.fn(() => false),
     setTemplateImage: vi.fn(),
@@ -178,6 +179,7 @@ const electron = vi.hoisted(() => {
     appIcon,
     blueIcon,
     BrowserWindow,
+    clipboard,
     browserWindowOptions,
     browserWindowThemeSources,
     browserWindows,
@@ -214,6 +216,7 @@ const electron = vi.hoisted(() => {
 vi.mock('electron', () => ({
   app: electron.app,
   BrowserWindow: electron.BrowserWindow,
+  clipboard: electron.clipboard,
   dialog: electron.dialog,
   ipcMain: electron.ipcMain,
   Menu: electron.Menu,
@@ -353,6 +356,15 @@ describe('Electron desktop runtime', () => {
     await release()
     expect(electron.browserWindowOff).toHaveBeenCalledWith('page-title-updated', titleListener)
     expect(electron.trays[0]?.off).toHaveBeenCalledWith('click', expect.any(Function))
+  })
+
+  it('writes only already-authorized text through the native clipboard adapter', async () => {
+    const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
+    const runtime = new ElectronDesktopRuntime(async () => {})
+
+    runtime.writeClipboardText('authorized text')
+
+    expect(electron.clipboard.writeText).toHaveBeenCalledWith('authorized text')
   })
 
   it('uses the Windows caption, hidden menu bar, removed menu, and fixed blue tray image', async () => {

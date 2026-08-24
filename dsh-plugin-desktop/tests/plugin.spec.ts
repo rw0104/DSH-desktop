@@ -81,6 +81,7 @@ function createHarness(platform: DesktopRuntime['platform'] = 'darwin'): PluginH
       downloadAndOpen: async () => {},
       notify: () => {},
     },
+    writeClipboardText: vi.fn(),
     schedule: (spec) => {
       shell = spec
       return async () => {}

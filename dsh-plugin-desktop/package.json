@@ -71,6 +71,10 @@
       "types": "./lib/types/updates.d.ts",
       "default": "./lib/updates.js"
     },
+    "./deliverable-copy": {
+      "types": "./lib/types/deliverable-copy-plugin.d.ts",
+      "default": "./lib/deliverable-copy.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

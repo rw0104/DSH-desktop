@@ -644,6 +644,16 @@ describe('published package surface', () => {
     expect(adapter).toContain('inputModalities?.includes("image") !== true')
   })
 
+  it('ships both authorized deliverable copy actions in the upstream produced-files row', () => {
+    const require = createRequire(new URL('package.json', packageRoot))
+    const webRequire = createRequire(require.resolve('@deepseek-ai/dsh-web-app/package.json'))
+    const deliverables = readFileSync(webRequire.resolve('@deepseek-ai/dsh-client-ui-deliverables/client'), 'utf8')
+
+    expect(deliverables).toContain('copyAbsolutePath')
+    expect(deliverables).toContain('copyTextContent')
+    expect(deliverables).toContain('/dsh-desktop/api/deliverables/copy')
+  })
+
   it('packages the native-compiled Koffi Windows runtime', () => {
     const lockfile = readFileSync(new URL('yarn.lock', workspaceRoot), 'utf8')
 

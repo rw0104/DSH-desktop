@@ -156,6 +156,9 @@ export interface DesktopRuntime {
   /** Native network, update-download, and notification adapter. */
   readonly updates: DesktopUpdateAdapter
 
+  /** Write already-authorized text into the operating-system clipboard. */
+  writeClipboardText(text: string): void
+
   /**
    * Register one shell generation while the Cordis profile is activating.
    * @param spec - native shell inputs resolved from active Host services.

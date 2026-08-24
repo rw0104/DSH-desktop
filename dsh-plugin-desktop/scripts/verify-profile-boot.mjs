@@ -86,6 +86,7 @@ try {
       showDownloadFailure: async () => {},
       downloadAndOpen: async () => {},
       notify: () => {},
+      writeClipboardText: () => {},
     },
     schedule(spec) {
       mountedSpec = spec

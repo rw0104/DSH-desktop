@@ -1,0 +1,149 @@
+diff --git a/lib/client.js b/lib/client.js
+index c2fdca23e20d642c53cc0611bfa410c5282c1d15..115c332a09eeea5a136ee03bc95033fbea5d6ef5 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -207,12 +207,27 @@ window.__ModuleLoader__.load({
+ 		function moreLabel(t, count) {
+ 			return count === 1 ? t("produced.moreOne") : t("produced.more", { count: String(count) });
+ 		}
++		const DELIVERABLE_COPY_PATH = "/dsh-desktop/api/deliverables/copy";
++		async function copyDeliverable(sessionId, path, kind) {
++			const response = await fetch(DELIVERABLE_COPY_PATH, {
++				method: "POST",
++				headers: {
++					"content-type": "application/json",
++					"x-dsh-desktop-action": "copy-deliverable"
++				},
++				body: JSON.stringify({ sessionId, path, kind })
++			});
++			if (!response.ok) {
++				const value = await response.json().catch(() => null);
++				throw new Error(value?.error?.message ?? `deliverable copy failed (${String(response.status)})`);
++			}
++		}
+ 		/**
+ 		* Render one turn's produced files as openable chips.
+ 		* @param props - selector-matched paths, the chat view's file opener, and the locale seat.
+ 		* @returns The produced-files row.
+ 		*/
+-		function ProducedFiles({ matched: paths, openFile, isLoopback, useHostDescription, t }) {
++		function ProducedFiles({ matched: paths, openFile, sessionId, isLoopback, useHostDescription, t }) {
+ 			const hostCanOpenPath = useHostDescription((description) => description?.canOpenPath === true);
+ 			const canOpenPath = isLoopback && hostCanOpenPath;
+ 			const limit = Math.min(paths.length, SHOWN_LIMIT);
+@@ -220,6 +235,15 @@ window.__ModuleLoader__.load({
+ 			const rowRef = (0, react.useRef)(null);
+ 			const chipProbes = (0, react.useRef)([]);
+ 			const moreProbe = (0, react.useRef)(null);
++			const [copyFeedback, setCopyFeedback] = (0, react.useState)(void 0);
++			const copy = (path, kind) => {
++				setCopyFeedback(void 0);
++				copyDeliverable(sessionId, path, kind).then(() => {
++					setCopyFeedback(t(kind === "absolute-path" ? "produced.copyPathSuccess" : "produced.copyContentSuccess"));
++				}, () => {
++					setCopyFeedback(t("produced.copyFailed"));
++				});
++			};
+ 			(0, react.useLayoutEffect)(() => {
+ 				const row = rowRef.current;
+ 				const remainderProbe = moreProbe.current;
+@@ -263,7 +287,7 @@ window.__ModuleLoader__.load({
+ 						ref: rowRef,
+ 						className: ProducedFiles_module_css_default.row,
+ 						"data-produced-files-row": true,
+-						children: [shown.map((path) => (0, react_jsx_runtime.jsx)("button", {
++						children: [shown.map((path) => (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("button", {
+ 							type: "button",
+ 							className: ProducedFiles_module_css_default.file,
+ 							title: path,
+@@ -272,9 +296,27 @@ window.__ModuleLoader__.load({
+ 								openFile(path);
+ 							},
+ 							children: basename(path)
+-						}, path)), hidden > 0 && (0, react_jsx_runtime.jsx)("span", {
++						}), (0, react_jsx_runtime.jsx)("button", {
++							type: "button",
++							className: ProducedFiles_module_css_default.showFolder,
++							title: t("produced.copyAbsolutePath", { name: path }),
++							"aria-label": t("produced.copyAbsolutePath", { name: path }),
++							onClick: () => { copy(path, "absolute-path"); },
++							children: t("produced.copyPathShort")
++						}), (0, react_jsx_runtime.jsx)("button", {
++							type: "button",
++							className: ProducedFiles_module_css_default.showFolder,
++							title: t("produced.copyTextContent", { name: path }),
++							"aria-label": t("produced.copyTextContent", { name: path }),
++							onClick: () => { copy(path, "text-content"); },
++							children: t("produced.copyContentShort")
++						})] }, path)), hidden > 0 && (0, react_jsx_runtime.jsx)("span", {
+ 							className: ProducedFiles_module_css_default.more,
+ 							children: moreLabel(t, hidden)
++						}), copyFeedback !== void 0 && (0, react_jsx_runtime.jsx)("span", {
++							role: "status",
++							className: ProducedFiles_module_css_default.more,
++							children: copyFeedback
+ 						})]
+ 					}),
+ 					hidden > 0 && canOpenPath && (0, react_jsx_runtime.jsx)("button", {
+@@ -315,7 +357,14 @@ window.__ModuleLoader__.load({
+ 			"produced.moreOne": "+ 1 个文件",
+ 			"produced.more": "+ {count} 个文件",
+ 			"produced.open": "打开 {name}",
+-			"produced.showInFolder": "在文件夹中显示"
++			"produced.showInFolder": "在文件夹中显示",
++			"produced.copyAbsolutePath": "复制 {name} 的绝对路径",
++			"produced.copyTextContent": "复制 {name} 的文本内容",
++			"produced.copyPathShort": "路径",
++			"produced.copyContentShort": "内容",
++			"produced.copyPathSuccess": "已复制绝对路径",
++			"produced.copyContentSuccess": "已复制文本内容",
++			"produced.copyFailed": "无法复制该产物"
+ 		};
+ 		/** English dictionary (same key set). */
+ 		const en = {
+@@ -323,7 +372,14 @@ window.__ModuleLoader__.load({
+ 			"produced.moreOne": "+ 1 file",
+ 			"produced.more": "+ {count} files",
+ 			"produced.open": "Open {name}",
+-			"produced.showInFolder": "Show in folder"
++			"produced.showInFolder": "Show in folder",
++			"produced.copyAbsolutePath": "Copy absolute path for {name}",
++			"produced.copyTextContent": "Copy text content from {name}",
++			"produced.copyPathShort": "Path",
++			"produced.copyContentShort": "Content",
++			"produced.copyPathSuccess": "Absolute path copied",
++			"produced.copyContentSuccess": "Text content copied",
++			"produced.copyFailed": "Unable to copy this produced file"
+ 		};
+ 		//#endregion
+ 		//#region lib/types/client/index.js
+@@ -349,7 +405,8 @@ window.__ModuleLoader__.load({
+ 				name: "conversation.chat.turnTail",
+ 				select: selectProducedFiles,
+ 				locale: NS,
+-				inject: () => ({
++				inject: (sessionId) => ({
++					sessionId: String(sessionId),
+ 					isLoopback: connection.isLoopback,
+ 					hooks: { hostDescription: connection.hostDescription }
+ 				})
+diff --git a/lib/types/client/ProducedFiles.d.ts b/lib/types/client/ProducedFiles.d.ts
+index 707831e0f78ce4d44ff429521c75b5bb846ea629..bcdf423cb8bb12955434f63e84d5caeb8eb2bd40 100644
+--- a/lib/types/client/ProducedFiles.d.ts
++++ b/lib/types/client/ProducedFiles.d.ts
+@@ -13,6 +13,8 @@ import type { NS } from './locales.ts';
+ export declare function fitProducedFiles(available: number, gap: number, chipWidths: readonly number[], moreWidthsByShown: readonly (number | undefined)[]): number;
+ /** Registration-side Host capability facts. */
+ export interface ProducedFilesInjected {
++    /** Session whose history authorizes the displayed produced paths. */
++    sessionId: string;
+     /** Whether the browser itself is connected over loopback. */
+     isLoopback: boolean;
+     hooks: {
+@@ -29,5 +31,5 @@ export type ProducedFilesProps = Pick<TurnTailOwnerProps, 'openFile'> & {
+  * @param props - selector-matched paths, the chat view's file opener, and the locale seat.
+  * @returns The produced-files row.
+  */
+-export declare function ProducedFiles({ matched: paths, openFile, isLoopback, useHostDescription, t, }: ProducedFilesProps): import("react").JSX.Element;
++export declare function ProducedFiles({ matched: paths, openFile, sessionId, isLoopback, useHostDescription, t, }: ProducedFilesProps): import("react").JSX.Element;
+ //# sourceMappingURL=ProducedFiles.d.ts.map

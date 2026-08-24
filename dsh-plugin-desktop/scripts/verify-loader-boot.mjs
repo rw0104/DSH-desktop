@@ -29,7 +29,7 @@ const EXPECTED_HOST_ROUTES = new Set([
     '/dsh-desktop/api/workspace/changes',
     '/dsh-desktop/api/workspace/terminals',
     '/dsh-desktop/api/workspace/worktrees',
-    '/dsh-desktop/api/open-directory',
+  '/dsh-desktop/api/open-directory',
   ...Object.values(marketRoutes),
 ])
 const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-loader-'))

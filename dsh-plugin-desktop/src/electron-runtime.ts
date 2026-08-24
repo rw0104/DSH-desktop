@@ -2,6 +2,7 @@
 
 import {
   app,
+  clipboard,
   dialog,
   nativeTheme,
   net,
@@ -160,6 +161,11 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
   /** @inheritdoc */
   get locale(): DesktopLocale {
     return this.currentLocale
+  }
+
+  /** @inheritdoc */
+  writeClipboardText(text: string): void {
+    clipboard.writeText(text)
   }
 
   /** Terminal failure class for the first Renderer boot report, when it failed. */

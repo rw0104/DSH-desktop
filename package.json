@@ -35,7 +35,8 @@
     "koffi@npm:^3.1.0": "3.1.5",
     "@deepseek-ai/dsh-host-apiproxy@npm:0.1.1-rc.2": "patch:@deepseek-ai/dsh-host-apiproxy@npm%3A0.1.1-rc.2#~/.yarn/patches/@deepseek-ai-dsh-host-apiproxy-npm-0.1.1-rc.2-422605ee12.patch",
     "@deepseek-ai/dsh-host-apiproxy@npm:^0.1.1-rc.2": "patch:@deepseek-ai/dsh-host-apiproxy@npm%3A0.1.1-rc.2#~/.yarn/patches/@deepseek-ai-dsh-host-apiproxy-npm-0.1.1-rc.2-422605ee12.patch",
-    "@deepseek-ai/dsh-client-ui-model-selection@npm:^0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-model-selection@npm%3A0.1.1-rc.2#~/.yarn/patches/@deepseek-ai-dsh-client-ui-model-selection-npm-0.1.1-rc.2-17e32136a6.patch"
+    "@deepseek-ai/dsh-client-ui-model-selection@npm:^0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-model-selection@npm%3A0.1.1-rc.2#~/.yarn/patches/@deepseek-ai-dsh-client-ui-model-selection-npm-0.1.1-rc.2-17e32136a6.patch",
+    "@deepseek-ai/dsh-client-ui-deliverables@npm:^0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-deliverables@npm%3A0.1.1-rc.2#~/.yarn/patches/@deepseek-ai-dsh-client-ui-deliverables-npm-0.1.1-rc.2-a3ab92163a.patch"
   },
   "dependenciesMeta": {
     "@deepseek-ai/dsh-subprocess-local": {
