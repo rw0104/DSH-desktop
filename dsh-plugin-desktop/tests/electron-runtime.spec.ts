@@ -96,6 +96,10 @@ const electron = vi.hoisted(() => {
     setWindowOpenHandler: vi.fn(),
   }
   const nativeTheme = { themeSource: 'system' }
+  const ipcMain = {
+    handle: vi.fn(),
+    removeHandler: vi.fn(),
+  }
 
   class BrowserWindow {
     readonly webContents = webContents
@@ -181,6 +185,7 @@ const electron = vi.hoisted(() => {
     browserWindowOn,
     loadURL,
     dialog,
+    ipcMain,
     Menu: {
       buildFromTemplate: vi.fn((template: unknown[]) => {
         menuTemplates.push(template)
@@ -210,6 +215,7 @@ vi.mock('electron', () => ({
   app: electron.app,
   BrowserWindow: electron.BrowserWindow,
   dialog: electron.dialog,
+  ipcMain: electron.ipcMain,
   Menu: electron.Menu,
   nativeImage: electron.nativeImage,
   nativeTheme: electron.nativeTheme,
@@ -710,7 +716,7 @@ describe('Electron desktop runtime', () => {
     await release()
   })
 
-  it('keeps external window links deny-by-default with a narrow protocol allowlist', async () => {
+  it('denies renderer-created windows without invoking the system URL handler', async () => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
     const logger = { error: vi.fn(), errorCause: vi.fn() }
@@ -722,25 +728,87 @@ describe('Electron desktop runtime', () => {
     const openHandler = electron.webContents.setWindowOpenHandler.mock.calls[0]?.[0]
     expect(openHandler).toEqual(expect.any(Function))
 
-    expect(openHandler({ url: 'https://example.com/docs' })).toEqual({ action: 'deny' })
-    expect(openHandler({ url: 'http://example.com/docs' })).toEqual({ action: 'deny' })
-    expect(openHandler({ url: 'mailto:maintainers@example.com' })).toEqual({ action: 'deny' })
-    await Promise.resolve()
-    expect(electron.shell.openExternal).toHaveBeenCalledWith('https://example.com/docs')
-    expect(electron.shell.openExternal).toHaveBeenCalledWith('http://example.com/docs')
-    expect(electron.shell.openExternal).toHaveBeenCalledWith('mailto:maintainers@example.com')
-
-    for (const url of ['file:///etc/passwd', 'javascript:alert(1)', 'data:text/html,unsafe', 'not a URL']) {
+    for (const url of [
+      'https://example.com/docs',
+      'http://example.com/docs',
+      'mailto:maintainers@example.com',
+      'file:///etc/passwd',
+      'javascript:alert(1)',
+      'data:text/html,unsafe',
+      'not a URL',
+    ]) {
       expect(openHandler({ url })).toEqual({ action: 'deny' })
     }
-    expect(electron.shell.openExternal).toHaveBeenCalledTimes(3)
-
-    electron.shell.openExternal.mockRejectedValueOnce(new Error('external handler unavailable'))
-    openHandler({ url: 'https://example.com/failure' })
     await Promise.resolve()
-    expect(logger.error).toHaveBeenCalledWith(
-      'dsh-plugin-desktop: failed to open external link: external handler unavailable',
+    expect(electron.shell.openExternal).not.toHaveBeenCalled()
+    expect(logger.error).not.toHaveBeenCalled()
+
+    await release()
+  })
+
+  it('opens only fixed product links requested by the active renderer', async () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
+    const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
+    const logger = { error: vi.fn(), errorCause: vi.fn(), info: vi.fn() }
+    const runtime = new ElectronDesktopRuntime(async () => {}, undefined, logger)
+    const release = runtime.schedule(spec)
+
+    await runtime.mountScheduled()
+
+    const registration = electron.ipcMain.handle.mock.calls.find(
+      ([channel]) => channel === 'dsh-desktop:open-external',
     )
+    expect(registration).toBeDefined()
+    const handler = registration?.[1] as ((event: { sender: unknown }, action: unknown) => Promise<void>) | undefined
+    expect(handler).toEqual(expect.any(Function))
+    if (handler === undefined) throw new Error('external navigation handler missing')
+
+    await handler({ sender: electron.webContents }, 'repository')
+    await handler({ sender: electron.webContents }, 'release-notes')
+    expect(electron.shell.openExternal).toHaveBeenNthCalledWith(1, 'https://github.com/rw0104/DSH-desktop')
+    expect(electron.shell.openExternal).toHaveBeenNthCalledWith(
+      2,
+      'https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.8',
+    )
+    expect(logger.info).toHaveBeenNthCalledWith(
+      1,
+      'dsh-plugin-desktop: opened external action repository (origin: https://github.com)',
+    )
+    expect(logger.info).toHaveBeenNthCalledWith(
+      2,
+      'dsh-plugin-desktop: opened external action release-notes (origin: https://github.com)',
+    )
+    await expect(handler({ sender: {} }, 'repository')).rejects.toThrow('external navigation sender is not active')
+    await expect(handler({ sender: electron.webContents }, 'https://example.com')).rejects.toThrow(
+      'external navigation action is invalid',
+    )
+    expect(electron.shell.openExternal).toHaveBeenCalledTimes(2)
+
+    await release()
+    expect(electron.ipcMain.removeHandler).toHaveBeenCalledWith('dsh-desktop:open-external')
+  })
+
+  it('logs the fixed action and origin when the system URL handler rejects it', async () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
+    const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
+    const logger = { error: vi.fn(), errorCause: vi.fn(), info: vi.fn() }
+    const runtime = new ElectronDesktopRuntime(async () => {}, undefined, logger)
+    const release = runtime.schedule(spec)
+    electron.shell.openExternal.mockRejectedValueOnce(new Error('external handler unavailable'))
+
+    await runtime.mountScheduled()
+    const handler = electron.ipcMain.handle.mock.calls.find(
+      ([channel]) => channel === 'dsh-desktop:open-external',
+    )?.[1] as ((event: { sender: unknown }, action: unknown) => Promise<void>) | undefined
+    if (handler === undefined) throw new Error('external navigation handler missing')
+
+    await expect(handler({ sender: electron.webContents }, 'release-notes'))
+      .rejects.toThrow('external handler unavailable')
+    expect(logger.error).toHaveBeenCalledWith(
+      'dsh-plugin-desktop: failed external action release-notes (origin: https://github.com): '
+      + 'external handler unavailable',
+    )
+    expect(logger.info).not.toHaveBeenCalled()
 
     await release()
   })

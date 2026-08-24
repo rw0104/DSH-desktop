@@ -3,6 +3,8 @@ import { maskSecrets } from './mask-secrets.ts'
 
 /** Logger for Electron-main-scope messages that bypass Cordis `ctx.logger`. */
 export interface DesktopLogger {
+  /** Log an informational lifecycle message without mirroring it to stderr. */
+  info?(message: string): void
   /** Log an error message to the sink (and stderr for dev visibility). */
   error(message: string): void
   /** Log an unknown cause, normalizing errors/objects/strings. */
@@ -79,6 +81,15 @@ export class ElectronStderrLogger implements DesktopLogger {
   write(chunk: string): boolean {
     this.error(chunk.replace(/\r?\n$/u, ''))
     return true
+  }
+
+  info(message: string): void {
+    const masked = maskSecrets(message)
+    try {
+      this.sink?.write('info', masked)
+    } catch {
+      // Persistent informational diagnostics are best-effort.
+    }
   }
 
   error(message: string): void {

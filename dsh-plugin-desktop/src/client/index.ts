@@ -12,6 +12,7 @@ import { startRendererBootReporter } from './boot-health.ts'
 import { installDesktopDirectoryPickerBridge, requestDesktopDirectoryValidation } from './directory-picker.ts'
 import { installWindowsDrivePickerEnhancement } from './drive-picker-enhancement.ts'
 import { parseDesktopClientEnvironment } from './environment.ts'
+import { requestDesktopExternalNavigation } from './external-navigation.ts'
 import { DESKTOP_ABOUT_LOCALE_DICTIONARY } from './release-metadata.ts'
 import { installWorkspaceFolderDrop } from './workspace-folder-drop.ts'
 import { WorkspaceChangesTab } from './WorkspaceChangesTab.tsx'
@@ -120,6 +121,7 @@ export function apply(ctx: ClientContext): void {
         about: { t },
         productVersion: environment.productVersion,
         checkForUpdates: requestDesktopUpdateCheck,
+        openExternal: requestDesktopExternalNavigation,
       }),
     }, DesktopAboutSection))
     return () => {

@@ -59,7 +59,7 @@ const DESKTOP_ABOUT_STYLES = `
 .dshDesktopAboutLabel { color:var(--dsw-alias-label-secondary); }
 .dshDesktopAboutValue { color:var(--dsw-alias-label-primary); text-align:right; }
 .dshDesktopAboutValue code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
-.dshDesktopAboutLink { color:var(--dsw-alias-interactive-label-primary); text-decoration:none; }
+.dshDesktopAboutLink { padding:0; border:0; color:var(--dsw-alias-interactive-label-primary); background:transparent; text-decoration:none; font:inherit; cursor:pointer; }
 .dshDesktopAboutLink:hover { text-decoration:underline; }
 .dshDesktopAboutActions { display:flex; flex-wrap:wrap; gap:8px; }
 .dshDesktopAboutAction { display:inline-flex; align-items:center; min-height:32px; padding:0 12px; border:1px solid var(--dsw-alias-border-l2); border-radius:7px; color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-layer-1); text-decoration:none; cursor:pointer; }

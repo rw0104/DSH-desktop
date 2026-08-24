@@ -8798,6 +8798,7 @@ __metadata:
     "@types/js-yaml": "npm:^4.0.9"
     "@types/node": "npm:^22.20.0"
     "@types/react": "npm:^18"
+    "@types/react-dom": "npm:^18"
     adm-zip: "npm:^0.6.0"
     cordis: "npm:4.0.0-rc.8"
     dsh-better-sidebar: "npm:0.15.1"

@@ -150,6 +150,11 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
     else process.stderr.write(`${message}\n`)
   }
 
+  /** Persist an informational Electron-scope lifecycle event when a sink exists. */
+  private logInfo(message: string): void {
+    this.logger?.info?.(message)
+  }
+
   /** @inheritdoc */
   get locale(): DesktopLocale {
     return this.currentLocale
@@ -221,11 +226,13 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
         platform: this.platformStrategy,
         spec,
         preloadPath: desktopPreloadPath(),
+        productVersion: PRODUCT_VERSION,
         isQuitting: () => this.quitting,
         buildTrayTemplate: () => this.buildTrayTemplate(spec),
         stopRendererBootMonitoring: () => { this.stopRendererBootMonitoring() },
         abortRendererBootMonitoring: cause => { this.rendererHealthGate?.stop(cause) },
         failRendererBoot: error => { this.failRendererBoot('renderer-failed', error) },
+        logInfo: message => { this.logInfo(message) },
         logError: message => { this.logError(message) },
       })
       this.generation = generation

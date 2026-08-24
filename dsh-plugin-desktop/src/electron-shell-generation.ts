@@ -2,6 +2,7 @@ import {
   app,
   BrowserWindow,
   dialog,
+  ipcMain,
   Menu,
   nativeImage,
   nativeTheme,
@@ -14,6 +15,11 @@ import type { ElectronPlatformStrategy } from './electron-platform.ts'
 import type { DesktopNotification, DesktopShellSpec } from './runtime.ts'
 import { prepareTrayIcon } from './tray-icons.ts'
 import { desktopWindowOptions } from './window-options.ts'
+import {
+  DESKTOP_EXTERNAL_NAVIGATION_CHANNEL,
+  desktopExternalNavigationUrl,
+  parseDesktopExternalNavigationAction,
+} from './external-navigation-contract.ts'
 
 const MIN_ZOOM_LEVEL = -4
 const MAX_ZOOM_LEVEL = 4
@@ -34,11 +40,13 @@ export interface ElectronShellGenerationOptions {
   readonly platform: ElectronPlatformStrategy
   readonly spec: DesktopShellSpec
   readonly preloadPath: string
+  readonly productVersion: string
   readonly isQuitting: () => boolean
   readonly buildTrayTemplate: () => Electron.MenuItemConstructorOptions[]
   readonly stopRendererBootMonitoring: () => void
   readonly abortRendererBootMonitoring: (cause: unknown) => void
   readonly failRendererBoot: (error: string) => void
+  readonly logInfo: (message: string) => void
   readonly logError: (message: string) => void
 }
 
@@ -144,18 +152,26 @@ export class ElectronShellGeneration {
     window.webContents.on('will-redirect', redirect)
     window.webContents.on('render-process-gone', rendererGone)
     window.webContents.on('did-fail-load', loadFailed)
-    window.webContents.setWindowOpenHandler(({ url }) => {
-      try {
-        const target = new URL(url)
-        if (target.protocol === 'https:' || target.protocol === 'http:' || target.protocol === 'mailto:') {
-          void shell.openExternal(target.href).catch((cause: unknown) => {
-            this.options.logError(`dsh-plugin-desktop: failed to open external link: ${cause instanceof Error ? cause.message : String(cause)}`)
-          })
-        }
-      } catch {
-        // A malformed target is rejected with the same deny result.
+    window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+    ipcMain.handle(DESKTOP_EXTERNAL_NAVIGATION_CHANNEL, async (event, action: unknown) => {
+      if (event.sender !== window.webContents) {
+        throw new Error('dsh-plugin-desktop: external navigation sender is not active')
       }
-      return { action: 'deny' }
+      const externalAction = parseDesktopExternalNavigationAction(action)
+      const target = desktopExternalNavigationUrl(externalAction, this.options.productVersion)
+      const origin = new URL(target).origin
+      try {
+        await shell.openExternal(target)
+      } catch (cause) {
+        this.options.logError(
+          `dsh-plugin-desktop: failed external action ${externalAction} (origin: ${origin}): `
+          + (cause instanceof Error ? cause.message : String(cause)),
+        )
+        throw cause
+      }
+      this.options.logInfo(
+        `dsh-plugin-desktop: opened external action ${externalAction} (origin: ${origin})`,
+      )
     })
     window.once('ready-to-show', show)
     let tray: Tray | undefined
@@ -170,6 +186,7 @@ export class ElectronShellGeneration {
       window.webContents.off('will-redirect', redirect)
       window.webContents.off('render-process-gone', rendererGone)
       window.webContents.off('did-fail-load', loadFailed)
+      ipcMain.removeHandler(DESKTOP_EXTERNAL_NAVIGATION_CHANNEL)
       tray?.off('click', show)
     }
 

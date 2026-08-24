@@ -1,7 +1,3 @@
-/** Product repository and release channel owned by this distribution. */
-export const REPOSITORY_URL = 'https://github.com/rw0104/DSH-desktop'
-export const RELEASES_URL = `${REPOSITORY_URL}/releases`
-
 /** Locale dictionary for the desktop About settings section. */
 export const DESKTOP_ABOUT_LOCALE_DICTIONARY = {
   zh: {

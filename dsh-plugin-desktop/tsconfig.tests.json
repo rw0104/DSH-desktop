@@ -7,8 +7,10 @@
   },
   "include": ["scripts/**/*.ts", "src/*.ts", "tests/**/*.ts", "tests/**/*.tsx"],
   "exclude": [
+    "tests/client-about-section.spec.ts",
     "tests/client-boot-health.spec.ts",
     "tests/client-environment.spec.ts",
+    "tests/client-external-navigation.spec.ts",
     "tests/theme-presenter.spec.ts",
     "tests/client-workspace-folder-drop.spec.ts"
   ]
