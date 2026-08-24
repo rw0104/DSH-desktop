@@ -69,7 +69,7 @@ npm view @anionex/dsh-vision-toolkit version dist-tags time.modified peerDepende
 git submodule status -- deepseek-harness
 ```
 
-下一步：完成 Vision Toolkit 默认依赖移除后运行 immutable install、Profile/Loader、原生图片附件聚焦测试和完整 Desktop check。Better Sidebar `0.15.2` 另开依赖批次，必须先证明其 `dsh.bundle.patch`、`betterSidebar.registerTab` 和 rc2 peer 解析兼容。
+已完成：Vision Toolkit 默认依赖移除、immutable install、Profile/Loader、模型能力/原生图片安全门禁聚焦测试、完整 Desktop check 和真实 Windows unpacked afterPack smoke。Better Sidebar `0.15.2` 仍另开依赖批次，必须先证明其 `dsh.bundle.patch`、`betterSidebar.registerTab` 和 rc2 peer 解析兼容；本轮不静默升级。
 
 ### rc2 模型能力补丁边界
 
