@@ -74,6 +74,8 @@ $env:HTTPS_PROXY='http://127.0.0.1:10808'; npm view dsh-better-sidebar version d
 
 这两个问题在新版安装包构建完成后单独开发，避免与本轮上游迁移混在同一个发布变量中。
 
+后续对 v2.0.8 更新体验、启动外链、Vision Toolkit 打包缺件/输入接管、模型能力链路和产物复制边界的完整诊断见 [`2026-08-24_analysis-v2.0.8-update-startup-vision-report.md`](2026-08-24_analysis-v2.0.8-update-startup-vision-report.md)，执行拆分见 [`2026-08-24_v2.0.9-remediation-task-plan.md`](2026-08-24_v2.0.9-remediation-task-plan.md)。
+
 ## 发布结果
 
 本轮迁移和恢复已完成并发布为 `v2.0.8`。Windows packaged smoke 检查到真实盘符选项 `C盘 (C:)`、`D盘 (D:)`、`E盘 (E:)`，选择 C 后路径为 `C:\` 且无错误；安装器 verifier 通过。安装包校验和及兼容性差异记录在 [`docs/releases/v2.0.8.md`](releases/v2.0.8.md)。
