@@ -51,11 +51,11 @@ const ciWorkflow = readFileSync(new URL('.github/workflows/ci.yml', workspaceRoo
 const releaseWorkflow = readFileSync(new URL('.github/workflows/desktop-release.yml', workspaceRoot), 'utf8')
 
 describe('published package surface', () => {
-  it('publishes immutable release assets and verifies GitHub digest metadata', () => {
+  it('keeps GitHub Actions as a manual build verifier instead of rebuilding tag assets', () => {
     expect(releaseWorkflow).not.toContain('--clobber')
-    expect(releaseWorkflow).toContain('Get-FileHash -Algorithm SHA256')
-    expect(releaseWorkflow).toContain('digest')
-    expect(releaseWorkflow).toContain('size')
+    expect(releaseWorkflow).toContain('workflow_dispatch:')
+    expect(releaseWorkflow).not.toContain("tags:\n      - 'v*'")
+    expect(releaseWorkflow).not.toContain('gh release upload')
     expect(releaseWorkflow).toContain('WINDOWS_SIGNING_CERTIFICATE_BASE64')
     expect(releaseWorkflow).toContain('signtool verify /pa /all')
     expect(releaseWorkflow).toContain("if: env.WINDOWS_SIGNING_CERTIFICATE_BASE64 == ''")
