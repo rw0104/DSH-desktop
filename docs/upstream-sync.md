@@ -82,3 +82,13 @@ v2.0.9 在不修改 `deepseek-harness/` 子模块的前提下，对三个已发�
 这些补丁没有放宽两道安全检查：Host 仍在图片持久化前拒绝明确 text-only 的当前模型，DeepSeek Adapter 仍在 Provider I/O 前拒绝未声明 image 的模型。设置提交后的 `settings/document-updated` 和 adapter topology 事件继续触发已打开模型目录的 generation-safe 刷新。补丁文件位于 `.yarn/patches/`，目标仍是官方 `0.1.1-rc.2` tarball；后续官方版本包含等价能力后应删除下游 patch，而不是长期分叉协议。
 
 本轮还确认 Desktop 最终 `web-runtime` 覆盖层曾遗漏 `openBrowser: false`，导致上游 schema 回退到默认打开浏览器。`dsh-plugin-desktop/cordis.patch.yml` 现已固定该字段，完整 Profile smoke 同时传入 `--no-open` 并断言最终 Loader row 不允许打开浏览器。
+
+## 2026-08-24 v2.0.9 发布结果
+
+- Vision Toolkit 已从正式 Profile、依赖、设置入口、许可证闭包和安装包彻底移除；旧 Profile 启动时同时清理 bundle 与依赖字段。
+- 本地 `corepack yarn dist:win` 生成唯一 `DSH-Desktop-2.0.9-x64-Setup.exe`，installer verifier 通过；真实 `app.asar` 中 Vision Toolkit/agent-vision 条目数为 0。
+- GitHub `main` 推进到 `d83049b993812d10f4c8fb798c37127d4eae73af`，annotated tag `v2.0.9` 指向该提交。
+- GitHub Release `v2.0.9` 为 Latest、非 draft、非 prerelease；直接上传本地同一 Setup 和 `latest.yml`，tag 不触发 Actions 二次重建。
+- Setup 大小 `254,479,549` bytes；本地与 GitHub asset digest 均为 SHA-256 `044DE9DD5668C03D74765D8D68E27903CB272C91C6FB2F7224EC33F0875A1E09`。
+- `latest.yml` 大小 `339` bytes；本地与 GitHub asset digest 均为 SHA-256 `FB48B5A475AB9D8F8245102FD7827766F291A4800390DACDEA26320B5707AFE7`。
+- Authenticode 状态为 `NotSigned`，与 Release/README 的透明披露一致；配置受信代码签名证书和 updater publisher lock 仍是后续安全工作。
