@@ -70,3 +70,15 @@ git submodule status -- deepseek-harness
 ```
 
 下一步：完成 Vision Toolkit 默认依赖移除后运行 immutable install、Profile/Loader、原生图片附件聚焦测试和完整 Desktop check。Better Sidebar `0.15.2` 另开依赖批次，必须先证明其 `dsh.bundle.patch`、`betterSidebar.registerTab` 和 rc2 peer 解析兼容。
+
+### rc2 模型能力补丁边界
+
+v2.0.9 在不修改 `deepseek-harness/` 子模块的前提下，对三个已发布 rc2 包使用可审查的 Yarn patch：
+
+- `@deepseek-ai/dsh-client-ui-settings-models`：模型行可显式声明原生图片输入；DeepSeek 写 `inputModalities`，pi-ai 写其既有 `input` 字段；
+- `@deepseek-ai/dsh-host-apiproxy`：`ModelCatalogModel` Wire schema 和 Host catalog 投影携带 exact-route `inputModalities`；
+- `@deepseek-ai/dsh-client-ui-model-selection`：模型菜单和当前选择显示“支持图片/Vision”能力标记。
+
+这些补丁没有放宽两道安全检查：Host 仍在图片持久化前拒绝明确 text-only 的当前模型，DeepSeek Adapter 仍在 Provider I/O 前拒绝未声明 image 的模型。设置提交后的 `settings/document-updated` 和 adapter topology 事件继续触发已打开模型目录的 generation-safe 刷新。补丁文件位于 `.yarn/patches/`，目标仍是官方 `0.1.1-rc.2` tarball；后续官方版本包含等价能力后应删除下游 patch，而不是长期分叉协议。
+
+本轮还确认 Desktop 最终 `web-runtime` 覆盖层曾遗漏 `openBrowser: false`，导致上游 schema 回退到默认打开浏览器。`dsh-plugin-desktop/cordis.patch.yml` 现已固定该字段，完整 Profile smoke 同时传入 `--no-open` 并断言最终 Loader row 不允许打开浏览器。

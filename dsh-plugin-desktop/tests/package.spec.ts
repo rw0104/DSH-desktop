@@ -490,6 +490,14 @@ describe('published package surface', () => {
     expect(manifest.devDependencies?.['@electron/asar']).toBe('3.4.1')
   })
 
+  it('keeps the complete profile smoke headless with an explicit no-open flag', () => {
+    const profileSmoke = readFileSync(new URL('scripts/verify-profile-boot.mjs', packageRoot), 'utf8')
+    const desktopPatch = readFileSync(new URL('cordis.patch.yml', packageRoot), 'utf8')
+    expect(profileSmoke).toContain("'--no-open'")
+    expect(profileSmoke).toContain('web-runtime may open a browser')
+    expect(desktopPatch).toMatch(/- id: web-runtime\s+config:\s+openBrowser: false/u)
+  })
+
   it('runs the full gate once before reusing native packaging outputs on Windows', () => {
     const windowsJob = ciWorkflow.slice(
       ciWorkflow.indexOf('  desktop-windows:'),
@@ -604,6 +612,36 @@ describe('published package surface', () => {
 
   it('keeps optional Vision Toolkit out of the desktop dependency graph', () => {
     expect(manifest.dependencies).not.toHaveProperty('@anionex/dsh-vision-toolkit')
+  })
+
+  it('ships explicit native image capability controls in the upstream model settings client', () => {
+    const require = createRequire(new URL('package.json', packageRoot))
+    const webRequire = createRequire(require.resolve('@deepseek-ai/dsh-web-app/package.json'))
+    const settingsModels = readFileSync(webRequire.resolve('@deepseek-ai/dsh-client-ui-settings-models/client'), 'utf8')
+
+    expect(settingsModels).toContain('modelImageInput')
+    expect(settingsModels).toContain('inputModalities')
+    expect(settingsModels).toContain('patch(index, { input: event.target.checked ? ["text", "image"] : ["text"] })')
+  })
+
+  it('shows native image capability in the upstream model selector', () => {
+    const require = createRequire(new URL('package.json', packageRoot))
+    const webRequire = createRequire(require.resolve('@deepseek-ai/dsh-web-app/package.json'))
+    const selector = readFileSync(webRequire.resolve('@deepseek-ai/dsh-client-ui-model-selection/client'), 'utf8')
+
+    expect(selector).toContain('modelAcceptsImages')
+    expect(selector).toContain('inputModalities')
+  })
+
+  it('retains host and adapter image safety gates after adding capability metadata', () => {
+    const require = createRequire(new URL('package.json', packageRoot))
+    const host = readFileSync(require.resolve('@deepseek-ai/dsh-host-apiproxy'), 'utf8')
+    const adapter = readFileSync(require.resolve('@deepseek-ai/dsh-llm-deepseek'), 'utf8')
+
+    expect(host).toContain('MODEL_DOES_NOT_SUPPORT_IMAGES')
+    expect(host).toContain('inputModalities.includes("image")')
+    expect(adapter).toContain('does not accept image input')
+    expect(adapter).toContain('inputModalities?.includes("image") !== true')
   })
 
   it('packages the native-compiled Koffi Windows runtime', () => {

@@ -83,6 +83,7 @@ try {
       request: async () => { throw new Error('profile smoke must not perform update requests') },
       confirmDownload: async () => false,
       showManualCheckResult: async () => {},
+      showDownloadFailure: async () => {},
       downloadAndOpen: async () => {},
       notify: () => {},
     },
@@ -149,13 +150,21 @@ try {
         requestRestart: () => {},
       })
       provideCmdline(host, {
-        args: ['--host', '127.0.0.1', '--port', '0'],
+        args: ['--host', '127.0.0.1', '--port', '0', '--no-open'],
         exit: () => {},
       })
     },
     prepared.bareModuleBaseUrl,
   )
   await runtime.mountScheduled()
+
+  if (ctx.webStartup?.openBrowser !== false) {
+    throw new Error(`profile smoke did not apply --no-open: ${JSON.stringify(ctx.webStartup)}`)
+  }
+  const webRuntimeEntry = ctx.loader.resolve('include:web-runtime')
+  if (webRuntimeEntry?.options.config?.openBrowser !== false) {
+    throw new Error(`profile smoke web-runtime may open a browser: ${JSON.stringify(webRuntimeEntry?.options.config)}`)
+  }
 
   if (ctx.get('desktopPnpm') === undefined) {
     throw new Error('assembled desktop profile is missing the desktop pnpm Host capability')
