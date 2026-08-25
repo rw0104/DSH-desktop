@@ -1,6 +1,6 @@
 # Upstream synchronization ledger
 
-更新时间：2026-08-24
+更新时间：2026-08-25
 
 本文件是 DSH Desktop 每次依赖、侧栏或发布变更前的上游审计入口。它区分“上游源码最新”“npm 最新发布”和“本产品当前经过验证的 pin”，不把未经回归的上游 HEAD 直接塞进安装包。
 
@@ -9,12 +9,10 @@
 | 角色 | 上游 | 当前上游信号 | 本产品当前 pin | 状态 |
 | --- | --- | --- | --- | --- |
 | 官方 Harness | [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) | `master` / `dsh-v0.1.1-rc.2`，commit `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；npm `latest` `0.1.1-rc.2` | 子模块 `dsh-v0.1.1-rc.2`，commit `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；桌面依赖为 `0.1.1-rc.2` | 本轮迁移、check 和 packaged smoke 已通过 |
-| 官方侧栏 | [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | `main` commit `4631a02db051e82dfd521dc7ff559c4651bf8b34`；`v0.15.2` commit `d9b8f15d9eab018742f97d67e54b2398504894cd`；npm `latest` `0.15.2` | `dsh-better-sidebar@0.15.1` | 上游有新版本；不与 v2.0.9 Vision/更新安全修复混合，待单独验证 patch、peer 与 packaged smoke |
-| 桌面参考 | [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop) | `master` commit `b13e1fa47e3ac5925bcd664091cfe5db85ee7fab`；最新 tag `v2.0.2` commit `9d18856ddea4f20eb3ef8c88b0436921c6b19606` | 本 fork `rw0104/DSH-desktop` 的 `v2.0.8` | 仅作 Electron/打包对照，不作为运行时依赖 |
+| 官方侧栏 | [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | `main` / `v0.16.1` commit `f9153dfc1ce47cf43445c1b351ee3ae47b4ad9f1`；npm `latest` `0.16.1` | `dsh-better-sidebar@0.15.1` | 上游有新版本；须在独立依赖批次验证 patch、peer closure、完整 check 与 packaged smoke |
+| 桌面参考 | [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop) | `master` commit `2172b1b2f2b0de4c2b3a1d8b55f11f8083a9305e`；最新 tag `v2.0.2` commit `9d18856ddea4f20eb3ef8c88b0436921c6b19606` | 本 fork `rw0104/DSH-desktop` 的 `v2.0.9` | 仅作 Electron/打包对照，不作为运行时依赖 |
 
-补充：本次通过代理复核 npm registry，`@deepseek-ai/dsh` 与 `dsh-better-sidebar` 的 `latest` 均已与上述 rc2/0.15.1 源码基线一致。仍然必须同时记录 Git tag、commit 和 registry 版本，不能只看任一信号。
-
-> 2026-08-24 更新：上述补充描述的是 2026-08-22 审计结果；当前 `dsh-better-sidebar` npm `latest` 已变为 `0.15.2`。本产品继续 pin `0.15.1` 不是静默忽略，而是明确延期到独立兼容性批次。
+补充：2026-08-25 通过代理复核三条 Git remote 与 npm registry。官方 Harness 源码、tag、npm 发布和本地 pin 完全一致；Better Sidebar 已前进到 `0.16.1`，本产品继续 pin `0.15.1` 不是静默忽略，而是明确延期到独立兼容性批次。仍然必须同时记录 Git tag、commit 和 registry 版本，不能只看任一信号。
 
 ## 每次更新的审计命令
 
@@ -92,3 +90,13 @@ v2.0.9 在不修改 `deepseek-harness/` 子模块的前提下，对三个已发�
 - Setup 大小 `254,479,549` bytes；本地与 GitHub asset digest 均为 SHA-256 `044DE9DD5668C03D74765D8D68E27903CB272C91C6FB2F7224EC33F0875A1E09`。
 - `latest.yml` 大小 `339` bytes；本地与 GitHub asset digest 均为 SHA-256 `FB48B5A475AB9D8F8245102FD7827766F291A4800390DACDEA26320B5707AFE7`。
 - Authenticode 状态为 `NotSigned`，与 Release/README 的透明披露一致；配置受信代码签名证书和 updater publisher lock 仍是后续安全工作。
+
+## 2026-08-25 官方 Harness 与错误提示归属复核
+
+本轮根据客户机器导出的 `session.jsonl` 检查官方 Harness 更新状态，并确认余额不足提示的代码归属。会话的终止事件完整保留 Provider 错误 `Insufficient Balance`、错误码 `QUOTA` 和 HTTP 状态 `402`；界面前缀“本轮运行失败”来自官方 `@deepseek-ai/dsh-client-ui-conversation` 的 `message.turnError` 文案及其 `TurnErrorItem` 渲染，不是 Desktop Client face 或本地 Yarn patch 创建的错误映射。
+
+| 组件 | 2026-08-25 远端/registry 结果 | 决策与下一步 |
+| --- | --- | --- |
+| DeepSeek Harness | `master`、`dsh-v0.1.1-rc.2` 和本地 submodule 均为 `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；npm `latest`/`next` 均为 `0.1.1-rc.2` | 没有更新；不改 submodule、package family 或官方错误提示 |
+| Better Sidebar | `main` / `v0.16.1` / npm `latest` 均为 `f9153dfc…` / `0.16.1`；本产品仍为 `0.15.1` | 不混入本轮官方 Harness 核对；下一独立依赖批次更新 package/lock 后验证 Yarn patch、Profile/Loader、侧栏聚焦测试、完整 `check` 与 packaged smoke |
+| Desktop reference | `master` 前进到 `2172b1b2…`；最新 tag 仍为 `v2.0.2` / `9d18856d…` | 只记录对照提交，不引入依赖或覆盖本 fork 产品文件 |
