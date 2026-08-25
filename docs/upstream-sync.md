@@ -9,10 +9,10 @@
 | 角色 | 上游 | 当前上游信号 | 本产品当前 pin | 状态 |
 | --- | --- | --- | --- | --- |
 | 官方 Harness | [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) | `master` / `dsh-v0.1.1-rc.2`，commit `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；npm `latest` `0.1.1-rc.2` | 子模块 `dsh-v0.1.1-rc.2`，commit `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；桌面依赖为 `0.1.1-rc.2` | 本轮迁移、check 和 packaged smoke 已通过 |
-| 官方侧栏 | [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | `main` / `v0.16.1` commit `f9153dfc1ce47cf43445c1b351ee3ae47b4ad9f1`；npm `latest` `0.16.1` | `dsh-better-sidebar@0.15.1` | 上游有新版本；须在独立依赖批次验证 patch、peer closure、完整 check 与 packaged smoke |
-| 桌面参考 | [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop) | `master` commit `2172b1b2f2b0de4c2b3a1d8b55f11f8083a9305e`；最新 tag `v2.0.2` commit `9d18856ddea4f20eb3ef8c88b0436921c6b19606` | 本 fork `rw0104/DSH-desktop` 的 `v2.0.9` | 仅作 Electron/打包对照，不作为运行时依赖 |
+| 官方侧栏 | [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | `main` / `v0.16.1` commit `f9153dfc1ce47cf43445c1b351ee3ae47b4ad9f1`；npm `latest` `0.16.1` | `dsh-better-sidebar@0.16.1` | v2.0.10 完成 patch、peer closure、完整 check 与本地 packaged smoke |
+| 桌面参考 | [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop) | `master` commit `2172b1b2f2b0de4c2b3a1d8b55f11f8083a9305e`；最新 tag `v2.0.2` commit `9d18856ddea4f20eb3ef8c88b0436921c6b19606` | 本 fork `rw0104/DSH-desktop` 的 `v2.0.10` | 仅作 Electron/打包对照，不作为运行时依赖 |
 
-补充：2026-08-25 通过代理复核三条 Git remote 与 npm registry。官方 Harness 源码、tag、npm 发布和本地 pin 完全一致；Better Sidebar 已前进到 `0.16.1`，本产品继续 pin `0.15.1` 不是静默忽略，而是明确延期到独立兼容性批次。仍然必须同时记录 Git tag、commit 和 registry 版本，不能只看任一信号。
+补充：2026-08-25 通过代理复核三条 Git remote 与 npm registry。官方 Harness 源码、tag、npm 发布和本地 pin 完全一致；Better Sidebar `0.16.1` 已在 v2.0.10 独立批次完成兼容验证。仍然必须同时记录 Git tag、commit 和 registry 版本，不能只看任一信号。
 
 ## 每次更新的审计命令
 
@@ -100,3 +100,12 @@ v2.0.9 在不修改 `deepseek-harness/` 子模块的前提下，对三个已发�
 | DeepSeek Harness | `master`、`dsh-v0.1.1-rc.2` 和本地 submodule 均为 `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；npm `latest`/`next` 均为 `0.1.1-rc.2` | 没有更新；不改 submodule、package family 或官方错误提示 |
 | Better Sidebar | `main` / `v0.16.1` / npm `latest` 均为 `f9153dfc…` / `0.16.1`；本产品仍为 `0.15.1` | 不混入本轮官方 Harness 核对；下一独立依赖批次更新 package/lock 后验证 Yarn patch、Profile/Loader、侧栏聚焦测试、完整 `check` 与 packaged smoke |
 | Desktop reference | `master` 前进到 `2172b1b2…`；最新 tag 仍为 `v2.0.2` / `9d18856d…` | 只记录对照提交，不引入依赖或覆盖本 fork 产品文件 |
+
+## 2026-08-25 v2.0.10 Better Sidebar 升级
+
+- 旧 pin：`dsh-better-sidebar@0.15.1`；新 pin：`0.16.1`，npm integrity `sha512-fjFNzfrgdIbzlcC4Sd4aS1I2ZRbuA+/m3XQnOxY13jE6IKJzwz0+GjATcKTyFoLnXoDRp2QJz/U0GxhaOD70Dw==`。
+- 官方 Harness 继续固定 `dsh-v0.1.1-rc.2` / `b150a551…`，本轮不更新 submodule 或 `@deepseek-ai/dsh-*` package family。
+- 两版 Sidebar bundle patch 哈希一致；`registerTab/openTab/closeTab` 服务面保持兼容，新增 `floatWindows`。公开 `cordis` peer 被移除，Sidebar 改用 `@deepseek-ai/cordis` 类型基底。
+- Yarn 新包隔离只为精确 `dsh-better-sidebar@0.16.1` 放行；immutable install、聚焦 103 项、完整 check、Windows package 203 项、afterPack 与 installer verifier 均通过。
+- 本地唯一安装器 `DSH-Desktop-2.0.10-x64-Setup.exe` 为 `276,771,954` bytes，SHA-256 `54B54F1D7CA897EE84A15B829AD79A2394CFEEECFD32B9FF4A59B44D8DCBC321`；`latest.yml` 为 `342` bytes，SHA-256 `24A5DA30F934F18F9B04D4297D69F2627012973AF7BC85116BA6B3D033A880ED`；Authenticode `NotSigned`。
+- 构建源码提交为 `cf14343e3c499770e763204d8d38856193e37ef8`。GitHub Release 上传后必须回读同名资产的 size/digest，不允许 Actions 二次构建或覆盖。

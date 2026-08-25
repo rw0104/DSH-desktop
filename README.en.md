@@ -98,6 +98,8 @@ Plugins are extensions that add capabilities to DSH — models, tools, interface
 
 Models that explicitly declare image input use the native DeepSeek Harness attachment path. Vision Toolkit is fully removed from the v2.0.10 product and installer; native vision models do not need an additional visual plugin.
 
+DSH Desktop v2.0.10 pins `dsh-better-sidebar@0.16.1` as its maintained workbench for files, editing, Git, terminals, browser tabs, subagents, and background tasks. Ordinary third-party plugins remain user-installable and removable outside this fixed product composition.
+
 DSH Desktop does not modify upstream source, and it is not a fixed, hardcoded shell. A pinned upstream DeepSeek Harness version runs unchanged; the desktop shell itself — the window, tray, terminal, updates, and work profiles — integrates as a DSH plugin through the plugin mechanism provided by DeepSeek Harness. From the core agent to the desktop shell, the whole product follows the same "everything is a plugin" rule: plugins compatible with the pinned upstream version can be used, while desktop capabilities are composed, replaced, and evolved in the same way.
 
 We want the plugin ecosystem to work like a phone app store: every plugin is built against the same set of rules, so plugins can be installed together and work together without interfering with each other.
