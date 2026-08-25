@@ -609,9 +609,30 @@ describe('published package surface', () => {
 
   it('pins the maintained latest Better Sidebar as the product Workbench', () => {
     expect(manifest.dependencies?.['dsh-better-sidebar'])
-      .toBe('0.15.1')
+      .toBe('0.16.1')
     expect(manifest.dependencies?.cordis).toBe('4.0.0-rc.8')
     expect(manifest.dependencies?.['react-dom']).toBe('18.3.1')
+  })
+
+  it('ships the audited Better Sidebar 0.16.1 contracts and bounded Git recovery', () => {
+    const require = createRequire(new URL('package.json', packageRoot))
+    const sidebarManifestPath = require.resolve('dsh-better-sidebar/package.json')
+    const sidebarManifest = JSON.parse(readFileSync(sidebarManifestPath, 'utf8')) as {
+      version?: unknown
+      peerDependencies?: Record<string, unknown>
+    }
+    const sidebarRoot = dirname(sidebarManifestPath)
+    const client = readFileSync(require.resolve('dsh-better-sidebar/client'), 'utf8')
+    const host = readFileSync(require.resolve('dsh-better-sidebar'), 'utf8')
+    const bundlePatch = readFileSync(join(sidebarRoot, 'cordis.patch.yml'), 'utf8')
+
+    expect(sidebarManifest.version).toBe('0.16.1')
+    expect(sidebarManifest.peerDependencies).not.toHaveProperty('cordis')
+    expect(client).toContain('"floatWindows"')
+    expect(client).toContain('statusTruncated')
+    expect(host).toContain('name: "sidebar_open"')
+    expect(bundlePatch).toContain("id: better-sidebar")
+    expect(bundlePatch).toContain("name: 'dsh-better-sidebar'")
   })
 
   it('keeps removed Vision Toolkit out of the desktop dependency graph', () => {
