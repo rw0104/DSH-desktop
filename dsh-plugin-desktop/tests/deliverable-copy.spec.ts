@@ -1,6 +1,6 @@
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   DesktopDeliverableCopyError,
@@ -61,7 +61,7 @@ describe('conversation deliverable copy service', () => {
       kind: 'absolute-path',
     })
 
-    expect(copied).toEqual([resolve(workspace, 'out/report.txt')])
+    expect(copied).toEqual([await realpath(join(workspace, 'out/report.txt'))])
   })
 
   it('copies bounded UTF-8 text including the exact one MiB boundary', async () => {

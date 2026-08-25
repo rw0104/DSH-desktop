@@ -80,7 +80,7 @@ function lineInHunk(side: WorkspaceReviewComment['side'], line: number, hunk: Wo
 function isCheckoutRelative(path: string, cwd: string): boolean {
   const value = path.replaceAll('\\', '/')
   if (value === '' || value.includes('\0') || isAbsolute(value) || /^[A-Za-z]:\//u.test(value)) return false
-  const resolved = resolve(cwd, path)
+  const resolved = resolve(cwd, value)
   const child = relative(resolve(cwd), resolved)
   return child !== '..' && !child.startsWith(`..${sep}`) && !isAbsolute(child)
 }
