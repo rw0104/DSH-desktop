@@ -216,12 +216,16 @@ try {
 
   const expectedUrl = mountedSpec?.url ?? `http://127.0.0.1:${String(ctx.webServer.port)}/`
   const mountedUrl = new URL(expectedUrl)
+  const mountedDriveLetters = mountedUrl.searchParams.get('dsh-desktop-drives')
+  const hasExpectedDriveLetters = process.platform === 'win32'
+    ? /^[A-Z]+$/u.test(mountedDriveLetters ?? '')
+    : mountedDriveLetters === null
   if (mountedUrl.origin !== `http://127.0.0.1:${String(ctx.webServer.port)}`
     || mountedUrl.pathname !== '/'
     || mountedUrl.searchParams.get('dsh-desktop-mode') !== 'advanced'
     || mountedUrl.searchParams.get('dsh-desktop-platform') !== 'win32'
     || mountedUrl.searchParams.get('dsh-desktop-version') !== '2.0.4'
-    || !/^[A-Z]+$/u.test(mountedUrl.searchParams.get('dsh-desktop-drives') ?? '')) {
+    || !hasExpectedDriveLetters) {
     throw new Error(`desktop plugin produced an unexpected renderer URL: ${String(mountedSpec?.url)}`)
   }
   if (mountedSpec?.mode !== 'advanced') {
