@@ -1,6 +1,6 @@
 # Upstream synchronization ledger
 
-更新时间：2026-08-25
+更新时间：2026-08-26
 
 本文件是 DSH Desktop 每次依赖、侧栏或发布变更前的上游审计入口。它区分“上游源码最新”“npm 最新发布”和“本产品当前经过验证的 pin”，不把未经回归的上游 HEAD 直接塞进安装包。
 
@@ -10,7 +10,7 @@
 | --- | --- | --- | --- | --- |
 | 官方 Harness | [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) | `master` / `dsh-v0.1.1-rc.2`，commit `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；npm `latest` `0.1.1-rc.2` | 子模块 `dsh-v0.1.1-rc.2`，commit `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；桌面依赖为 `0.1.1-rc.2` | 本轮迁移、check 和 packaged smoke 已通过 |
 | 官方侧栏 | [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | `main` / `v0.16.1` commit `f9153dfc1ce47cf43445c1b351ee3ae47b4ad9f1`；npm `latest` `0.16.1` | `dsh-better-sidebar@0.16.1` | v2.0.10 完成 patch、peer closure、完整 check 与本地 packaged smoke |
-| 桌面参考 | [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop) | `master` commit `2172b1b2f2b0de4c2b3a1d8b55f11f8083a9305e`；最新 tag `v2.0.2` commit `9d18856ddea4f20eb3ef8c88b0436921c6b19606` | 本 fork `rw0104/DSH-desktop` 的 `v2.0.10` | 仅作 Electron/打包对照，不作为运行时依赖 |
+| 桌面参考 | [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop)（重定向到 `anywhere-labs/dsh-desktop`） | `master` commit `83e706ab6882e054607609d3c9f25a0dba6e8924`；最新 tag `v2.0.2` commit `9d18856ddea4f20eb3ef8c88b0436921c6b19606` | 本 fork `rw0104/DSH-desktop` 的 `v2.0.10` | 旧台账 `2172b1b2…` 后前进 84 个提交；只作选择性对照，不整体合并或作为依赖 |
 
 补充：2026-08-25 通过代理复核三条 Git remote 与 npm registry。官方 Harness 源码、tag、npm 发布和本地 pin 完全一致；Better Sidebar `0.16.1` 已在 v2.0.10 独立批次完成兼容验证。仍然必须同时记录 Git tag、commit 和 registry 版本，不能只看任一信号。
 
@@ -120,3 +120,19 @@ v2.0.9 在不修改 `deepseek-harness/` 子模块的前提下，对三个已发�
 - Release 直接上传本机最终 Setup 与 `latest.yml`，未采用 CI 构建产物；不上传 `win-unpacked`、缓存、诊断 Profile 或临时归档。
 - Setup 远端大小 `276,771,959` bytes，GitHub digest `sha256:b37ba8a0f41bd3ee1de2d7bcc34bfd93d51f2988494dcfed1edaa838f253038d`，与本地 SHA-256 一致。
 - `latest.yml` 远端大小 `342` bytes，GitHub digest `sha256:85d7d5b3c2f0e2153dec96aab365e958e61660bc41348dbcacd1766ab20eeb25`，与本地 SHA-256 一致。
+
+## 2026-08-26 ProducedFiles 下一期规划前审计
+
+本轮为“产物文件胶囊右键复制实际路径”开发规划重新检查三条权威 remote 和 npm registry。
+
+| 组件 | 远端/registry 结果 | 本轮决策 |
+| --- | --- | --- |
+| DeepSeek Harness | `master`、`dsh-v0.1.1-rc.2`、npm `latest/next` 和本地 submodule 均为 `b150a551b8…` / `0.1.1-rc.2` | 没有更新；规划基于当前 `ui-deliverables` / `ui-primitives` contract |
+| Better Sidebar | `main` / `v0.16.1` 为 `f9153dfc…`；npm `latest` `0.16.1` | 没有更新；本功能不属于 Sidebar 所有权 |
+| Desktop reference | `master` 从 `2172b1b2…` 前进到 `83e706ab…`，compare ahead `84`；最新 Release tag 仍为 `v2.0.2` | 记录 UI/恢复/安装器/市场/PTY 更新；不整体 merge，不作为本功能实现来源 |
+
+参考 main 的 84 个提交涵盖 setup wizard、browser/LAN 权限、Recovery、运行中安装器升级、Windows minimal persistent PTY、市场 adapters/GitHub source、模型能力和隐私文档。GitHub 已把原仓库 URL 重定向到 `anywhere-labs/dsh-desktop`。
+
+针对 ProducedFiles 的检索结果：参考仓库没有 `ProducedFiles`、`copyAbsolutePath`、`copyTextContent` 或产物 `contextmenu` 实现；只有托盘原生 context menu。因此下一期应复用官方 Harness Web UI 的 `@deepseek-ai/dsh-client-ui-primitives/Menu`，只借鉴参考仓库的 `data-slot`、aria/focus 和静态 markup 测试风格。
+
+详细实施与验收见 [`2026-08-26_development-produced-files-context-menu-plan-report.md`](2026-08-26_development-produced-files-context-menu-plan-report.md)。
