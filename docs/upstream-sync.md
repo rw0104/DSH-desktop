@@ -108,7 +108,7 @@ v2.0.9 在不修改 `deepseek-harness/` 子模块的前提下，对三个已发�
 - 两版 Sidebar bundle patch 哈希一致；`registerTab/openTab/closeTab` 服务面保持兼容，新增 `floatWindows`。公开 `cordis` peer 被移除，Sidebar 改用 `@deepseek-ai/cordis` 类型基底。
 - Yarn 新包隔离只为精确 `dsh-better-sidebar@0.16.1` 放行；immutable install、聚焦 103 项、完整 check、Windows package 203 项、afterPack 与 installer verifier 均通过。
 - 首次 CI 在 macOS/Linux 发现 Review 反斜杠路径未进入 POSIX traversal 语义，以及 Deliverable 测试未按 `realpath` 比较 `/private/var`；生产 containment 与测试合约在 `c8328e9b25…` 修复，完整 check 和本地安装包均从该提交重新执行。
-- 最终本地唯一安装器 `DSH-Desktop-2.0.10-x64-Setup.exe` 为 `276,771,957` bytes，SHA-256 `17E857C942A452C18D17DFE549002C3DE513AEF8CB335F8F192001111A6CC5DB`；`latest.yml` 为 `342` bytes，SHA-256 `7AD0B76F8DE5A2C5460AF8DE124093B4970E3FF5B3723843AD0B0E1363DE3A39`；Authenticode `NotSigned`。
-- 最终构建源码提交为 `c8328e9b25454a8ce2fbe7aeafe26dcb7c3c71c8`。GitHub Draft 中的首次候选资产必须先删除，再上传并回读最终同名资产的 size/digest；不允许 Actions 二次构建或覆盖。
+- 最终本地唯一安装器 `DSH-Desktop-2.0.10-x64-Setup.exe` 为 `276,771,959` bytes，SHA-256 `B37BA8A0F41BD3EE1DE2D7BCC34BFD93D51F2988494DCFED1EDAA838F253038D`；`latest.yml` 为 `342` bytes，SHA-256 `85D7D5B3C2F0E2153DEC96AAB365E958E61660BC41348DBCACD1766AB20EEB25`；Authenticode `NotSigned`。
+- 最终构建源码提交为 `baad5023bec255518f97a98a7dd13b53ea69b5cb`，包含重新生成的第三方清单（补入 `@codemirror/lang-vue@0.1.3`、`react-icons@5.7.0`）。GitHub Draft 中的旧候选资产必须先删除，再上传并回读最终同名资产的 size/digest；不允许 Actions 二次构建或覆盖。
 - 后续 CI 还修正两个验证器的跨平台假设：Profile smoke 只在真实 Windows runner 要求盘符参数；license verifier 大小写无关地识别标准 license 文件名，确认 `khroma@2.1.0` 的小写 `license` 为 MIT。这两项不改变本地安装器字节。
 - GitHub CI run `32915919433` 全绿：Ubuntu 完整 check、Windows check/installer/portable、macOS check/packaged smoke 和 upstream command 均通过。Draft Release 中最终 Setup/`latest.yml` 的 size/digest 已与本地一致，满足发布条件。
