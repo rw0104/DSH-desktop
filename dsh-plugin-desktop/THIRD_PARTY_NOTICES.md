@@ -49,6 +49,7 @@ the package names, versions, and licenses for transparency.
 | @codemirror/lang-python | 6.2.1 | MIT |
 | @codemirror/lang-rust | 6.0.2 | MIT |
 | @codemirror/lang-sql | 6.10.0 | MIT |
+| @codemirror/lang-vue | 0.1.3 | MIT |
 | @codemirror/lang-xml | 6.1.0 | MIT |
 | @codemirror/lang-yaml | 6.1.3 | MIT |
 | @codemirror/language | 6.12.4 | MIT |
@@ -626,6 +627,7 @@ the package names, versions, and licenses for transparency.
 | raw-body | 3.0.2 | MIT |
 | react | 18.3.1 | MIT |
 | react-dom | 18.3.1 | MIT |
+| react-icons | 5.7.0 | MIT |
 | readdirp | 4.1.2 | MIT |
 | regex | 6.1.0 | MIT |
 | regex-recursion | 6.0.2 | MIT |
