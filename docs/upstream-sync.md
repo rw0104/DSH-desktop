@@ -107,5 +107,6 @@ v2.0.9 在不修改 `deepseek-harness/` 子模块的前提下，对三个已发�
 - 官方 Harness 继续固定 `dsh-v0.1.1-rc.2` / `b150a551…`，本轮不更新 submodule 或 `@deepseek-ai/dsh-*` package family。
 - 两版 Sidebar bundle patch 哈希一致；`registerTab/openTab/closeTab` 服务面保持兼容，新增 `floatWindows`。公开 `cordis` peer 被移除，Sidebar 改用 `@deepseek-ai/cordis` 类型基底。
 - Yarn 新包隔离只为精确 `dsh-better-sidebar@0.16.1` 放行；immutable install、聚焦 103 项、完整 check、Windows package 203 项、afterPack 与 installer verifier 均通过。
-- 本地唯一安装器 `DSH-Desktop-2.0.10-x64-Setup.exe` 为 `276,771,954` bytes，SHA-256 `54B54F1D7CA897EE84A15B829AD79A2394CFEEECFD32B9FF4A59B44D8DCBC321`；`latest.yml` 为 `342` bytes，SHA-256 `24A5DA30F934F18F9B04D4297D69F2627012973AF7BC85116BA6B3D033A880ED`；Authenticode `NotSigned`。
-- 构建源码提交为 `cf14343e3c499770e763204d8d38856193e37ef8`。GitHub Release 上传后必须回读同名资产的 size/digest，不允许 Actions 二次构建或覆盖。
+- 首次 CI 在 macOS/Linux 发现 Review 反斜杠路径未进入 POSIX traversal 语义，以及 Deliverable 测试未按 `realpath` 比较 `/private/var`；生产 containment 与测试合约在 `c8328e9b25…` 修复，完整 check 和本地安装包均从该提交重新执行。
+- 最终本地唯一安装器 `DSH-Desktop-2.0.10-x64-Setup.exe` 为 `276,771,957` bytes，SHA-256 `17E857C942A452C18D17DFE549002C3DE513AEF8CB335F8F192001111A6CC5DB`；`latest.yml` 为 `342` bytes，SHA-256 `7AD0B76F8DE5A2C5460AF8DE124093B4970E3FF5B3723843AD0B0E1363DE3A39`；Authenticode `NotSigned`。
+- 最终构建源码提交为 `c8328e9b25454a8ce2fbe7aeafe26dcb7c3c71c8`。GitHub Draft 中的首次候选资产必须先删除，再上传并回读最终同名资产的 size/digest；不允许 Actions 二次构建或覆盖。
