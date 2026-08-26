@@ -11,7 +11,7 @@
  */
 
 import { createRequire } from 'node:module'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -47,6 +47,14 @@ const NOTICE_LICENSES = new Set([
   'LGPL-3.0-or-later',
   'Apache-2.0 AND LGPL-3.0-or-later',
 ])
+
+const LICENSE_FILE_NAMES = new Set(['license', 'license.md', 'license.txt'])
+
+/** Detect standard license filenames consistently on case-sensitive and case-insensitive hosts. */
+function hasPackageLicenseFile(packageDirectory) {
+  return readdirSync(packageDirectory, { withFileTypes: true })
+    .some(entry => entry.isFile() && LICENSE_FILE_NAMES.has(entry.name.toLowerCase()))
+}
 
 /**
  * Locate one installed package manifest by walking node_modules directories
@@ -95,9 +103,7 @@ for (let index = 0; index < queue.length; index += 1) {
 
   if (current.name !== rootManifest.name) {
     const license = licenseExpression(manifest)
-    const hasLicenseFile = existsSync(join(dirname(current.manifestPath), 'LICENSE'))
-      || existsSync(join(dirname(current.manifestPath), 'LICENSE.md'))
-      || existsSync(join(dirname(current.manifestPath), 'LICENSE.txt'))
+    const hasLicenseFile = hasPackageLicenseFile(dirname(current.manifestPath))
     if (license === undefined && !hasLicenseFile) {
       failures.push(`${current.name}: no license field and no LICENSE file`)
     } else if (license !== undefined && license.startsWith('SEE LICENSE IN ')) {
