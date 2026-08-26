@@ -112,3 +112,11 @@ v2.0.9 在不修改 `deepseek-harness/` 子模块的前提下，对三个已发�
 - 最终构建源码提交为 `baad5023bec255518f97a98a7dd13b53ea69b5cb`，包含重新生成的第三方清单（补入 `@codemirror/lang-vue@0.1.3`、`react-icons@5.7.0`）。GitHub Draft 中的旧候选资产必须先删除，再上传并回读最终同名资产的 size/digest；不允许 Actions 二次构建或覆盖。
 - 后续 CI 还修正两个验证器的跨平台假设：Profile smoke 只在真实 Windows runner 要求盘符参数；license verifier 大小写无关地识别标准 license 文件名，确认 `khroma@2.1.0` 的小写 `license` 为 MIT。这两项不改变本地安装器字节。
 - GitHub CI run `32915919433` 全绿：Ubuntu 完整 check、Windows check/installer/portable、macOS check/packaged smoke 和 upstream command 均通过。Draft Release 中最终 Setup/`latest.yml` 的 size/digest 已与本地一致，满足发布条件。
+
+## 2026-08-26 v2.0.10 发布结果
+
+- Annotated tag `v2.0.10` 解引用到 `14f50e727d7d9f395b52d3e7546898c354c22ac3`；GitHub Release 于 `2026-08-26T10:52:33Z` 发布为 Latest，非 draft、非 prerelease。
+- 最终 CI run `32935865273` 全绿：Ubuntu check、Windows check/installer/portable、macOS check/packaged smoke 和 upstream command 全部成功。
+- Release 直接上传本机最终 Setup 与 `latest.yml`，未采用 CI 构建产物；不上传 `win-unpacked`、缓存、诊断 Profile 或临时归档。
+- Setup 远端大小 `276,771,959` bytes，GitHub digest `sha256:b37ba8a0f41bd3ee1de2d7bcc34bfd93d51f2988494dcfed1edaa838f253038d`，与本地 SHA-256 一致。
+- `latest.yml` 远端大小 `342` bytes，GitHub digest `sha256:85d7d5b3c2f0e2153dec96aab365e958e61660bc41348dbcacd1766ab20eeb25`，与本地 SHA-256 一致。
