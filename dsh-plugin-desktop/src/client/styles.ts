@@ -65,6 +65,21 @@ const DESKTOP_ABOUT_STYLES = `
 .dshDesktopAboutAction { display:inline-flex; align-items:center; min-height:32px; padding:0 12px; border:1px solid var(--dsw-alias-border-l2); border-radius:7px; color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-layer-1); text-decoration:none; cursor:pointer; }
 .dshDesktopAboutAction:hover { background:var(--dsw-alias-interactive-bg-hover); }
 .dshDesktopAboutAction:disabled { opacity:.55; cursor:wait; }
+.dshDesktopUpdateStatus { box-sizing:border-box; display:flex; flex-direction:column; gap:7px; width:100%; min-width:0; padding:10px 12px; border:1px solid var(--dsw-alias-border-l2); border-radius:8px; color:var(--dsw-alias-label-secondary); background:var(--dsw-alias-bg-layer-1); }
+.dshDesktopUpdateStatusFailed { color:var(--dsw-alias-state-error-primary); }
+.dshDesktopUpdateStatusText { min-width:0; line-height:1.45; overflow-wrap:anywhere; }
+.dshDesktopUpdateProgress { position:relative; box-sizing:border-box; width:100%; height:6px; overflow:hidden; border-radius:999px; background:var(--dsw-alias-bg-layer-2); }
+.dshDesktopUpdateProgressValue { position:absolute; inset:0 auto 0 0; min-width:2px; border-radius:inherit; background:var(--dsw-alias-state-business-primary); transition:width 180ms ease; }
+.dshDesktopUpdateProgress[data-indeterminate="true"] .dshDesktopUpdateProgressValue { opacity:.72; }
+@media (max-width:480px) {
+  .dshDesktopAboutRow { align-items:flex-start; flex-direction:column; gap:4px; padding:10px 0; }
+  .dshDesktopAboutValue { max-width:100%; text-align:left; overflow-wrap:anywhere; }
+  .dshDesktopAboutActions { flex-direction:column; }
+  .dshDesktopAboutAction { justify-content:center; width:100%; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .dshDesktopUpdateProgressValue { transition:none; }
+}
 `
 
 /** Advanced-shell stylesheet kept as a plain string so the package client bundle stays self-contained. */

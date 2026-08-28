@@ -5,6 +5,7 @@ import type {
   UpdateCheckResult,
   UpdateRequest,
 } from './update-checker.ts'
+import type { DesktopUpdateAdapterProgress } from './update-ui-state.ts'
 
 /** Electron platforms supported by the DSH Desktop native adapter. */
 export type DesktopPlatform = 'darwin' | 'win32' | 'linux'
@@ -108,7 +109,11 @@ export interface DesktopUpdateAdapter {
   /** Explain that a confirmed installer could not be downloaded or verified. */
   showDownloadFailure(): Promise<void>
   /** Download and hand one confirmed update to the platform installer. */
-  downloadAndOpen(artifact: DesktopUpdateArtifactMetadata, signal: AbortSignal): Promise<void>
+  downloadAndOpen(
+    artifact: DesktopUpdateArtifactMetadata,
+    signal: AbortSignal,
+    onProgress?: (progress: DesktopUpdateAdapterProgress) => void,
+  ): Promise<void>
   /** Present a native status notification without blocking the Host tree. */
   notify(notification: DesktopNotification): void
 }

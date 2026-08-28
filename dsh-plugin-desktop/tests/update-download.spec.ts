@@ -1,7 +1,8 @@
 import { access, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   MAX_UPDATE_DOWNLOAD_BYTES,
   UpdateDownloadError,
@@ -73,6 +74,7 @@ async function expectNoPartialFiles(directory: string): Promise<void> {
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks()
   await Promise.all(temporaryRoots.splice(0).map(root => rm(root, { recursive: true, force: true })))
 })
 
@@ -141,6 +143,40 @@ describe('desktop update installer download', () => {
     expect(result).toBe(join(directory, 'DSH-Desktop-2.2.0-windows.exe'))
     expect(await readFile(result)).toEqual(Buffer.from(artifact))
     await expectNoPartialFiles(directory)
+  })
+
+  it('reports monotonic real bytes, throttles chunk updates, and separates verification', async () => {
+    const directory = await temporaryDirectory()
+    const artifact = windowsArtifact()
+    const version = '2.2.2'
+    const name = `DSH-Desktop-${version}-x64-Setup.exe`
+    const progress: unknown[] = []
+    vi.spyOn(Date, 'now').mockReturnValue(1_000)
+
+    await downloadDesktopUpdate({
+      platform: 'win32',
+      version,
+      destinationPath: destinationPath(directory, 'win32', version),
+      artifact: {
+        version,
+        name,
+        size: artifact.byteLength,
+        sha256: createHash('sha256').update(artifact).digest('hex'),
+        url: `https://github.com/rw0104/DSH-desktop/releases/download/v${version}/${name}`,
+      },
+      request: async () => chunkedResponse([
+        artifact.subarray(0, 128),
+        artifact.subarray(128, 320),
+        artifact.subarray(320),
+      ], { 'content-length': String(artifact.byteLength) }),
+      onProgress: value => { progress.push(value) },
+    })
+
+    expect(progress).toEqual([
+      { phase: 'downloading', receivedBytes: 0, totalBytes: artifact.byteLength },
+      { phase: 'downloading', receivedBytes: artifact.byteLength, totalBytes: artifact.byteLength },
+      { phase: 'verifying', totalBytes: artifact.byteLength },
+    ])
   })
 
   it('accepts canonical stable SemVer build metadata in the private artifact path', async () => {

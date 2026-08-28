@@ -15,8 +15,14 @@ import {
   type DesktopUpdateArtifactMetadata,
   type UpdateCheckResult,
 } from './update-checker.ts'
+import type {
+  DesktopUpdateAdapterProgress,
+  DesktopUpdateUiState,
+  DesktopUpdateUiStatePayload,
+} from './update-ui-state.ts'
 
 const MAX_STATE_BYTES = 4 * 1024
+let nextUpdateUiGeneration = 0
 
 /** Validated scheduling and request policy for one update lifecycle. */
 export interface DesktopUpdatePolicy {
@@ -38,6 +44,10 @@ export interface DesktopUpdateLifecycleOptions {
 export interface DesktopUpdateLifecycle {
   /** Run the same user-confirmed check used by the native tray command. */
   checkNow(): Promise<void>
+  /** Read the current Renderer-safe update status. */
+  getUiState(): DesktopUpdateUiState
+  /** Observe status changes within this lifecycle generation. */
+  subscribeUiState(listener: (state: DesktopUpdateUiState) => void): () => void
   dispose(): Promise<void>
 }
 
@@ -67,6 +77,14 @@ export function startDesktopUpdateLifecycle(
 }
 
 class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
+  private readonly uiGeneration = ++nextUpdateUiGeneration
+  private uiRevision = 0
+  private uiState: DesktopUpdateUiState = {
+    generation: this.uiGeneration,
+    revision: this.uiRevision,
+    phase: 'idle',
+  }
+  private readonly uiListeners = new Set<(state: DesktopUpdateUiState) => void>()
   private disposed = false
   private disposeTask: Promise<void> | undefined
   private checking = false
@@ -98,6 +116,7 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
 
   dispose(): Promise<void> {
     if (this.disposeTask !== undefined) return this.disposeTask
+    this.setUiState({ phase: 'cancelled' })
     this.disposed = true
     if (this.pollTimer !== undefined) clearTimeout(this.pollTimer)
     if (this.requestTimer !== undefined) clearTimeout(this.requestTimer)
@@ -107,13 +126,49 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
     // Native dialogs are not cancellable. Await only file state and the abortable version request.
     const pending: Promise<unknown>[] = [this.stateReady]
     if (this.checkTask !== undefined) pending.push(this.checkTask)
-    this.disposeTask = Promise.allSettled(pending).then(() => {})
+    this.disposeTask = Promise.allSettled(pending).then(() => {
+      this.uiListeners.clear()
+    })
     return this.disposeTask
   }
 
   /** Run a user-triggered check immediately, reusing the in-flight guard. */
   checkNow(): Promise<void> {
     return this.runManualCheck()
+  }
+
+  /** @inheritdoc */
+  getUiState(): DesktopUpdateUiState {
+    return this.uiState
+  }
+
+  /** @inheritdoc */
+  subscribeUiState(listener: (state: DesktopUpdateUiState) => void): () => void {
+    if (this.disposed) return () => {}
+    this.uiListeners.add(listener)
+    let active = true
+    return () => {
+      if (!active) return
+      active = false
+      this.uiListeners.delete(listener)
+    }
+  }
+
+  private setUiState(value: DesktopUpdateUiStatePayload): void {
+    if (this.disposed) return
+    this.uiRevision += 1
+    this.uiState = {
+      ...value,
+      generation: this.uiGeneration,
+      revision: this.uiRevision,
+    } as DesktopUpdateUiState
+    for (const listener of this.uiListeners) {
+      try {
+        listener(this.uiState)
+      } catch {
+        // Renderer observers are read-only and cannot affect the native lifecycle.
+      }
+    }
   }
 
   private async loadState(): Promise<void> {
@@ -147,6 +202,7 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
   private startCheck(): Promise<UpdateCheckResult | null> {
     if (this.checkTask !== undefined) return this.checkTask
     this.checking = true
+    this.setUiState({ phase: 'checking' })
     this.registration.refresh()
     const controller = new AbortController()
     this.requestController = controller
@@ -177,12 +233,26 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
   }
 
   private observeResult(result: UpdateCheckResult | null): DesktopUpdateArtifactMetadata | undefined {
-    if (this.disposed || result === null) return undefined
+    if (this.disposed) return undefined
+    if (result === null) {
+      this.availableArtifact = undefined
+      this.registration.refresh()
+      return undefined
+    }
     this.availableArtifact = result.status === 'update-available'
       && this.options.adapter.canDownload
       && result.artifact !== undefined
       ? result.artifact
       : undefined
+    if (result.status === 'update-available') {
+      this.setUiState({
+        phase: 'available',
+        version: result.latestVersion,
+        ...(result.artifact === undefined ? {} : { totalBytes: result.artifact.size }),
+      })
+    } else {
+      this.setUiState({ phase: 'idle' })
+    }
     this.registration.refresh()
     return this.availableArtifact
   }
@@ -190,25 +260,58 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
   private startDownload(artifact: DesktopUpdateArtifactMetadata): Promise<void> {
     if (this.downloadTask !== undefined) return this.downloadTask
     const task = (async () => {
+      this.setUiState({
+        phase: 'awaiting-download-confirmation',
+        version: artifact.version,
+        totalBytes: artifact.size,
+      })
       let confirmed: boolean
       try {
         confirmed = await this.options.adapter.confirmDownload(artifact.version)
       } catch {
+        this.setUiState({ phase: 'failed', code: 'confirmation-failed' })
         return
       }
-      if (!confirmed || this.disposed) return
+      if (!confirmed) {
+        this.setUiState({ phase: 'cancelled' })
+        return
+      }
+      if (this.disposed) return
 
       const confirmedArtifact = this.observeResult(await this.startCheck())
-      if (confirmedArtifact === undefined || !sameArtifact(confirmedArtifact, artifact) || this.disposed) return
+      if (confirmedArtifact === undefined || !sameArtifact(confirmedArtifact, artifact) || this.disposed) {
+        if (!this.disposed && this.uiState.phase === 'checking') {
+          this.setUiState({ phase: 'failed', code: 'check-failed' })
+        }
+        return
+      }
 
       const controller = new AbortController()
       this.downloadController = controller
       this.downloadingVersion = artifact.version
+      this.setUiState({
+        phase: 'downloading',
+        version: artifact.version,
+        receivedBytes: 0,
+        totalBytes: artifact.size,
+      })
       this.registration.refresh()
       try {
-        await this.options.adapter.downloadAndOpen(confirmedArtifact, controller.signal)
-      } catch {
-        if (!this.disposed) await this.options.adapter.showDownloadFailure().catch(() => undefined)
+        await this.options.adapter.downloadAndOpen(
+          confirmedArtifact,
+          controller.signal,
+          progress => { this.observeProgress(artifact.version, artifact.size, progress) },
+        )
+        if (this.uiState.phase === 'downloading' || this.uiState.phase === 'verifying') {
+          this.setUiState({ phase: 'ready-to-install', version: artifact.version })
+        }
+      } catch (cause) {
+        if (controller.signal.aborted || isAbortFailure(cause)) {
+          this.setUiState({ phase: 'cancelled' })
+        } else {
+          this.setUiState({ phase: 'failed', code: safeDownloadFailureCode(cause) })
+          if (!this.disposed) await this.options.adapter.showDownloadFailure().catch(() => undefined)
+        }
       } finally {
         if (this.downloadController === controller) this.downloadController = undefined
         this.downloadingVersion = undefined
@@ -219,6 +322,30 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
     })
     this.downloadTask = task
     return task
+  }
+
+  private observeProgress(
+    version: string,
+    expectedBytes: number,
+    progress: DesktopUpdateAdapterProgress,
+  ): void {
+    if (this.disposed || this.downloadingVersion !== version) return
+    switch (progress.phase) {
+      case 'downloading': {
+        const totalBytes = progress.totalBytes ?? expectedBytes
+        const receivedBytes = Math.min(Math.max(0, progress.receivedBytes), totalBytes)
+        this.setUiState({ phase: 'downloading', version, receivedBytes, totalBytes })
+        return
+      }
+      case 'verifying':
+        this.setUiState({ phase: 'verifying', version, totalBytes: progress.totalBytes ?? expectedBytes })
+        return
+      case 'ready-to-install':
+        this.setUiState({ phase: 'ready-to-install', version })
+        return
+      case 'launching-installer':
+        this.setUiState({ phase: 'launching-installer', version })
+    }
   }
 
   private async offerDownload(artifact: DesktopUpdateArtifactMetadata, automatic: boolean): Promise<void> {
@@ -242,6 +369,7 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
         await this.offerDownload(artifact, false)
         return
       }
+      if (result === null) this.setUiState({ phase: 'failed', code: 'check-failed' })
       await this.options.adapter.showManualCheckResult(result)
     })().catch(() => undefined).finally(() => {
       this.manualTask = undefined
@@ -252,7 +380,9 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
   private async runBackgroundCheck(): Promise<void> {
     if (this.checkTask !== undefined || this.disposed) return
     try {
-      const artifact = this.observeResult(await this.startCheck())
+      const result = await this.startCheck()
+      const artifact = this.observeResult(result)
+      if (result === null) this.setUiState({ phase: 'idle' })
       if (artifact !== undefined) await this.offerDownload(artifact, true)
     } catch {
       // Scheduled checks never surface failures to the user or the application log.
@@ -320,4 +450,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isEnoent(value: unknown): boolean {
   return isRecord(value) && value.code === 'ENOENT'
+}
+
+function isAbortFailure(value: unknown): boolean {
+  return value instanceof DOMException
+    ? value.name === 'AbortError'
+    : isRecord(value) && value.name === 'AbortError'
+}
+
+const SAFE_DOWNLOAD_FAILURE_CODES = new Set([
+  'aborted',
+  'empty-body',
+  'http-status',
+  'integrity-mismatch',
+  'invalid-artifact',
+  'invalid-options',
+  'network',
+  'response-too-large',
+])
+
+function safeDownloadFailureCode(value: unknown): string {
+  const code = isRecord(value) ? value.code : undefined
+  return typeof code === 'string' && SAFE_DOWNLOAD_FAILURE_CODES.has(code)
+    ? code
+    : 'download-failed'
 }

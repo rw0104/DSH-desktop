@@ -17,6 +17,7 @@ import { DESKTOP_ABOUT_LOCALE_DICTIONARY } from './release-metadata.ts'
 import { installWorkspaceFolderDrop } from './workspace-folder-drop.ts'
 import { WorkspaceChangesTab } from './WorkspaceChangesTab.tsx'
 import { installDesktopAboutStyles, installWorkspaceChangesStyles } from './styles.ts'
+import { readDesktopUpdateUiState, subscribeDesktopUpdateUiState } from './update-state.ts'
 
 async function requestDesktopUpdateCheck(): Promise<void> {
   const response = await fetch('/dsh-desktop/api/check-updates', {
@@ -121,6 +122,8 @@ export function apply(ctx: ClientContext): void {
         about: { t },
         productVersion: environment.productVersion,
         checkForUpdates: requestDesktopUpdateCheck,
+        readUpdateState: readDesktopUpdateUiState,
+        subscribeUpdateState: subscribeDesktopUpdateUiState,
         openExternal: requestDesktopExternalNavigation,
       }),
     }, DesktopAboutSection))

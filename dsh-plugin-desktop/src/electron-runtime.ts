@@ -55,6 +55,7 @@ import {
 } from './update-download.ts'
 import type { UpdateCheckResult } from './update-checker.ts'
 import type { DesktopUpdateArtifactMetadata } from './update-checker.ts'
+import type { DesktopUpdateAdapterProgress } from './update-ui-state.ts'
 import {
   type WindowsVolumeQuery,
 } from './windows-volume-diagnostics.ts'
@@ -142,7 +143,7 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
       confirmDownload: version => this.confirmUpdateDownload(version),
       showManualCheckResult: result => this.showManualUpdateCheckResult(result),
       showDownloadFailure: () => this.showUpdateDownloadFailure(),
-      downloadAndOpen: (artifact, signal) => this.downloadAndOpenUpdate(artifact, signal),
+      downloadAndOpen: (artifact, signal, onProgress) => this.downloadAndOpenUpdate(artifact, signal, onProgress),
       notify: notification => { this.showNotification(notification) },
     }
   }
@@ -577,6 +578,7 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
   private async downloadAndOpenUpdate(
     artifactMetadata: DesktopUpdateArtifactMetadata,
     signal: AbortSignal,
+    onProgress?: (progress: DesktopUpdateAdapterProgress) => void,
   ): Promise<void> {
     const version = artifactMetadata.version
     const platform = this.platformStrategy.updateDownloadPlatform
@@ -595,6 +597,7 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
       artifact: artifactMetadata,
       request: (url, init) => net.fetch(url, init),
       signal,
+      ...(onProgress === undefined ? {} : { onProgress }),
     })
     signal.throwIfAborted()
     const artifact: DesktopUpdateArtifact = { platform, version, path: artifactPath }
@@ -603,8 +606,10 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
     } catch (cause) {
       this.logError(`dsh-plugin-desktop: failed to remember update installer for cleanup: ${cause instanceof Error ? cause.message : String(cause)}`)
     }
+    onProgress?.({ phase: 'ready-to-install' })
 
     if (platform === 'darwin') {
+      onProgress?.({ phase: 'launching-installer' })
       const openError = await shell.openPath(artifactPath)
       if (openError !== '') throw new Error(`dsh-plugin-desktop: failed to open update disk image: ${openError}`)
       signal.throwIfAborted()
@@ -635,6 +640,7 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
     const spec = this.scheduled
     if (spec === undefined) throw new Error('dsh-plugin-desktop: no active shell can exit for update installation')
     signal.throwIfAborted()
+    onProgress?.({ phase: 'launching-installer' })
     await this.launchWindowsUpdateInstaller(artifactPath)
     this.quitting = true
     spec.requestQuit(0)

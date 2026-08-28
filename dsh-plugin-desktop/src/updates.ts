@@ -6,6 +6,11 @@ import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from './runtime.ts'
 import { startDesktopUpdateLifecycle, type DesktopUpdateLifecycle } from './update-lifecycle.ts'
+import {
+  DESKTOP_UPDATE_STATE_EVENTS_PATH,
+  DESKTOP_UPDATE_STATE_PATH,
+  type DesktopUpdateUiState,
+} from './update-ui-state.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'desktop-updates'
@@ -51,12 +56,22 @@ export function apply(ctx: Context, config: Config): void {
       locale: () => ctx.desktopRuntime.locale,
       registerTrayItem: item => ctx.desktopRuntime.registerTrayItem(item),
     })
-    const disposeRoute = installUpdateCheckRoute(ctx, lifecycle)
+    const disposeRoutes = installUpdateRoutes(ctx, lifecycle)
     return () => {
-      disposeRoute()
+      disposeRoutes()
       return lifecycle.dispose()
     }
   }, 'dsh-plugin-desktop: update polling, confirmation, and installer handoff')
+}
+
+/** Install the manual action plus the read-only snapshot and event routes. */
+export function installUpdateRoutes(ctx: Context, lifecycle: DesktopUpdateLifecycle): () => void {
+  const disposeCheck = installUpdateCheckRoute(ctx, lifecycle)
+  const disposeState = installUpdateStateRoutes(ctx, lifecycle)
+  return () => {
+    disposeState()
+    disposeCheck()
+  }
 }
 
 /** Install the renderer-facing manual check route for one lifecycle. */
@@ -74,6 +89,59 @@ export function installUpdateCheckRoute(ctx: Context, lifecycle: Pick<DesktopUpd
       return writeJson(res, 200, { ok: true })
     },
   })
+}
+
+/** Install Renderer-safe GET snapshot and Server-Sent Events status routes. */
+export function installUpdateStateRoutes(
+  ctx: Context,
+  lifecycle: Pick<DesktopUpdateLifecycle, 'getUiState' | 'subscribeUiState'>,
+): () => void {
+  const closeStreams = new Set<() => void>()
+  const disposeSnapshot = ctx.webServer.register({
+    kind: 'exact',
+    path: DESKTOP_UPDATE_STATE_PATH,
+    handler: async (req, res) => {
+      if (!sameOrigin(ctx, req)) return writeJson(res, 403, { error: 'origin rejected' })
+      if (req.method !== 'GET') return writeJson(res, 405, { error: 'method not allowed' })
+      return writeJson(res, 200, lifecycle.getUiState())
+    },
+  })
+  const disposeEvents = ctx.webServer.register({
+    kind: 'exact',
+    path: DESKTOP_UPDATE_STATE_EVENTS_PATH,
+    handler: async (req, res) => {
+      if (!sameOrigin(ctx, req)) return writeJson(res, 403, { error: 'origin rejected' })
+      if (req.method !== 'GET') return writeJson(res, 405, { error: 'method not allowed' })
+      res.statusCode = 200
+      res.setHeader('content-type', 'text/event-stream; charset=utf-8')
+      res.setHeader('cache-control', 'no-store')
+      res.setHeader('connection', 'keep-alive')
+      res.setHeader('x-accel-buffering', 'no')
+      res.flushHeaders?.()
+      let closed = false
+      const send = (state: DesktopUpdateUiState): void => {
+        if (closed || res.writableEnded) return
+        res.write(`event: state\ndata: ${JSON.stringify(state)}\n\n`)
+      }
+      const unsubscribe = lifecycle.subscribeUiState(send)
+      const close = (): void => {
+        if (closed) return
+        closed = true
+        unsubscribe()
+        closeStreams.delete(close)
+        if (!res.writableEnded) res.end()
+      }
+      closeStreams.add(close)
+      req.once('aborted', close)
+      res.once('close', close)
+      send(lifecycle.getUiState())
+    },
+  })
+  return () => {
+    disposeEvents()
+    disposeSnapshot()
+    for (const close of [...closeStreams]) close()
+  }
 }
 
 function sameOrigin(ctx: Context, req: IncomingMessage): boolean {

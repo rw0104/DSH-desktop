@@ -2,6 +2,7 @@ import { basename, dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DesktopShellSpec } from '../src/runtime.ts'
 import { DESKTOP_VERSION_ENDPOINT } from '../src/update-checker.ts'
+import type { DesktopUpdateAdapterProgress } from '../src/update-ui-state.ts'
 
 const terminal = vi.hoisted(() => ({ open: vi.fn() }))
 const diagnostics = vi.hoisted(() => ({ export: vi.fn() }))
@@ -1482,8 +1483,9 @@ describe('Electron desktop runtime', () => {
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
     const runtime = new ElectronDesktopRuntime(async () => {})
     runtime.schedule({ ...spec, requestQuit })
+    const progress = vi.fn()
 
-    const pending = runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal)
+    const pending = runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal, progress)
     await vi.waitFor(() => { expect(childProcess.spawn).toHaveBeenCalledOnce() })
     expect(updater.download).toHaveBeenCalledWith(expect.objectContaining({
       platform: 'win32',
@@ -1511,6 +1513,8 @@ describe('Electron desktop runtime', () => {
       version: '2.1.0',
       path: 'C:\\Updates\\DSH-Desktop-2.1.0-windows.exe',
     })
+    expect(progress.mock.calls.map(([value]) => (value as DesktopUpdateAdapterProgress).phase))
+      .toEqual(['ready-to-install', 'launching-installer'])
     expect(requestQuit).toHaveBeenCalledWith(0)
   })
 
@@ -1539,15 +1543,24 @@ describe('Electron desktop runtime', () => {
 
   it('keeps a downloaded Windows installer idle when installation is deferred', async () => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
-    updater.download.mockResolvedValueOnce('C:\\Updates\\DSH-Desktop-2.1.0-windows.exe')
+    updater.download.mockImplementationOnce(async (options: {
+      onProgress?: (value: DesktopUpdateAdapterProgress) => void
+    }) => {
+      options.onProgress?.({ phase: 'downloading', receivedBytes: 50, totalBytes: 100 })
+      options.onProgress?.({ phase: 'verifying', totalBytes: 100 })
+      return 'C:\\Updates\\DSH-Desktop-2.1.0-windows.exe'
+    })
     electron.dialog.showMessageBox.mockResolvedValueOnce({ response: 1, checkboxChecked: false })
+    const progress = vi.fn()
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
     const runtime = new ElectronDesktopRuntime(async () => {})
 
-    await runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal)
+    await runtime.updates.downloadAndOpen(updateArtifactMetadata(), new AbortController().signal, progress)
 
     expect(childProcess.spawn).not.toHaveBeenCalled()
     expect(updater.record).toHaveBeenCalledOnce()
+    expect(progress.mock.calls.map(([value]) => (value as DesktopUpdateAdapterProgress).phase))
+      .toEqual(['downloading', 'verifying', 'ready-to-install'])
   })
 
   it('continues the update handoff when cleanup tracking cannot be persisted', async () => {

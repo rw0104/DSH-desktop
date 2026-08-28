@@ -9,6 +9,7 @@ import {
   parseSemVer,
   type DesktopUpdateArtifactMetadata,
 } from './update-checker.ts'
+import type { DesktopUpdateAdapterProgress } from './update-ui-state.ts'
 
 /** Desktop platforms with a fixed installer download endpoint. */
 export type DesktopDownloadPlatform = 'darwin' | 'win32'
@@ -33,6 +34,12 @@ export type UpdateDownloadErrorCode =
 /** Fetch-compatible request boundary supplied by the Electron adapter or a test. */
 export type UpdateArtifactRequest = (url: string, init: RequestInit) => Promise<Response>
 
+/** Download/verification phases observable by the owning Host lifecycle. */
+export type DesktopUpdateDownloadProgress = Extract<
+  DesktopUpdateAdapterProgress,
+  { readonly phase: 'downloading' | 'verifying' }
+>
+
 /** Inputs for one user-confirmed installer download. */
 export interface DownloadDesktopUpdateOptions {
   /** Host platform selecting the fixed endpoint and installer validation. */
@@ -47,6 +54,8 @@ export interface DownloadDesktopUpdateOptions {
   readonly artifact?: DesktopUpdateArtifactMetadata
   /** Optional cancellation signal owned by the update coordinator. */
   readonly signal?: AbortSignal
+  /** Read-only, throttled byte and verification status callback. */
+  readonly onProgress?: (progress: DesktopUpdateDownloadProgress) => void
 }
 
 /** Typed failure from installer request, validation, or cancellation. */
@@ -139,10 +148,22 @@ export async function downloadDesktopUpdate(options: DownloadDesktopUpdateOption
     throw new UpdateDownloadError('empty-body', 'The update download service returned an empty body.')
   }
   assertDeclaredSize(response, artifact?.size)
+  const totalBytes = artifact?.size ?? declaredResponseSize(response)
+  reportProgress(options.onProgress, {
+    phase: 'downloading',
+    receivedBytes: 0,
+    ...(totalBytes === undefined ? {} : { totalBytes }),
+  })
 
   let failure: unknown
   try {
-    const received = await writeResponseBody(paths.temporary, response.body, options.signal)
+    const received = await writeResponseBody(
+      paths.temporary,
+      response.body,
+      options.signal,
+      totalBytes,
+      options.onProgress,
+    )
     if (artifact !== undefined
       && (received.bytes !== artifact.size || received.sha256 !== artifact.sha256)) {
       throw new UpdateDownloadError(
@@ -151,6 +172,10 @@ export async function downloadDesktopUpdate(options: DownloadDesktopUpdateOption
       )
     }
     throwIfAborted(options.signal)
+    reportProgress(options.onProgress, {
+      phase: 'verifying',
+      totalBytes: totalBytes ?? received.bytes,
+    })
     await validateArtifact(paths.temporary, platform)
     throwIfAborted(options.signal)
     await unlinkIfPresent(paths.completed)
@@ -423,15 +448,26 @@ function assertDeclaredSize(response: Response, expectedSize?: number): void {
   }
 }
 
+function declaredResponseSize(response: Response): number | undefined {
+  const declared = response.headers.get('content-length')
+  if (declared === null || !DECIMAL_BYTES.test(declared)) return undefined
+  const value = BigInt(declared)
+  return value > 0n && value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : undefined
+}
+
 async function writeResponseBody(
   filename: string,
   body: ReadableStream<Uint8Array>,
   signal: AbortSignal | undefined,
+  totalBytes: number | undefined,
+  onProgress: ((progress: DesktopUpdateDownloadProgress) => void) | undefined,
 ): Promise<{ readonly bytes: number; readonly sha256: string }> {
   const handle = await open(filename, 'wx', PRIVATE_FILE_MODE)
   const reader = body.getReader()
   const hash = createHash('sha256')
   let bytesWritten = 0
+  let lastReportedBytes = 0
+  let lastReportedAt = Date.now()
   try {
     while (true) {
       throwIfAborted(signal)
@@ -447,9 +483,26 @@ async function writeResponseBody(
       await writeAll(handle, chunk.value)
       hash.update(chunk.value)
       bytesWritten += chunk.value.byteLength
+      const now = Date.now()
+      if (now - lastReportedAt >= 200) {
+        reportProgress(onProgress, {
+          phase: 'downloading',
+          receivedBytes: bytesWritten,
+          ...(totalBytes === undefined ? {} : { totalBytes }),
+        })
+        lastReportedAt = now
+        lastReportedBytes = bytesWritten
+      }
     }
     if (bytesWritten === 0) {
       throw new UpdateDownloadError('empty-body', 'The update download service returned an empty body.')
+    }
+    if (lastReportedBytes !== bytesWritten) {
+      reportProgress(onProgress, {
+        phase: 'downloading',
+        receivedBytes: bytesWritten,
+        ...(totalBytes === undefined ? {} : { totalBytes }),
+      })
     }
     await handle.sync()
     return { bytes: bytesWritten, sha256: hash.digest('hex') }
@@ -459,6 +512,17 @@ async function writeResponseBody(
   } finally {
     reader.releaseLock()
     await handle.close()
+  }
+}
+
+function reportProgress(
+  listener: ((progress: DesktopUpdateDownloadProgress) => void) | undefined,
+  progress: DesktopUpdateDownloadProgress,
+): void {
+  try {
+    listener?.(progress)
+  } catch {
+    // Status observers are read-only and must never fail or cancel an authenticated download.
   }
 }
 
