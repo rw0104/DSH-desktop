@@ -22,3 +22,15 @@ index 3bde9755d703a70fc3a45c048c249559fef78d82..9db6a66ee59dbe28a167683b791d8357
      }
      return {
          keychainFile,
+diff --git a/out/node-module-collector/npmNodeModulesCollector.js b/out/node-module-collector/npmNodeModulesCollector.js
+--- a/out/node-module-collector/npmNodeModulesCollector.js
++++ b/out/node-module-collector/npmNodeModulesCollector.js
+@@ -12,7 +12,7 @@ class NpmNodeModulesCollector extends nodeModulesCollector_js_1.NodeModulesColl
+         };
+     }
+     getArgs() {
+-        return ["list", "-a", "--include", "prod", "--include", "optional", "--omit", "dev", "--json", "--long", "--silent", "--loglevel=error"];
++        return ["list", "-a", "--include", "prod", "--include", "optional", "--omit", "dev", "--json", "--long", "--silent", "--loglevel=error", "--workspaces=false"];
+     }
+     async collectAllDependencies(tree) {
+         for (const [key, value] of Object.entries(tree.dependencies || {})) {

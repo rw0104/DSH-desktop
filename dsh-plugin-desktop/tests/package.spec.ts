@@ -759,7 +759,7 @@ describe('published package surface', () => {
     expect(lockfile).not.toContain('@koromix/koffi-win32-x64@npm:3.1.4')
   })
 
-  it('resolves electron-builder through the pinned app-builder-lib keychain patch', () => {
+  it('resolves electron-builder through the pinned app-builder-lib packaging fixes', () => {
     const patchResolution = 'patch:app-builder-lib@npm%3A26.15.7#./patches/app-builder-lib@26.15.7.patch'
     const lockfile = readFileSync(new URL('yarn.lock', workspaceRoot), 'utf8')
     const patch = readFileSync(new URL('patches/app-builder-lib@26.15.7.patch', workspaceRoot), 'utf8')
@@ -768,6 +768,10 @@ describe('published package surface', () => {
     const electronBuilderRequire = createRequire(electronBuilderManifest)
     const appBuilderManifest = electronBuilderRequire.resolve('app-builder-lib/package.json')
     const installedCodeSign = readFileSync(join(dirname(appBuilderManifest), 'out/codeSign/macCodeSign.js'), 'utf8')
+    const installedNpmCollector = readFileSync(
+      join(dirname(appBuilderManifest), 'out/node-module-collector/npmNodeModulesCollector.js'),
+      'utf8',
+    )
 
     expect(workspaceManifest.resolutions).toMatchObject({
       'app-builder-lib@npm:26.15.7': patchResolution,
@@ -776,8 +780,10 @@ describe('published package surface', () => {
     expect(lockfile).toContain('app-builder-lib@patch:app-builder-lib@npm%3A26.15.7#./patches/app-builder-lib@26.15.7.patch')
     expect(patch).toContain('importCerts(keychainFile, certPaths, cscPasswords, keychainPassword)')
     expect(patch).toContain('"-k", keychainPassword, keychainFile')
+    expect(patch).toContain('"--workspaces=false"')
     expect(installedCodeSign).toContain('importCerts(keychainFile, certPaths, cscPasswords, keychainPassword)')
     expect(installedCodeSign).toContain('"-k", keychainPassword, keychainFile')
+    expect(installedNpmCollector).toContain('"--workspaces=false"')
   })
 
   it('starts restricted Windows shells with a hidden console show state', () => {
