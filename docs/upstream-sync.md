@@ -188,3 +188,5 @@ git submodule status -- deepseek-harness
 - `DSH-Desktop-2.0.11-x64-Setup.exe`：`276,779,515` bytes，SHA-256 `375FF3DE9D53B98B24F7BA0FBEEE2CC0538AA92C52D9B037E35150BD0F9C033C`，Authenticode `NotSigned`。
 - `latest.yml`：`342` bytes，SHA-256 `63EE3758FC55B70A671826283472D58802193764941B8428094A3F8120B38150`。
 - unpacked `DSH Desktop.exe`：`225,552,384` bytes，SHA-256 `037103E7BCDF59EC5357AE64B54E7DC66ED23F1D3FBDED4463A41A1D3267AB32`，FileVersion `2.0.11`，ProductVersion `2.0.11.0`，Authenticode `NotSigned`。
+- Annotated tag `v2.0.11` 解引用到 `beaa23811a753bba70c89e902b33d34f35181151`；GitHub Release 于 `2026-08-28T11:34:15Z` 发布为 Latest，非 draft、非 prerelease。
+- GitHub Setup/`latest.yml` 的远端 size 与 digest 均与上述本地成品一致；Release 未上传 unpacked 目录、缓存或诊断 Profile。

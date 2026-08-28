@@ -73,3 +73,11 @@ corepack yarn workspace dsh-plugin-desktop package:dir
 首次正式构建已经完成 Windows package preflight，但 Electron Builder 下载外部构建工具时遇到 `ECONNRESET`。重试显式使用仓库既有 `127.0.0.1:10808` 代理，并只通过 `DSH_PACKAGE_CHECK_ALREADY_RAN=1` 跳过已通过的重复 preflight；Electron Builder、依赖闭包遍历、afterPack、fuses、NSIS 和 verifier 没有跳过。成品回读确认包含 `market-store`、安装失败弹窗、`data-dsh-chat-drop-overlay`、Workspace drop target 和 Desktop settings icon 标记。
 
 发布前只上传版本化 Setup 与 `latest.yml`，不上传 `win-unpacked`、缓存、Profile 或临时目录。
+
+## GitHub 部署结果
+
+- `origin/main` fast-forward 到本轮文档提交；annotated tag `v2.0.11` 解引用到 `beaa23811a753bba70c89e902b33d34f35181151`。
+- GitHub Release：<https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.11>，`2026-08-28T11:34:15Z` 发布为 Latest，非 draft、非 prerelease。
+- 远端 Setup 资产：`276,779,515` bytes，digest `sha256:375ff3de9d53b98b24f7ba0fbeee2cc0538aa92c52d9b037e35150bd0f9c033c`，与本地一致。
+- 远端 `latest.yml`：`342` bytes，digest `sha256:63ee3758fc55b70a671826283472d58802193764941b8428094a3f8120b38150`，与本地一致。
+- Release 上传的是本机验证过的同一份 Setup/`latest.yml`；没有上传 `win-unpacked`、缓存或诊断目录。
