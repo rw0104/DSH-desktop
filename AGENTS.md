@@ -75,6 +75,30 @@ The current audit snapshot and exact commands are maintained in
   upstream project as a release blocker. Do not resolve it by accepting the
   upstream side.
 
+## Documentation publication boundary
+
+- Public repository documentation is limited to product-facing or durable
+  project records: `docs/releases/`, `docs/user-guide*`, `docs/architecture*`,
+  `docs/plugin-*`, `docs/faq*`, `docs/why-desktop*`, `docs/README*`,
+  `docs/PRODUCT.md`, `docs/upstream-sync.md`, and explicitly reviewed durable
+  Agent Notes under `.agents/notes/`.
+- Local-only development material includes scratch analysis, implementation
+  plans, development diaries, command transcripts, one-off investigation
+  reports, local screenshots, diagnostic summaries, and unpublished release
+  working notes. Store new files of this kind under `docs/local/`.
+- Never force-add files under `docs/local/`, attach them to a GitHub Release,
+  or link to them from public documentation. Promote useful conclusions by
+  rewriting them into an appropriate public document after explicit review;
+  do not publish the local working file itself.
+- Legacy date-prefixed development documents at the root of `docs/` are also
+  local-only and remain ignored for compatibility with existing local links.
+- Existing tracked release evidence under `docs/evidence/` may remain public;
+  new local screenshots and diagnostic captures belong under
+  `docs/local/evidence/` unless explicitly reviewed as durable release proof.
+- A GitHub Release may contain only verified versioned deliverables and
+  explicitly required release metadata. Local development documents are not
+  release artifacts.
+
 ## Packaging cache and artifact hygiene
 
 - Reuse the machine-level Electron cache (`%LOCALAPPDATA%\electron\Cache` on

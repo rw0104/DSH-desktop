@@ -135,7 +135,7 @@ v2.0.9 在不修改 `deepseek-harness/` 子模块的前提下，对三个已发�
 
 针对 ProducedFiles 的检索结果：参考仓库没有 `ProducedFiles`、`copyAbsolutePath`、`copyTextContent` 或产物 `contextmenu` 实现；只有托盘原生 context menu。因此下一期应复用官方 Harness Web UI 的 `@deepseek-ai/dsh-client-ui-primitives/Menu`，只借鉴参考仓库的 `data-slot`、aria/focus 和静态 markup 测试风格。
 
-详细实施与验收见 [`2026-08-26_development-produced-files-context-menu-plan-report.md`](2026-08-26_development-produced-files-context-menu-plan-report.md)。
+详细实施计划保存在本地开发资料中；公开台账只保留审计结论和发布证据。
 
 ## 2026-08-27 上游复核与选择性跟进
 
