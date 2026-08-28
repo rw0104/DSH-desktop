@@ -54,6 +54,7 @@ corepack yarn workspace dsh-plugin-desktop package:dir
 - `package:dir`：Windows x64 unpacked 应用构建成功，afterPack 与 PE 结构验证通过；
 - immutable install 仅有既存 peer warning（`YN0086`），未导致门禁失败。
 - Windows 冷缓存下 Profile junction 解析和 Market worker 启动受到 Defender/NTFS 扫描影响；测试只提高 Windows 超时与 worker 上限，生产 Profile 和 Market 行为未改变。
+- Windows package preflight：14 个文件、205 passed；Electron Builder afterPack、fuses、NSIS 和 Windows PE installer verifier 全部通过。
 
 ## 本地安装包
 
@@ -61,9 +62,14 @@ corepack yarn workspace dsh-plugin-desktop package:dir
 
 - 文件：`dsh-plugin-desktop/dist/DSH-Desktop-2.0.11-x64-Setup.exe`
 - `latest.yml`：`dsh-plugin-desktop/dist/latest.yml`
-- 安装器大小：构建后记录
-- 安装器 SHA-256：构建后记录
-- `latest.yml` 大小/SHA-256：构建后记录
-- Authenticode：本产品延续 unsigned 策略，构建后由 verifier 回读
+- 安装器大小：`276,779,515` bytes
+- 安装器 SHA-256：`375FF3DE9D53B98B24F7BA0FBEEE2CC0538AA92C52D9B037E35150BD0F9C033C`
+- `latest.yml`：`342` bytes；SHA-256 `63EE3758FC55B70A671826283472D58802193764941B8428094A3F8120B38150`
+- unpacked 主程序：`225,552,384` bytes；SHA-256 `037103E7BCDF59EC5357AE64B54E7DC66ED23F1D3FBDED4463A41A1D3267AB32`
+- FileVersion / ProductVersion：`2.0.11` / `2.0.11.0`
+- Authenticode：Setup 和 unpacked 主程序均为 `NotSigned`
+- 本地构建源码提交：`0d353d9e1e`
+
+首次正式构建已经完成 Windows package preflight，但 Electron Builder 下载外部构建工具时遇到 `ECONNRESET`。重试显式使用仓库既有 `127.0.0.1:10808` 代理，并只通过 `DSH_PACKAGE_CHECK_ALREADY_RAN=1` 跳过已通过的重复 preflight；Electron Builder、依赖闭包遍历、afterPack、fuses、NSIS 和 verifier 没有跳过。成品回读确认包含 `market-store`、安装失败弹窗、`data-dsh-chat-drop-overlay`、Workspace drop target 和 Desktop settings icon 标记。
 
 发布前只上传版本化 Setup 与 `latest.yml`，不上传 `win-unpacked`、缓存、Profile 或临时目录。

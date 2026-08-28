@@ -178,3 +178,13 @@ git submodule status -- deepseek-harness
 ```
 
 本地 `corepack yarn install --immutable` 已生成并验证对应 patch locator；聚焦结果为 Market `80` 项、桌面拖拽/包面 `43` 项全部通过，两个 owned workspace typecheck 全部通过。完整 `corepack yarn check` 结果为 Market `270` 项、桌面 `707` 项（`11` 项跳过）通过，运行时闭包 `201` 个 first-party 节点闭合；Windows unpacked smoke 已生成 `dsh-plugin-desktop/dist/win-unpacked` 并完成 Electron-builder 处理。Sidebar `main` 的 pinned-terminal 设计、参考仓库其余未发布提交以及官方 Harness 新 tag（当前不存在）保留在本台账中，下一轮必须重新审计后才能进入 release。
+
+## 2026-08-28 v2.0.11 本地构建结果
+
+- 产品版本更新为 `2.0.11`；官方 Harness 继续固定 `dsh-v0.1.1-rc.2` / `b150a551…`，Better Sidebar 继续固定已发布 `0.16.1`。
+- 功能、版本、测试和开发文档提交为 `0d353d9e1e`；从该提交本地构建 Windows x64 Setup。
+- 完整 `corepack yarn check` 通过：Market `270`、Desktop `707`（`11` skipped）、runtime closure `201`、production licenses `691`。
+- Windows package preflight `205` 项通过；Electron Builder afterPack、fuses、NSIS 和 installer verifier 通过。
+- `DSH-Desktop-2.0.11-x64-Setup.exe`：`276,779,515` bytes，SHA-256 `375FF3DE9D53B98B24F7BA0FBEEE2CC0538AA92C52D9B037E35150BD0F9C033C`，Authenticode `NotSigned`。
+- `latest.yml`：`342` bytes，SHA-256 `63EE3758FC55B70A671826283472D58802193764941B8428094A3F8120B38150`。
+- unpacked `DSH Desktop.exe`：`225,552,384` bytes，SHA-256 `037103E7BCDF59EC5357AE64B54E7DC66ED23F1D3FBDED4463A41A1D3267AB32`，FileVersion `2.0.11`，ProductVersion `2.0.11.0`，Authenticode `NotSigned`。
