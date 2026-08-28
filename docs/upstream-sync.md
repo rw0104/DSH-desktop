@@ -190,3 +190,33 @@ git submodule status -- deepseek-harness
 - unpacked `DSH Desktop.exe`：`225,552,384` bytes，SHA-256 `037103E7BCDF59EC5357AE64B54E7DC66ED23F1D3FBDED4463A41A1D3267AB32`，FileVersion `2.0.11`，ProductVersion `2.0.11.0`，Authenticode `NotSigned`。
 - Annotated tag `v2.0.11` 解引用到 `beaa23811a753bba70c89e902b33d34f35181151`；GitHub Release 于 `2026-08-28T11:34:15Z` 发布为 Latest，非 draft、非 prerelease。
 - GitHub Setup/`latest.yml` 的远端 size 与 digest 均与上述本地成品一致；Release 未上传 unpacked 目录、缓存或诊断 Profile。
+
+## 2026-08-28 v2.0.12 Better Sidebar 0.17.1 升级前审计
+
+本批次在升级依赖和创建 release 前重新核对三条权威 Git remote、GitHub Release、npm registry 与本地 pin。Git 查询继续使用本机既有代理 `http://127.0.0.1:10808`；registry 结果来自 npm 官方元数据。
+
+| 组件 | 远端/registry 结果 | 本地基线 | 本批次决策 |
+| --- | --- | --- | --- |
+| DeepSeek Harness | `master` / tag `dsh-v0.1.2-alpha.1` 为 `cd5ef8148158c3a752a658978873241fdf8e2bbc`；npm `@deepseek-ai/dsh` 的 `latest/next` 仍为 `0.1.1-rc.2`，`@deepseek-ai/dsh{-base,-web-app}@0.1.2-alpha.1` 均为 404 | submodule `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`，正式 package family `0.1.1-rc.2` | alpha npm family 不完整；不更新 submodule、package family 或 Profile 契约 |
+| Better Sidebar | `main` / tag `v0.17.1` 为 `3b1898f9cb74edf4ca542ff84430eaf346dd05f4`；Release 于 `2026-08-28T08:04:54Z` 发布；npm `latest` 为 `0.17.1`，integrity `sha512-7me2X6w+ecbzAMEHtuWkSPUrfLDLTBvL9qugzgBbg1FyWyy2dzS9QNDvnZjjkst4kr4LjUJTTG4rsXBcz41YzQ==` | 精确依赖 `0.16.1` | 只升级到 registry 的精确 `0.17.1`；不使用 Git `main` 或发布后的未审计提交 |
+| Desktop reference | `master` 为 `ce14524a5614f72bf0e7a72433c2a692f644d213`；最新 tag 仍为 `v2.0.3` / `681ba66091fc5b1e827650137f69b3ee4c435922` | 本 fork `v2.0.11` | 继续只读对照，不整体合并、不覆盖根 README，也不作为运行时依赖 |
+
+升级前 outer 回滚点为 `21a1f6a0a9cad05af3a19ad52ac7c892db1c6298`；submodule gitlink 必须保持 `b150a551…`。本批次只允许 Sidebar `0.17.1`、其消费侧回归、About 更新状态 contract 及 `2.0.12` 发布资料进入 release。若 rc2 Loader/Profile、pinned terminal、Workspace/Recovery、完整 `check` 或 Windows installer verifier 任一 P0 门禁失败，则恢复 `0.16.1` 精确依赖并记录阻塞，不推进 tag 或 Release。
+
+复核命令：
+
+```powershell
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/deepseek-ai/deepseek-harness.git HEAD
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --heads --tags https://github.com/deepseek-ai/deepseek-harness.git
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/omdsh-dev/DSH-better-sidebar.git HEAD
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --heads --tags https://github.com/omdsh-dev/DSH-better-sidebar.git
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/anywhere-labs/deepseek-harness-desktop.git HEAD
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --heads --tags https://github.com/anywhere-labs/deepseek-harness-desktop.git
+gh release view v0.17.1 --repo omdsh-dev/DSH-better-sidebar --json tagName,targetCommitish,publishedAt,url,isDraft,isPrerelease
+npm view dsh-better-sidebar version dist-tags dist.integrity time peerDependencies --json
+npm view @deepseek-ai/dsh version dist-tags time --json
+npm view @deepseek-ai/dsh@0.1.2-alpha.1 version --json
+npm view @deepseek-ai/dsh-base@0.1.2-alpha.1 version --json
+npm view @deepseek-ai/dsh-web-app@0.1.2-alpha.1 version --json
+git submodule status -- deepseek-harness
+```
