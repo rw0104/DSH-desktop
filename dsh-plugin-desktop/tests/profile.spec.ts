@@ -59,7 +59,10 @@ afterEach(() => {
 })
 
 describe('desktop profile composition', {
-  timeout: process.platform === 'win32' ? 10_000 : 5_000,
+  // Windows package/profile resolution can be delayed by real-time scanners
+  // after Yarn relinks patched packages. Keep this above the observed cold
+  // path without weakening any composition assertion.
+  timeout: process.platform === 'win32' ? 30_000 : 5_000,
 }, () => {
   it('reads packaged Cordis skills from the physical unpacked preset root', () => {
     const home = temporaryHome()
@@ -176,7 +179,7 @@ describe('desktop profile composition', {
       '@deepseek-ai/dsh-web-app',
       'dsh-better-sidebar',
     ])
-  }, 30_000)
+  }, process.platform === 'win32' ? 60_000 : 30_000)
 
   it('removes Vision Toolkit from explicitly installed profile dependencies', () => {
     const home = temporaryHome()

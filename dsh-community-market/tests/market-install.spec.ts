@@ -673,6 +673,39 @@ describe('market install service', () => {
     expect(JSON.parse(await readFile(join(profileDir, 'package.json'), 'utf8')).dependencies).toEqual({})
   })
 
+  it('returns bounded package-manager output and writes the same failure to the Desktop log', async () => {
+    const profileDir = await createProfile()
+    const settings = memoryScope()
+    const logFailure = vi.fn()
+    const pnpm = recoverableRunner(profileDir, {
+      runPlugin() {
+        return {
+          stdout: Readable.from(['resolved 42 packages\n']),
+          stderr: Readable.from(['ERR_PNPM_BUILD_SCRIPT_FAILURE native dependency failed\n']),
+          done: new Promise(resolve => setImmediate(() => resolve({ exitCode: 1, signal: null }))),
+          cancel: vi.fn(),
+        }
+      },
+    })
+    const service = new MarketInstallService(
+      settings.scope,
+      () => ({ name: 'web', dir: profileDir }),
+      pnpm,
+      { verify: vi.fn(async () => verification) },
+      { logFailure },
+    )
+    service.observeCatalog(snapshot())
+    const preview = await service.previewInstall('source-1', 'example/dsh-plugin-safe', new AbortController().signal)
+
+    await expect(service.executeInstall(preview.intent, new AbortController().signal)).rejects.toMatchObject({
+      code: 'operation-failed',
+      details: expect.stringContaining('ERR_PNPM_BUILD_SCRIPT_FAILURE native dependency failed'),
+    })
+    expect(logFailure).toHaveBeenCalledWith(expect.stringContaining('resolved 42 packages'))
+    expect(logFailure).toHaveBeenCalledWith(expect.stringContaining('exitCode: 1'))
+    expect(logFailure).toHaveBeenCalledWith(expect.stringContaining(`dsh plugin add --save-exact`))
+  })
+
   it('rolls back a direct dependency written before a nonzero add outcome', async () => {
     const profileDir = await createProfile()
     const calls: string[] = []

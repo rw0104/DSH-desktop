@@ -10,7 +10,7 @@ export interface WorkspaceFolderDropActions {
   validateDirectory?(path: string): Promise<boolean>
 }
 
-type DropState = 'ready' | 'busy' | 'error'
+type DropState = 'ready' | 'busy' | 'invalid' | 'error'
 
 const COPY = {
   en: {
@@ -55,6 +55,18 @@ export function singleDroppedDirectory(transfer: DataTransfer): File | undefined
   return item.getAsFile() ?? undefined
 }
 
+/** Recognize one directory while it is still hovering and may not expose a File yet. */
+export function hasSingleDraggedDirectory(transfer: DataTransfer): boolean {
+  const items = Array.from(transfer.items).filter(item => item.kind === 'file')
+  if (items.length !== 1) return false
+  const item = items[0]
+  const entry = item?.webkitGetAsEntry()
+  if (entry !== null && entry !== undefined) return entry.isDirectory
+  // Chromium may withhold the File/entry until drop. Directory items carry no
+  // MIME type, which is the best hover-time signal Electron exposes.
+  return item?.type === ''
+}
+
 /** Resolve one disk-backed folder and adopt it through the standard Workspace service. */
 export async function adoptWorkspaceFolder(
   file: File,
@@ -74,6 +86,22 @@ function workspaceTarget(target: EventTarget | null): HTMLElement | undefined {
   if (!(target instanceof Element)) return undefined
   const element = target.closest(WORKSPACE_DROP_TARGET)
   return element instanceof HTMLElement ? element : undefined
+}
+
+/** Claim an operating-system file drag when its current hit target is the Workspace browser. */
+export function claimWorkspaceFileDrag(event: DragEvent): {
+  transfer: DataTransfer
+  target: HTMLElement
+} | undefined {
+  const transfer = event.dataTransfer
+  const target = workspaceTarget(event.target)
+  if (transfer === null || target === undefined || !hasFilePayload(transfer)) return undefined
+
+  // The attachment plugin also listens on document. Keep a file drag over
+  // the Workspace browser inside this target so its full-chat mask cannot
+  // compete with the sidebar feedback or overwrite the selected dropEffect.
+  event.preventDefault()
+  return { transfer, target }
 }
 
 /** Install desktop-only folder adoption on the upstream Workspace browser. */
@@ -120,35 +148,49 @@ export function installWorkspaceFolderDrop(
     show(target, 'error', message)
     feedbackTimer = setTimeout(() => { hide(target) }, 3_000)
   }
+  const showTemporaryInvalid = (target: HTMLElement, message: string): void => {
+    clearTimer()
+    show(target, 'invalid', message)
+    feedbackTimer = setTimeout(() => { hide(target) }, 3_000)
+  }
+
+  const showDragState = (target: HTMLElement, transfer: DataTransfer): void => {
+    const acceptable = !busy && hasSingleDraggedDirectory(transfer)
+    transfer.dropEffect = acceptable ? 'copy' : 'none'
+    if (!busy) show(target, acceptable ? 'ready' : 'invalid', acceptable ? copy().ready : copy().invalid)
+  }
+
+  const onDragEnter = (event: DragEvent): void => {
+    const owned = claimWorkspaceFileDrag(event)
+    if (owned === undefined) return
+    clearTimer()
+    showDragState(owned.target, owned.transfer)
+  }
 
   const onDragOver = (event: DragEvent): void => {
-    const transfer = event.dataTransfer
-    const target = workspaceTarget(event.target)
-    if (transfer === null || target === undefined || !hasFilePayload(transfer)) return
-    event.preventDefault()
-    const acceptable = !busy && singleDroppedDirectory(transfer) !== undefined
-    transfer.dropEffect = acceptable ? 'copy' : 'none'
-    if (acceptable) show(target, 'ready', copy().ready)
-    else if (!busy) hide(target)
+    const owned = claimWorkspaceFileDrag(event)
+    if (owned === undefined) return
+    event.stopImmediatePropagation()
+    showDragState(owned.target, owned.transfer)
   }
   const onDragLeave = (event: DragEvent): void => {
-    const target = workspaceTarget(event.target)
-    if (target === undefined || target !== active || busy) return
+    const owned = claimWorkspaceFileDrag(event)
+    if (owned === undefined || owned.target !== active || busy) return
+    const { target } = owned
     if (event.relatedTarget instanceof Node && target.contains(event.relatedTarget)) return
     hide(target)
   }
   const onDrop = (event: DragEvent): void => {
-    const transfer = event.dataTransfer
-    const target = workspaceTarget(event.target)
-    if (transfer === null || target === undefined || !hasFilePayload(transfer)) return
-    event.preventDefault()
-    event.stopPropagation()
+    const owned = claimWorkspaceFileDrag(event)
+    if (owned === undefined) return
+    event.stopImmediatePropagation()
+    const { transfer, target } = owned
     clearTimer()
     if (busy) return
 
     const file = singleDroppedDirectory(transfer)
     if (file === undefined) {
-      showTemporaryError(target, copy().invalid)
+      showTemporaryInvalid(target, copy().invalid)
       return
     }
     const bridge = bridgeWindow.__DSH_DESKTOP_FILE_PATH__
@@ -173,6 +215,7 @@ export function installWorkspaceFolderDrop(
   }
   const onDragEnd = (): void => { if (!busy) hide() }
 
+  document.addEventListener('dragenter', onDragEnter, true)
   document.addEventListener('dragover', onDragOver, true)
   document.addEventListener('dragleave', onDragLeave, true)
   document.addEventListener('drop', onDrop, true)
@@ -181,6 +224,7 @@ export function installWorkspaceFolderDrop(
     clearTimer()
     hide()
     style.remove()
+    document.removeEventListener('dragenter', onDragEnter, true)
     document.removeEventListener('dragover', onDragOver, true)
     document.removeEventListener('dragleave', onDragLeave, true)
     document.removeEventListener('drop', onDrop, true)

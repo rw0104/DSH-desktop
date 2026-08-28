@@ -1458,7 +1458,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deepseek-ai/dsh-client-ui-attachment@npm:0.1.1-rc.2, @deepseek-ai/dsh-client-ui-attachment@npm:^0.1.1-rc.2":
+"@deepseek-ai/dsh-client-ui-attachment@npm:0.1.1-rc.2":
   version: 0.1.1-rc.2
   resolution: "@deepseek-ai/dsh-client-ui-attachment@npm:0.1.1-rc.2"
   dependencies:
@@ -1470,6 +1470,21 @@ __metadata:
     "@deepseek-ai/dsh-client-ui-conversation": ^0.1.1-rc.2
     "@deepseek-ai/dsh-invariants": ^0.1.1-rc.2
   checksum: 10c0/c76524b71e30a3885513dbe8edd0a54e2430fe2247caef0cb86b1fb6e166d1d4c868b1b237f76c3bc3284f74db6ef8910b543185e5b2c465c0b853afa83636e6
+  languageName: node
+  linkType: hard
+
+"@deepseek-ai/dsh-client-ui-attachment@patch:@deepseek-ai/dsh-client-ui-attachment@npm%3A0.1.1-rc.2#./patches/dsh-client-ui-attachment@0.1.1-rc.2.patch::locator=deepseek-harness-desktop%40workspace%3A.":
+  version: 0.1.1-rc.2
+  resolution: "@deepseek-ai/dsh-client-ui-attachment@patch:@deepseek-ai/dsh-client-ui-attachment@npm%3A0.1.1-rc.2#./patches/dsh-client-ui-attachment@0.1.1-rc.2.patch::version=0.1.1-rc.2&hash=1b85bc&locator=deepseek-harness-desktop%40workspace%3A."
+  dependencies:
+    clsx: "npm:^2.0.0"
+  peerDependencies:
+    "@deepseek-ai/cordis": ^4.0.1
+    "@deepseek-ai/dsh-attachment": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-runtime": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-ui-conversation": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-invariants": ^0.1.1-rc.2
+  checksum: 10c0/e499c70ecfa9b673cf145122af2cc245c77b2ef478d27c3049f54fc66dc837acfe64b234d8ac718ad7e3bc86f14c3aab6fc7c8e96dbca6427ab77d5f3e6b6ccf
   languageName: node
   linkType: hard
 
@@ -1504,7 +1519,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deepseek-ai/dsh-client-ui-conversation@npm:0.1.1-rc.2, @deepseek-ai/dsh-client-ui-conversation@npm:^0.1.1-rc.2":
+"@deepseek-ai/dsh-client-ui-conversation@npm:0.1.1-rc.2":
   version: 0.1.1-rc.2
   resolution: "@deepseek-ai/dsh-client-ui-conversation@npm:0.1.1-rc.2"
   dependencies:
@@ -1535,6 +1550,40 @@ __metadata:
     "@deepseek-ai/dsh-tool-todo": ^0.1.1-rc.2
     "@deepseek-ai/dsh-tools": ^0.1.1-rc.2
   checksum: 10c0/1592fea37efff796a059e4da1d948fdab21bdbd28d3a084a92415e67d0757692dd4cbf58c706e7e84e2ebe69d87476f5ba2eb86c014feef6e27a5445196f5952
+  languageName: node
+  linkType: hard
+
+"@deepseek-ai/dsh-client-ui-conversation@patch:@deepseek-ai/dsh-client-ui-conversation@npm%3A0.1.1-rc.2#./patches/dsh-client-ui-conversation@0.1.1-rc.2.patch::locator=deepseek-harness-desktop%40workspace%3A.":
+  version: 0.1.1-rc.2
+  resolution: "@deepseek-ai/dsh-client-ui-conversation@patch:@deepseek-ai/dsh-client-ui-conversation@npm%3A0.1.1-rc.2#./patches/dsh-client-ui-conversation@0.1.1-rc.2.patch::version=0.1.1-rc.2&hash=e1693e&locator=deepseek-harness-desktop%40workspace%3A."
+  dependencies:
+    "@deepseek-ai/schemastery": "npm:^3.18.1"
+    clsx: "npm:^2.0.0"
+  peerDependencies:
+    "@deepseek-ai/cordis": ^4.0.1
+    "@deepseek-ai/dsh-agent": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-api-remotes": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-attachment": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-brand": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-connection": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-locale": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-runtime": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-ui-input-trigger": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-ui-layout": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-ui-settings": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-commands": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-compaction": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-goal": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-invariants": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-llm-retry": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-permission-presets": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-plan-mode": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-session-stats": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-settings": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-token-meter": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-tool-todo": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-tools": ^0.1.1-rc.2
+  checksum: 10c0/a411f28123686a7582ecd3d1a66fe831b7270478d451e4659f4ff6a149a20ca8b01daf854251723b584c9f1207961d827cfc7b97e4c3a2050ff1e0d24ab1e08a
   languageName: node
   linkType: hard
 
@@ -1835,7 +1884,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deepseek-ai/dsh-client-ui-settings-general@npm:^0.1.1-rc.2":
+"@deepseek-ai/dsh-client-ui-settings-general@npm:0.1.1-rc.2":
   version: 0.1.1-rc.2
   resolution: "@deepseek-ai/dsh-client-ui-settings-general@npm:0.1.1-rc.2"
   dependencies:
@@ -1852,6 +1901,26 @@ __metadata:
     "@deepseek-ai/dsh-invariants": ^0.1.1-rc.2
     "@deepseek-ai/dsh-settings": ^0.1.1-rc.2
   checksum: 10c0/7cb225d904f0c836f9525140be75cd751d6299decc025e4741bcf78793d2de0ec8b705dda601f2d8a453c65dabae42a8080118ea95a793f579e848dd757e7efe
+  languageName: node
+  linkType: hard
+
+"@deepseek-ai/dsh-client-ui-settings-general@patch:@deepseek-ai/dsh-client-ui-settings-general@npm%3A0.1.1-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-settings-general-npm-0.1.1-rc.2-ef120ba0cf.patch::locator=deepseek-harness-desktop%40workspace%3A.":
+  version: 0.1.1-rc.2
+  resolution: "@deepseek-ai/dsh-client-ui-settings-general@patch:@deepseek-ai/dsh-client-ui-settings-general@npm%3A0.1.1-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-settings-general-npm-0.1.1-rc.2-ef120ba0cf.patch::version=0.1.1-rc.2&hash=ef0022&locator=deepseek-harness-desktop%40workspace%3A."
+  dependencies:
+    "@deepseek-ai/schemastery": "npm:^3.18.1"
+    clsx: "npm:^2.0.0"
+  peerDependencies:
+    "@deepseek-ai/cordis": ^4.0.1
+    "@deepseek-ai/dsh-api-remotes": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-connection": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-locale": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-runtime": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-ui-settings": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-client-ui-sidebar": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-invariants": ^0.1.1-rc.2
+    "@deepseek-ai/dsh-settings": ^0.1.1-rc.2
+  checksum: 10c0/fe81242376384a3202b1b028ee123979f03b821430febcda3c452f82f796eedd2246de10cdb19a87dae715ea041c3146328c0c67b114d817b057440009c85bc3
   languageName: node
   linkType: hard
 

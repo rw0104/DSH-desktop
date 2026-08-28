@@ -128,7 +128,11 @@ function sendInstallError(res: ServerResponse, cause: unknown): void {
           : cause.code === 'verification-failed' ? 422
             : cause.code === 'operation-failed' ? 502
               : 500
-  sendJson(res, status, { error: cause.message, code: cause.code })
+  sendJson(res, status, {
+    error: cause.message,
+    code: cause.code,
+    ...(cause.details === undefined ? {} : { details: cause.details }),
+  })
 }
 
 function catalogMetadata(index: CatalogFullIndex): MarketCatalogMetadata {

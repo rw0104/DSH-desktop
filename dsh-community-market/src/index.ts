@@ -80,6 +80,7 @@ export function apply(ctx: Context): void {
             }
             return plugins.disabledPackageNames()
           },
+          logFailure: message => ctx.logger.error(message),
         },
       )
       installService = service

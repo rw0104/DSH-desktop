@@ -639,6 +639,57 @@ describe('published package surface', () => {
     expect(manifest.dependencies).not.toHaveProperty('@anionex/dsh-vision-toolkit')
   })
 
+  it('gives the Desktop settings section a dedicated display icon', () => {
+    const patchPath = './.yarn/patches/@deepseek-ai-dsh-client-ui-settings-general-npm-0.1.1-rc.2-ef120ba0cf.patch'
+    expect(workspaceManifest.resolutions).toMatchObject({
+      '@deepseek-ai/dsh-client-ui-settings-general@npm:0.1.1-rc.2': expect.stringContaining(patchPath),
+      '@deepseek-ai/dsh-client-ui-settings-general@npm:^0.1.1-rc.2': expect.stringContaining(patchPath),
+    })
+    const patch = readFileSync(new URL(patchPath, workspaceRoot), 'utf8')
+    const require = createRequire(new URL('package.json', packageRoot))
+    const webRequire = createRequire(require.resolve('@deepseek-ai/dsh-web-app/package.json'))
+    const installedClient = readFileSync(
+      webRequire.resolve('@deepseek-ai/dsh-client-ui-settings-general/client'),
+      'utf8',
+    )
+    for (const marker of [
+      'function IconDesktopSettings',
+      'if (id === "desktop")',
+      'M5 14h6M8 11.5V14',
+    ]) {
+      expect(patch).toContain(marker)
+      expect(installedClient).toContain(marker)
+    }
+  })
+
+  it('keeps the chat attachment drag mask outside the desktop Workspace drop target', () => {
+    const patchPath = './patches/dsh-client-ui-attachment@0.1.1-rc.2.patch'
+    const conversationPatchPath = './patches/dsh-client-ui-conversation@0.1.1-rc.2.patch'
+    expect(workspaceManifest.resolutions).toMatchObject({
+      '@deepseek-ai/dsh-client-ui-attachment@npm:0.1.1-rc.2': expect.stringContaining(patchPath),
+      '@deepseek-ai/dsh-client-ui-attachment@npm:^0.1.1-rc.2': expect.stringContaining(patchPath),
+      '@deepseek-ai/dsh-client-ui-conversation@npm:0.1.1-rc.2': expect.stringContaining(conversationPatchPath),
+      '@deepseek-ai/dsh-client-ui-conversation@npm:^0.1.1-rc.2': expect.stringContaining(conversationPatchPath),
+    })
+    const patch = readFileSync(new URL(patchPath, workspaceRoot), 'utf8')
+    const conversationPatch = readFileSync(new URL(conversationPatchPath, workspaceRoot), 'utf8')
+    const require = createRequire(new URL('package.json', packageRoot))
+    const webRequire = createRequire(require.resolve('@deepseek-ai/dsh-web-app/package.json'))
+    const installedClient = readFileSync(webRequire.resolve('@deepseek-ai/dsh-client-ui-attachment/client'), 'utf8')
+    const installedConversation = readFileSync(webRequire.resolve('@deepseek-ai/dsh-client-ui-conversation/client'), 'utf8')
+    for (const source of [patch, installedClient]) {
+      expect(source).toContain('[data-dsh-workspace-drop-target]')
+      expect(source).toContain('[data-dsh-conversation-drop-target]')
+      expect(source).toContain('data-dsh-chat-drop-overlay')
+      expect(source).toContain('workspaceDropTarget(event)')
+      expect(source).toContain('reset()')
+    }
+    for (const source of [conversationPatch, installedConversation]) {
+      expect(source).toContain('data-dsh-conversation-drop-target')
+      expect(source).toContain('position: "relative"')
+    }
+  })
+
   it('ships explicit native image capability controls in the upstream model settings client', () => {
     const require = createRequire(new URL('package.json', packageRoot))
     const webRequire = createRequire(require.resolve('@deepseek-ai/dsh-web-app/package.json'))

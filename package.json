@@ -1,6 +1,6 @@
 {
   "name": "deepseek-harness-desktop",
-  "version": "2.0.10",
+  "version": "2.0.11",
   "private": true,
   "description": "DSH Desktop product workspace",
   "license": "MIT",
@@ -26,6 +26,10 @@
     "@deepseek-ai/dsh-host-directory-picker-browse@npm:^0.1.1-rc.2": "patch:@deepseek-ai/dsh-host-directory-picker-browse@npm%3A0.1.1-rc.2#./patches/dsh-host-directory-picker-browse@0.1.1-rc.2.patch",
     "@deepseek-ai/dsh-client-ui-workspace@npm:0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-workspace@npm%3A0.1.1-rc.2#./patches/dsh-client-ui-workspace@0.1.1-rc.2-desktop.patch",
     "@deepseek-ai/dsh-client-ui-workspace@npm:^0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-workspace@npm%3A0.1.1-rc.2#./patches/dsh-client-ui-workspace@0.1.1-rc.2-desktop.patch",
+    "@deepseek-ai/dsh-client-ui-attachment@npm:0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-attachment@npm%3A0.1.1-rc.2#./patches/dsh-client-ui-attachment@0.1.1-rc.2.patch",
+    "@deepseek-ai/dsh-client-ui-attachment@npm:^0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-attachment@npm%3A0.1.1-rc.2#./patches/dsh-client-ui-attachment@0.1.1-rc.2.patch",
+    "@deepseek-ai/dsh-client-ui-conversation@npm:0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-conversation@npm%3A0.1.1-rc.2#./patches/dsh-client-ui-conversation@0.1.1-rc.2.patch",
+    "@deepseek-ai/dsh-client-ui-conversation@npm:^0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-conversation@npm%3A0.1.1-rc.2#./patches/dsh-client-ui-conversation@0.1.1-rc.2.patch",
     "@deepseek-ai/dsh-client-ui-trajectory@npm:0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-trajectory@npm%3A0.1.1-rc.2#./patches/dsh-client-ui-trajectory@0.1.1-rc.2.patch",
     "@deepseek-ai/dsh-client-ui-trajectory@npm:^0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-trajectory@npm%3A0.1.1-rc.2#./patches/dsh-client-ui-trajectory@0.1.1-rc.2.patch",
     "@deepseek-ai/dsh-client-ui-settings-models@npm:0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-settings-models@npm%3A0.1.1-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-settings-models-npm-0.1.1-rc.2-5348824733.patch",
@@ -36,7 +40,9 @@
     "@deepseek-ai/dsh-host-apiproxy@npm:0.1.1-rc.2": "patch:@deepseek-ai/dsh-host-apiproxy@npm%3A0.1.1-rc.2#./.yarn/patches/@deepseek-ai-dsh-host-apiproxy-npm-0.1.1-rc.2-422605ee12.patch",
     "@deepseek-ai/dsh-host-apiproxy@npm:^0.1.1-rc.2": "patch:@deepseek-ai/dsh-host-apiproxy@npm%3A0.1.1-rc.2#./.yarn/patches/@deepseek-ai-dsh-host-apiproxy-npm-0.1.1-rc.2-422605ee12.patch",
     "@deepseek-ai/dsh-client-ui-model-selection@npm:^0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-model-selection@npm%3A0.1.1-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-model-selection-npm-0.1.1-rc.2-17e32136a6.patch",
-    "@deepseek-ai/dsh-client-ui-deliverables@npm:^0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-deliverables@npm%3A0.1.1-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-deliverables-npm-0.1.1-rc.2-a3ab92163a.patch"
+    "@deepseek-ai/dsh-client-ui-deliverables@npm:^0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-deliverables@npm%3A0.1.1-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-deliverables-npm-0.1.1-rc.2-a3ab92163a.patch",
+    "@deepseek-ai/dsh-client-ui-settings-general@npm:0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-settings-general@npm%3A0.1.1-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-settings-general-npm-0.1.1-rc.2-ef120ba0cf.patch",
+    "@deepseek-ai/dsh-client-ui-settings-general@npm:^0.1.1-rc.2": "patch:@deepseek-ai/dsh-client-ui-settings-general@npm%3A0.1.1-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-settings-general-npm-0.1.1-rc.2-ef120ba0cf.patch"
   },
   "dependenciesMeta": {
     "@deepseek-ai/dsh-subprocess-local": {

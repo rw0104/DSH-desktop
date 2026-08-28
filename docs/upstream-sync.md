@@ -136,3 +136,45 @@ v2.0.9 在不修改 `deepseek-harness/` 子模块的前提下，对三个已发�
 针对 ProducedFiles 的检索结果：参考仓库没有 `ProducedFiles`、`copyAbsolutePath`、`copyTextContent` 或产物 `contextmenu` 实现；只有托盘原生 context menu。因此下一期应复用官方 Harness Web UI 的 `@deepseek-ai/dsh-client-ui-primitives/Menu`，只借鉴参考仓库的 `data-slot`、aria/focus 和静态 markup 测试风格。
 
 详细实施与验收见 [`2026-08-26_development-produced-files-context-menu-plan-report.md`](2026-08-26_development-produced-files-context-menu-plan-report.md)。
+
+## 2026-08-27 上游复核与选择性跟进
+
+本轮在代理 `http://127.0.0.1:10808` 下重新执行三条权威 Git remote、tag、npm registry 和本地 pin 审计。直连 GitHub 仍会被本机网络重置，因此所有 Git 结果均以代理命令回读为准。
+
+| 组件 | 最新远端/registry 信号 | 与本产品的差异 | 决策 |
+| --- | --- | --- | --- |
+| 官方 Harness | `master` / `dsh-v0.1.1-rc.2` / `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；npm `latest` 和 `next` 均为 `0.1.1-rc.2`，修改时间 `2026-08-21T12:58:57.438Z` | 本地子模块仍为 `dsh-v0.1.1-rc.2` / `b150a551…`；根工作区所有 `@deepseek-ai/dsh-*` 仍为 `0.1.1-rc.2` | 没有上游更新；不改 submodule、package family 或其 pin |
+| Better Sidebar | `main` `20da6479f14689db126a3f147670220a70dfbf6b`；最新发布 tag/npm 仍为 `v0.16.1` / `f9153dfc1ce47cf43445c1b351ee3ae47b4ad9f1` / `0.16.1`，修改时间 `2026-08-25T03:22:03.832Z` | `main` 比 `v0.16.1` 多出未发布的 `0.17.0` pinned-terminal 功能（10 个提交）；本产品依赖仍为已审计 `0.16.1` | 暂缓升级。未发布 API/状态迁移未经过本产品 patch、peer closure、完整 check 和 packaged smoke，不把 `main` 当可发布依赖 |
+| 桌面参考 | `master` `1eb398d78108de1303ce29b1aeaf70aaf96acee4`（2026-08-27）；最新 tag `v2.0.3` `681ba66091fc5b1e827650137f69b3ee4c435922` | 参考仓库继续包含 setup/recovery/market/PTY 等产品差异；其根 README、版本和发布资产不属于本 fork | 选择性移植，不整体 merge，不作为运行时依赖 |
+
+### 本轮可兼容跟进
+
+在不修改 `deepseek-harness/` 子模块、不覆盖根 README 的前提下，工作区已移植并通过聚焦验证的参考改进为：
+
+- Community Market 使用本地 storefront 图标；Desktop 设置导航使用独立显示器图标。图标仍由本产品维护，未把参考仓库产品文件带入。
+- Package manager 失败保留有界 stdout/stderr 尾部和受限异常原因，写入 Desktop 日志，并通过 loopback API 返回给失败弹窗；弹窗展示 Host 推导的精确 `dsh plugin add` 命令并提供 DSH Terminal 入口，不重试已消费的确认 token。
+- Workspace 文件拖拽在捕获阶段识别尚未暴露 `File` 的目录，并优先声明 Workspace drop target；官方附件遮罩通过两个 rc2 Yarn patch 避开该区域，解决 Sidebar/聊天拖拽遮罩冲突。
+
+新增/复用的下游 patch：
+
+- `patches/dsh-client-ui-attachment@0.1.1-rc.2.patch`
+- `patches/dsh-client-ui-conversation@0.1.1-rc.2.patch`
+- `.yarn/patches/@deepseek-ai-dsh-client-ui-settings-general-npm-0.1.1-rc.2-ef120ba0cf.patch`
+
+当前这些改动尚未形成新的产品 release，也没有修改产品版本号。根 `corepack yarn install --immutable`、完整 `corepack yarn check` 和 Windows `package:dir` unpacked smoke 已在本轮通过；安装器 verifier 留给明确的 release 批次执行。若后续 release 门禁失败，回滚点是本轮工作区改动及上述三个 patch，不触碰官方 submodule pin。
+
+### 本轮审计命令与回读摘要
+
+```powershell
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/deepseek-ai/deepseek-harness.git HEAD
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --tags --refs https://github.com/deepseek-ai/deepseek-harness.git
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/omdsh-dev/DSH-better-sidebar.git HEAD
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --tags --refs https://github.com/omdsh-dev/DSH-better-sidebar.git
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/anywhere-labs/deepseek-harness-desktop.git HEAD
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --tags --refs https://github.com/anywhere-labs/deepseek-harness-desktop.git
+npm view @deepseek-ai/dsh version dist-tags time.modified --json
+npm view dsh-better-sidebar version dist-tags time.modified peerDependencies --json
+git submodule status -- deepseek-harness
+```
+
+本地 `corepack yarn install --immutable` 已生成并验证对应 patch locator；聚焦结果为 Market `80` 项、桌面拖拽/包面 `43` 项全部通过，两个 owned workspace typecheck 全部通过。完整 `corepack yarn check` 结果为 Market `270` 项、桌面 `707` 项（`11` 项跳过）通过，运行时闭包 `201` 个 first-party 节点闭合；Windows unpacked smoke 已生成 `dsh-plugin-desktop/dist/win-unpacked` 并完成 Electron-builder 处理。Sidebar `main` 的 pinned-terminal 设计、参考仓库其余未发布提交以及官方 Harness 新 tag（当前不存在）保留在本台账中，下一轮必须重新审计后才能进入 release。
