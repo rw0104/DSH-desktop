@@ -609,12 +609,12 @@ describe('published package surface', () => {
 
   it('pins the maintained latest Better Sidebar as the product Workbench', () => {
     expect(manifest.dependencies?.['dsh-better-sidebar'])
-      .toBe('0.16.1')
+      .toBe('0.17.1')
     expect(manifest.dependencies?.cordis).toBe('4.0.0-rc.8')
     expect(manifest.dependencies?.['react-dom']).toBe('18.3.1')
   })
 
-  it('ships the audited Better Sidebar 0.16.1 contracts and bounded Git recovery', () => {
+  it('ships the audited Better Sidebar 0.17.1 contracts and pinned-terminal fixes', () => {
     const require = createRequire(new URL('package.json', packageRoot))
     const sidebarManifestPath = require.resolve('dsh-better-sidebar/package.json')
     const sidebarManifest = JSON.parse(readFileSync(sidebarManifestPath, 'utf8')) as {
@@ -625,12 +625,28 @@ describe('published package surface', () => {
     const client = readFileSync(require.resolve('dsh-better-sidebar/client'), 'utf8')
     const host = readFileSync(require.resolve('dsh-better-sidebar'), 'utf8')
     const bundlePatch = readFileSync(join(sidebarRoot, 'cordis.patch.yml'), 'utf8')
+    const serviceSource = readFileSync(join(sidebarRoot, 'src/client/service.ts'), 'utf8')
+    const pinnedSource = readFileSync(join(sidebarRoot, 'src/client/pinned.ts'), 'utf8')
+    const stateSource = readFileSync(join(sidebarRoot, 'src/client/state.ts'), 'utf8')
+    const terminalLinksSource = readFileSync(join(sidebarRoot, 'src/client/terminal-links.ts'), 'utf8')
+    const terminalChunk = readFileSync(join(sidebarRoot, 'lib/client-terminal.js'), 'utf8')
+    const hostSource = readFileSync(join(sidebarRoot, 'src/index.ts'), 'utf8')
 
-    expect(sidebarManifest.version).toBe('0.16.1')
+    expect(sidebarManifest.version).toBe('0.17.1')
     expect(sidebarManifest.peerDependencies).not.toHaveProperty('cordis')
+    expect(sidebarManifest.peerDependencies).not.toHaveProperty('@deepseek-ai/dsh-client-runtime')
+    expect(require.resolve('@deepseek-ai/dsh-client-runtime/package.json')).toBeTruthy()
+    expect(serviceSource).toContain("export const SIDEBAR_SERVICE_VERSION = '0.17.1'")
     expect(client).toContain('"floatWindows"')
     expect(client).toContain('statusTruncated')
+    expect(client).toContain('pinned:')
+    expect(terminalChunk).toContain('registerLinkProvider')
+    expect(pinnedSource).toContain('export function collectPinnedTabs(')
+    expect(stateSource).toContain('getSessionStates(): ReadonlyMap<string, SidebarState>')
+    expect(terminalLinksSource).toContain("const OPENABLE_SCHEMES = new Set(['http:', 'https:'])")
     expect(host).toContain('name: "sidebar_open"')
+    expect(hostSource.indexOf("ctx.get('sessionPersistence')"))
+      .toBeLessThan(hostSource.indexOf('return process.cwd()'))
     expect(bundlePatch).toContain("id: better-sidebar")
     expect(bundlePatch).toContain("name: 'dsh-better-sidebar'")
   })
