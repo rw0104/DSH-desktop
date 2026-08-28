@@ -96,11 +96,13 @@ Ordinary users can start with the [user guide](docs/user-guide.en.md); the devel
 
 Plugins are extensions that add capabilities to DSH — models, tools, interfaces, and workflows can all be plugins, combined like building blocks.
 
-Models that explicitly declare image input use the native DeepSeek Harness attachment path. Vision Toolkit is fully removed from the v2.0.11 product and installer; native vision models do not need an additional visual plugin.
+Models that explicitly declare image input use the native DeepSeek Harness attachment path. Vision Toolkit is fully removed from the v2.0.12 product and installer; native vision models do not need an additional visual plugin.
 
-DSH Desktop v2.0.11 pins `dsh-better-sidebar@0.16.1` as its maintained workbench for files, editing, Git, terminals, browser tabs, subagents, and background tasks. Ordinary third-party plugins remain user-installable and removable outside this fixed product composition.
+DSH Desktop v2.0.12 pins `dsh-better-sidebar@0.17.1` as its maintained workbench for files, editing, Git, terminals, browser tabs, subagents, and background tasks. Workspace/global pinned terminals survive session switches, terminal links open through an http(s)-only Ctrl/Cmd+Click path, and detached sessions recover their persisted working directory. Ordinary third-party plugins remain user-installable and removable outside this fixed product composition.
 
 The Community Market now preserves bounded package-manager diagnostics in failure dialogs, while Workspace folder drags are isolated from the chat attachment mask.
+
+The About surface reads a Host-authoritative update snapshot and event stream. It shows real downloaded bytes, keeps verification distinct from transfer completion, and reports ready-to-install only after integrity and PE/DMG validation succeeds.
 
 DSH Desktop does not modify upstream source, and it is not a fixed, hardcoded shell. A pinned upstream DeepSeek Harness version runs unchanged; the desktop shell itself — the window, tray, terminal, updates, and work profiles — integrates as a DSH plugin through the plugin mechanism provided by DeepSeek Harness. From the core agent to the desktop shell, the whole product follows the same "everything is a plugin" rule: plugins compatible with the pinned upstream version can be used, while desktop capabilities are composed, replaced, and evolved in the same way.
 

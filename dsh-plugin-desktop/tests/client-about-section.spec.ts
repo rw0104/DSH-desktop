@@ -11,7 +11,7 @@ describe('desktop About section', () => {
   it('renders product links as fixed bridge actions instead of browser anchors', () => {
     const html = renderToStaticMarkup(createElement(DesktopAboutSection, {
       about: { t: (key: string) => key },
-      productVersion: '2.0.11',
+      productVersion: '2.0.12',
       checkForUpdates: async () => {},
       readUpdateState: async () => ({ generation: 1, revision: 0, phase: 'idle' }),
       subscribeUpdateState: () => () => {},
