@@ -238,7 +238,7 @@
     "@deepseek-ai/schemastery": "^3.18.1",
     "adm-zip": "^0.6.0",
     "cordis": "4.0.0-rc.8",
-    "dsh-better-sidebar": "0.16.1",
+    "dsh-better-sidebar": "0.17.1",
     "dsh-community-market": "0.1.0-dev.0",
     "koffi": "3.1.5",
     "node-addon-require-builtin": "^0.1.4",

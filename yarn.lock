@@ -8574,9 +8574,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dsh-better-sidebar@npm:0.16.1":
-  version: 0.16.1
-  resolution: "dsh-better-sidebar@npm:0.16.1"
+"dsh-better-sidebar@npm:0.17.1":
+  version: 0.17.1
+  resolution: "dsh-better-sidebar@npm:0.17.1"
   dependencies:
     "@codemirror/commands": "npm:^6.10.4"
     "@codemirror/lang-cpp": "npm:^6.0.3"
@@ -8612,7 +8612,6 @@ __metadata:
     "@deepseek-ai/cordis": ^4.0.1
     "@deepseek-ai/dsh-agent": ^0.1.0-rc.8
     "@deepseek-ai/dsh-client-locale": ^0.1.0-rc.8
-    "@deepseek-ai/dsh-client-runtime": ^0.1.0-rc.8
     "@deepseek-ai/dsh-client-ui-conversation": ^0.1.0-rc.8
     "@deepseek-ai/dsh-client-ui-primitives": ^0.1.0-rc.8
     "@deepseek-ai/dsh-client-ui-settings": ^0.1.0-rc.8
@@ -8630,7 +8629,7 @@ __metadata:
   peerDependenciesMeta:
     "@huanlin/dsh-plugin-better-locale":
       optional: true
-  checksum: 10c0/c2d417023ad29f9d0eef9e15c49c9bdc744b1341bb62ab6ad07aa9b1c1e8f4226a70dfaa6c8b4db8d39e29aa05ad374efc44786e7209c9aac0864a52bcaa79cb
+  checksum: 10c0/eecfe676ee90c1916554c8514b6066325269fb6a8b5d50fba23f6c3fed0e341ea380e3588b3c6db0ab58f01b8a01d00fcacc26146c099ef169cdde96bf83d63a
   languageName: node
   linkType: hard
 
@@ -8962,7 +8961,7 @@ __metadata:
     "@types/react-dom": "npm:^18"
     adm-zip: "npm:^0.6.0"
     cordis: "npm:4.0.0-rc.8"
-    dsh-better-sidebar: "npm:0.16.1"
+    dsh-better-sidebar: "npm:0.17.1"
     dsh-community-market: "npm:0.1.0-dev.0"
     electron: "npm:43.4.0"
     electron-builder: "npm:26.15.7"
