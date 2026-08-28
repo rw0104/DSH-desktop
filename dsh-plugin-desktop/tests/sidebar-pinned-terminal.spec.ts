@@ -49,7 +49,7 @@ describe('Better Sidebar 0.17.1 pinned terminal consumer contract', () => {
       { id: 'terminal:bad-cwd', type: 'terminal', title: 'Bad cwd' },
       { id: 'editor:bad-pin', type: 'editor', title: 'Editor' },
     ))) as SidebarState
-    const tabs = allLeaves(legacy.splits).flatMap(leaf => leaf.tabs) as Array<SidebarTab & { pin?: unknown }>
+    const tabs = allLeaves(legacy.splits).flatMap(leaf => leaf.tabs) as unknown as Array<Record<string, unknown>>
     tabs.find(value => value.id === 'terminal:bad-scope')!.pin = { scope: 'session', homeCwd: 'C:\\work' }
     tabs.find(value => value.id === 'terminal:bad-cwd')!.pin = { scope: 'workspace', homeCwd: 42 }
     tabs.find(value => value.id === 'editor:bad-pin')!.pin = { scope: 'global' }
