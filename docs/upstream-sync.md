@@ -46,6 +46,15 @@ git submodule status -- deepseek-harness
 - `latest.yml` 远端资产为 `342` bytes，GitHub digest `sha256:79d810263cf9506d8410c3e0ff9dd3eae210a9b7aa4fe35d8f7a8667f1ab4ad1`，与本地一致。
 - Release 只包含上述两个资产；未上传 `win-unpacked`、旧 Setup、NSIS 中间压缩包、builder debug、缓存、诊断 Profile 或 `docs/local/` 开发资料。
 
+## 2026-08-29 v2.0.14 Profile 同步热修与本地构建结果
+
+- `v2.0.13` 发布后最终审查发现：Profile 私有值能驱动 Host 启动，但未同步回 settings service，设置页可能仍显示共享旧值。没有覆盖已发布的 tag/资产；改为立即发布不可变的新版本 `v2.0.14`。
+- 新 reconciliation contract 区分首次导入与已有私有状态：首次导入只保存私有文件；已有私有状态则同步 `mode`、`port`、`logLevel` 到 settings service，并保持私有状态为权威源。聚焦测试覆盖两条路径。
+- `corepack yarn install --immutable` 通过；完整 `corepack yarn check` 为 Market `270`、Desktop `734`（`11` skipped）、closure `201`、licenses `691`；Windows preflight `210`、closure `201`。
+- 最终构建显式复用 `node_modules/electron/dist`，没有外网下载；installer verifier 与 `2.0.14` unpacked quit probe 通过。
+- Setup `DSH-Desktop-2.0.14-x64-Setup.exe` 为 `330,862,733` bytes，SHA-256 `423B00F77911C8EAFDC3EF711B2DE0804FD08C2FC8D23D82058F8927C5E57E53`，Authenticode `NotSigned`。
+- `latest.yml` 为 `342` bytes，SHA-256 `346513C34E023ADF6EFC7D36472ECF0ED5328B3F0D300522F17AAB3C3228F41D`；unpacked 主程序为 `225,552,896` bytes，SHA-256 `AF08F57C3212BF48BD402CDD1647D469564E6640476FA27E626ED9E6B8DAA2DA`，FileVersion `2.0.14`，ProductVersion `2.0.14.0`，Authenticode `NotSigned`。
+
 ## 升级准入
 
 只有在以下证据齐全后，才能把上游新版本放进 release：
