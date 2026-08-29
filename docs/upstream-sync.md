@@ -25,6 +25,19 @@ npm view dsh-better-sidebar version
 git submodule status -- deepseek-harness
 ```
 
+## 2026-08-29 v2.0.13 选择性接入与本地构建结果
+
+- 参考桌面 `v2.0.4` 只作为证据源；本产品实现 Windows installer quit handoff 和 `mode` / `port` / `logLevel` Profile 隔离，没有 cherry-pick 参考产品提交。
+- 安装器通过专用 `--dsh-desktop-installer-quit` 进入现有 shutdown coordinator，等待 30 秒后才允许用户确认 scoped fallback；进程探针严格比较 `$INSTDIR\DSH Desktop.exe` 规范化绝对路径，不匹配安装目录 helper 或其他目录同名程序。
+- Profile 偏好存储为 Electron user-data 下 `profile-preferences/<sha256(Profile directory)>/state.json`，只含 Desktop 三个字段；strict schema、bounded read、symlink 检查、private mode、原子替换和 shutdown flush 均有测试。窗口、更新、日志目录等设备级状态不进入该文件。
+- 保留 `nsis.useZip=true` 和 electron-builder 默认恢复语义；参考 7z 原地解压与 legacy uninstaller code `2` 放宽未接入。同机 7z payload 实验在 3 分钟进度门禁内未形成可用归档并被终止，未让对比任务进入小时级等待。
+- `corepack yarn install --immutable` 通过；完整 `corepack yarn check` 为 Market `270` 项、Desktop `733` 项（`11` skipped）、runtime closure `201`、production licenses `691`；Windows preflight `210` 项、closure `201`。
+- 首次最终打包因外网 Electron 下载 `ETIMEDOUT` 退出；按仓库缓存规则改用已经安装的 `node_modules/electron/dist`，没有下载或复制 Electron archive 到仓库。installer verifier 与最终 `2.0.13` unpacked quit probe 通过。
+- 机器已有用户安装 `D:\DSH Desktop`，隔离 installer upgrade smoke 按安全前置条件拒绝执行；本批次没有卸载、覆盖或终止该安装。此限制在 Release 说明中公开记录。
+- 最终 Setup `DSH-Desktop-2.0.13-x64-Setup.exe` 为 `330,862,178` bytes，SHA-256 `A38D003CE95EE77BD18A09413A62FE81DA917297EE3702744B668051EDFFAC9F`，Authenticode `NotSigned`。
+- `latest.yml` 为 `342` bytes，SHA-256 `79D810263CF9506D8410C3E0FF9DD3EAE210A9B7AA4FE35D8F7A8667F1AB4AD1`，其中 SHA-512 与本地 Setup 一致。unpacked 主程序为 `225,552,896` bytes，SHA-256 `86DE8FC4DDF5DC8A71898606D96955C38D22886DA527733530A680BA9A1C1E81`，FileVersion `2.0.13`，ProductVersion `2.0.13.0`，Authenticode `NotSigned`。
+- Harness gitlink 仍为 `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`，正式 npm family 仍为 `0.1.1-rc.2`，Better Sidebar 仍为 `0.17.1`；没有混入 alpha runtime、Remote gateway 或参考 README/版本服务。
+
 ## 升级准入
 
 只有在以下证据齐全后，才能把上游新版本放进 release：
