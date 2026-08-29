@@ -38,6 +38,14 @@ git submodule status -- deepseek-harness
 - `latest.yml` 为 `342` bytes，SHA-256 `79D810263CF9506D8410C3E0FF9DD3EAE210A9B7AA4FE35D8F7A8667F1AB4AD1`，其中 SHA-512 与本地 Setup 一致。unpacked 主程序为 `225,552,896` bytes，SHA-256 `86DE8FC4DDF5DC8A71898606D96955C38D22886DA527733530A680BA9A1C1E81`，FileVersion `2.0.13`，ProductVersion `2.0.13.0`，Authenticode `NotSigned`。
 - Harness gitlink 仍为 `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`，正式 npm family 仍为 `0.1.1-rc.2`，Better Sidebar 仍为 `0.17.1`；没有混入 alpha runtime、Remote gateway 或参考 README/版本服务。
 
+## 2026-08-29 v2.0.13 部署结果
+
+- 远端 `main` 与 annotated tag `v2.0.13` 均解引用到本地安装包证据提交 `fd2ef11bd25aeacb57928a42ab3566dfec77d86c`；tag object 为 `b65e530bdfa5bce06babdd3350b76f21f6157cb7`。
+- GitHub Release `v2.0.13` 于 `2026-08-29T14:07:19Z` 发布为 Latest，非 draft、非 prerelease：<https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.13>。
+- Setup 远端资产为 `330,862,178` bytes，GitHub digest `sha256:a38d003ce95ee77bd18a09413a62fe81da917297ee3702744b668051edffac9f`，与本地一致。
+- `latest.yml` 远端资产为 `342` bytes，GitHub digest `sha256:79d810263cf9506d8410c3e0ff9dd3eae210a9b7aa4fe35d8f7a8667f1ab4ad1`，与本地一致。
+- Release 只包含上述两个资产；未上传 `win-unpacked`、旧 Setup、NSIS 中间压缩包、builder debug、缓存、诊断 Profile 或 `docs/local/` 开发资料。
+
 ## 升级准入
 
 只有在以下证据齐全后，才能把上游新版本放进 release：
