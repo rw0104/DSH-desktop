@@ -96,9 +96,9 @@ Ordinary users can start with the [user guide](docs/user-guide.en.md); the devel
 
 Plugins are extensions that add capabilities to DSH — models, tools, interfaces, and workflows can all be plugins, combined like building blocks.
 
-Models that explicitly declare image input use the native DeepSeek Harness attachment path. Vision Toolkit is fully removed from the v2.0.12 product and installer; native vision models do not need an additional visual plugin.
+Models that explicitly declare image input use the native DeepSeek Harness attachment path. Vision Toolkit is fully removed from the v2.0.13 product and installer; native vision models do not need an additional visual plugin.
 
-DSH Desktop v2.0.12 pins `dsh-better-sidebar@0.17.1` as its maintained workbench for files, editing, Git, terminals, browser tabs, subagents, and background tasks. Workspace/global pinned terminals survive session switches, terminal links open through an http(s)-only Ctrl/Cmd+Click path, and detached sessions recover their persisted working directory. Ordinary third-party plugins remain user-installable and removable outside this fixed product composition.
+DSH Desktop v2.0.13 pins `dsh-better-sidebar@0.17.1` as its maintained workbench for files, editing, Git, terminals, browser tabs, subagents, and background tasks. Workspace/global pinned terminals survive session switches, terminal links open through an http(s)-only Ctrl/Cmd+Click path, and detached sessions recover their persisted working directory. Ordinary third-party plugins remain user-installable and removable outside this fixed product composition.
 
 The Community Market now preserves bounded package-manager diagnostics in failure dialogs, while Workspace folder drags are isolated from the chat attachment mask.
 
