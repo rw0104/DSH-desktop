@@ -106,6 +106,12 @@ export interface DesktopStartupSettings {
   port: number
 }
 
+/** Profile-scoped startup values layered over the shared legacy document. */
+export interface DesktopStartupSettingsOverride {
+  mode?: DesktopShellMode
+  port?: number
+}
+
 /**
  * Read Desktop startup settings from one parsed settings document.
  * @param document - untrusted settings document root.
@@ -450,6 +456,7 @@ export function prepareDesktopProfile(
   platform: NodeJS.Platform = process.platform,
   profileName: string = DESKTOP_PROFILE_NAME,
   pluginStatePath?: string,
+  startupSettingsOverride?: DesktopStartupSettingsOverride,
 ): PreparedDesktopProfile {
   const profileDir = profileName === DESKTOP_PROFILE_NAME
     ? ensureDesktopProfile(home)
@@ -505,7 +512,9 @@ export function prepareDesktopProfile(
     dshHome: home,
     ...rowConfig(settings),
   } as SettingsFileConfig)
-  const { mode, port } = readDesktopStartupSettings(settingsConfig)
+  const fileSettings = readDesktopStartupSettings(settingsConfig)
+  const mode = startupSettingsOverride?.mode ?? fileSettings.mode
+  const port = startupSettingsOverride?.port ?? fileSettings.port
   patches.push({
     id: 'settings',
     config: settingsConfig,

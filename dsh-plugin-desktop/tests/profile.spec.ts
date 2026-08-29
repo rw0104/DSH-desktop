@@ -364,6 +364,26 @@ describe('desktop profile composition', {
     expect(rows.find(row => row.id === 'ui-conversation')?.disabled).toBe(false)
   })
 
+  it('layers validated Profile startup values over the legacy shared settings document', () => {
+    const home = temporaryHome()
+    writeFileSync(join(home, 'settings.yaml'), 'dsh-desktop:\n  mode: advanced\n  port: 43189\n')
+
+    const prepared = prepareDesktopProfile(undefined, home, 'darwin', 'desktop', undefined, {
+      mode: 'compatibility',
+      port: 43190,
+    })
+    const rows = composeEntries([prepared.patches])
+
+    expect(prepared.mode).toBe('compatibility')
+    expect(prepared.port).toBe(43_190)
+    expect(rows.find(row => row.id === 'desktop-shell')).toEqual(expect.objectContaining({
+      config: expect.objectContaining({ mode: 'compatibility', port: 43_190 }),
+    }))
+    expect(rows.find(row => row.id === 'webserver')).toEqual(expect.objectContaining({
+      config: { host: '127.0.0.1', port: 43_190 },
+    }))
+  })
+
   it('reads JSON settings and defaults an absent desktop namespace to compatibility', () => {
     const home = temporaryHome()
     const path = join(home, 'desktop-settings.json')

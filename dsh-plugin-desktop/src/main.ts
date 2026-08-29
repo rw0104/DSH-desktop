@@ -14,6 +14,12 @@ import {
 import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
+import { isDesktopInstallerQuitRequest } from './desktop-installer-quit.ts'
+import {
+  readDesktopProfilePreferences,
+  writeDesktopProfilePreferences,
+  type DesktopProfilePreferences,
+} from './profile-preferences.ts'
 import {
   installDesktopDshRuntime,
   installDesktopPnpmRuntime,
@@ -210,6 +216,10 @@ async function start(): Promise<void> {
     app.quit()
     return
   }
+  if (isDesktopInstallerQuitRequest(process.argv, process.platform)) {
+    app.quit()
+    return
+  }
 
   let profileStartup: DesktopProfileStartup | undefined
   let shutdown: DesktopShutdown | undefined
@@ -362,7 +372,11 @@ async function start(): Promise<void> {
     }
   }
 
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, argv) => {
+    if (isDesktopInstallerQuitRequest(argv, process.platform)) {
+      requestQuit(0)
+      return
+    }
     if (startupRecoveryWindow !== undefined) startupRecoveryWindow.show()
     else runtime.show()
   })
@@ -420,6 +434,8 @@ async function start(): Promise<void> {
     profileStartup = beginDesktopProfileStartup(selectionStatePath, homeDir)
     const activeProfileName = profileStartup.profileName
     const activeProfileDir = resolveProfileDir(activeProfileName, homeDir)
+    const profilePreferencesUserDataDir = app.getPath('userData')
+    const storedProfilePreferences = readDesktopProfilePreferences(profilePreferencesUserDataDir, activeProfileDir)
     startupRecoveryConfigurationPaths = {
       profilePatch: join(activeProfileDir, PROFILE_PATCH_FILENAME),
       profileManifest: join(activeProfileDir, 'package.json'),
@@ -494,6 +510,10 @@ async function start(): Promise<void> {
       process.platform,
       activeProfileName,
       pluginManagementStatePath,
+      storedProfilePreferences === undefined ? undefined : {
+        mode: storedProfilePreferences.mode,
+        port: storedProfilePreferences.port,
+      },
     )
     startupStage = 'runtime-bootstrap'
     lifecycleRecorder.transitionStartupStage(startupStage)
@@ -585,10 +605,37 @@ async function start(): Promise<void> {
       throw cause
     })
     generation.bindHost(ctx)
-    fileExporter?.setThreshold((ctx.settings.get(DESKTOP_SETTINGS_NAMESPACE) as DesktopSettings | undefined)?.logLevel ?? 'info')
+    const resolvedDesktopSettings = ctx.settings.get(DESKTOP_SETTINGS_NAMESPACE) as DesktopSettings | undefined
+    const initialProfilePreferences: DesktopProfilePreferences = {
+      mode: prepared.mode,
+      port: prepared.port,
+      logLevel: storedProfilePreferences?.logLevel ?? resolvedDesktopSettings?.logLevel ?? 'info',
+    }
+    if (storedProfilePreferences === undefined
+      || storedProfilePreferences.mode !== initialProfilePreferences.mode
+      || storedProfilePreferences.port !== initialProfilePreferences.port
+      || storedProfilePreferences.logLevel !== initialProfilePreferences.logLevel) {
+      await ctx.settings.update(DESKTOP_SETTINGS_NAMESPACE, initialProfilePreferences)
+      await writeDesktopProfilePreferences(profilePreferencesUserDataDir, activeProfileDir, initialProfilePreferences)
+    }
+    let currentProfilePreferences = initialProfilePreferences
+    let profilePreferencesWriteTail: Promise<unknown> = Promise.resolve()
+    const enqueueProfilePreferencesWrite = (next: DesktopProfilePreferences): void => {
+      currentProfilePreferences = next
+      profilePreferencesWriteTail = profilePreferencesWriteTail
+        .then(() => writeDesktopProfilePreferences(profilePreferencesUserDataDir, activeProfileDir, currentProfilePreferences))
+        .catch(cause => { electronLogger.error(`dsh-plugin-desktop: failed to persist Profile preferences: ${cause instanceof Error ? cause.message : String(cause)}`) })
+    }
+    ctx.effect(
+      () => async () => { await profilePreferencesWriteTail },
+      'dsh-plugin-desktop: flush Profile preference writes',
+    )
+    fileExporter?.setThreshold(initialProfilePreferences.logLevel)
     ctx.on('settings/updated', (namespace, next) => {
       if (namespace !== DESKTOP_SETTINGS_NAMESPACE) return
-      fileExporter?.setThreshold((next as DesktopSettings).logLevel)
+      const settings = next as DesktopSettings
+      fileExporter?.setThreshold(settings.logLevel)
+      enqueueProfilePreferencesWrite({ mode: settings.mode, port: settings.port, logLevel: settings.logLevel })
     })
     runtime.configureTerminal({
       profileName: activeProfileName,

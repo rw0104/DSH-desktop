@@ -414,6 +414,7 @@ describe('published package surface', () => {
     expect(manifest.files).toEqual(expect.arrayContaining([
       'build/app-icon.png',
       'build/app-icon-mac.png',
+      'build/installer.nsh',
       'build/tray-icon.svg',
       'build/tray-icon*.png',
       'docs/**',
