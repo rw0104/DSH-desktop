@@ -1,6 +1,6 @@
 # Upstream synchronization ledger
 
-更新时间：2026-08-26
+更新时间：2026-08-29
 
 本文件是 DSH Desktop 每次依赖、侧栏或发布变更前的上游审计入口。它区分“上游源码最新”“npm 最新发布”和“本产品当前经过验证的 pin”，不把未经回归的上游 HEAD 直接塞进安装包。
 
@@ -236,5 +236,44 @@ npm view @deepseek-ai/dsh version dist-tags time --json
 npm view @deepseek-ai/dsh@0.1.2-alpha.1 version --json
 npm view @deepseek-ai/dsh-base@0.1.2-alpha.1 version --json
 npm view @deepseek-ai/dsh-web-app@0.1.2-alpha.1 version --json
+git submodule status -- deepseek-harness
+```
+
+## 2026-08-29 参考桌面 v2.0.4 选择性接入前审计
+
+本批次重新核对三条权威 Git remote、GitHub Release、npm registry 和本地 pin。参考桌面与本 fork 都使用过 `v2.0.3` / `v2.0.4`，因此参考 tag 只写入 `refs/remotes/upstream/tags/*`；不得用普通 `git fetch --tags` 覆盖或误读本产品同名 tag。参考仓库的旧 URL 仍可拉取，但 GitHub Release 已重定向到 `anywhere-labs/dsh-desktop`。
+
+| 组件 | 2026-08-29 远端/registry 证据 | 本地基线 | 本批次决策 |
+| --- | --- | --- | --- |
+| DeepSeek Harness | `master` / prerelease tag `dsh-v0.1.2-alpha.1` 为 `cd5ef8148158c3a752a658978873241fdf8e2bbc`；alpha Release 发布于 `2026-08-27T17:06:37Z`；npm `@deepseek-ai/dsh` 的 `latest/next` 仍为 `0.1.1-rc.2`，修改时间 `2026-08-28T06:35:05.426Z` | submodule `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`，正式 package family `0.1.1-rc.2` | alpha 源码没有对应的完整 npm 发布面；不更新 submodule、package family、Remote gateway 或 Client contract |
+| Better Sidebar | `main` 为 `3941bd5f3ad32f37fdb109657dd44cc6d289fe4e`；正式 Release `v0.17.1` 发布于 `2026-08-28T08:04:54Z`；npm `latest` 为 `0.17.1`，integrity `sha512-7me2X6w+ecbzAMEHtuWkSPUrfLDLTBvL9qugzgBbg1FyWyy2dzS9QNDvnZjjkst4kr4LjUJTTG4rsXBcz41YzQ==` | 精确依赖 `0.17.1` | 本批次不更新 Sidebar 或其 patch baseline |
+| Desktop reference | `master` 为 `b9758b4346f6a806e4407873c5269b9989a39fbe`；namespaced `v2.0.3` / `v2.0.4` 分别为 `681ba66091fc5b1e827650137f69b3ee4c435922` / `d29bf7a965fc68bf09750bc329905ecb17afe48b`；`v2.0.4` Release 发布于 `2026-08-28T17:54:51Z` | 本 fork HEAD `4f9ee70f339819ed36492869a9debb3f4edd2628`，已发布 `v2.0.12` | 只审计 Desktop 所有权且兼容 rc2 的改进；不整体 merge、不 cherry-pick 产品耦合提交、不复制 README/品牌/下载地址 |
+
+`ce14524a5614f72bf0e7a72433c2a692f644d213..refs/remotes/upstream/tags/v2.0.4` 的 10 个非 merge 提交和 `v2.0.4..master` 的 1 个未发布提交分类如下：
+
+| 参考提交 | Finding | Path |
+| --- | --- | --- |
+| `029d7c7aa8` | 将运行中升级的优雅退出等待从 6 秒延长到 30 秒 | 与前置 quit handoff 一起建立本产品测试和实现；不能只复制常量 |
+| `4a78015dd9`、`06f3b91ea4` | 7z 原地解压和 legacy uninstaller code `2` 可缩短安装，但放弃默认较原子的替换语义 | 独立比较 ZIP、默认 7z 与原地解压；故障恢复未证明前保留当前 `nsis.useZip=true` |
+| `8994c5acad`、`ad597a7aa9` | 参考实现增加 Profile 偏好状态，但绑定 setup wizard、LAN、Market 与 alpha 架构 | 先用本产品两个真实 Profile 复现 `mode`、`port`、`logLevel`；没有泄漏就不新增状态层 |
+| `7d7295342a` | 动态 alpha CLI chunk 验证只服务源码 runtime | 暂缓到官方完整 npm family 的 v3 迁移批次 |
+| `9cdb71b843` | setup wizard revision 升级后重跑 | 本产品没有 setup wizard/onboarding，不接入 |
+| `fd6dd6c1c2` | 向参考项目私有版本服务发送 installed-version header | 本产品使用 GitHub Releases API，不接入私有 endpoint/header |
+| `0780604e8b`、`f4dbf6d8c8` | 参考项目 release diff/style/version metadata | 不属于本 fork 产品行为，不接入 |
+| `985bd4c6fb` | 未发布提交删除 Desktop PTY relay，依赖 alpha 上游 subprocess 修复 | rc2 仍需要 Windows ACL/Pwsh trampoline；不接入 |
+
+本批次进入代码实验前的 outer 回滚点为 `4f9ee70f339819ed36492869a9debb3f4edd2628`。实验只允许修改 Desktop 自有安装器、测试和必要文档；`deepseek-harness/` gitlink、正式 `@deepseek-ai/dsh-*` `0.1.1-rc.2` family、`dsh-better-sidebar@0.17.1` 和根 README 必须保持不变。若运行中升级不能在不误杀进程、静默覆盖或破坏恢复的前提下通过，或 Profile 泄漏无法复现，则保留审计结论而不发布 `2.0.13`。
+
+复核命令：
+
+```powershell
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/deepseek-ai/deepseek-harness.git HEAD
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/omdsh-dev/DSH-better-sidebar.git HEAD
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/anywhere-labs/deepseek-harness-desktop.git HEAD
+git -c http.proxy=http://127.0.0.1:10808 ls-remote https://github.com/anywhere-labs/deepseek-harness-desktop.git refs/tags/v2.0.3 refs/tags/v2.0.4
+git fetch upstream master refs/tags/v2.0.3:refs/remotes/upstream/tags/v2.0.3 refs/tags/v2.0.4:refs/remotes/upstream/tags/v2.0.4 --prune
+npm view @deepseek-ai/dsh version dist-tags time.modified --json
+npm view @deepseek-ai/dsh-base version dist-tags time.modified --json
+npm view dsh-better-sidebar version dist-tags time.modified dist.integrity --json
 git submodule status -- deepseek-harness
 ```
