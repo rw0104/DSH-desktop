@@ -17,6 +17,7 @@ import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
 import { isDesktopInstallerQuitRequest } from './desktop-installer-quit.ts'
 import {
   readDesktopProfilePreferences,
+  reconcileDesktopProfilePreferences,
   writeDesktopProfilePreferences,
   type DesktopProfilePreferences,
 } from './profile-preferences.ts'
@@ -606,16 +607,16 @@ async function start(): Promise<void> {
     })
     generation.bindHost(ctx)
     const resolvedDesktopSettings = ctx.settings.get(DESKTOP_SETTINGS_NAMESPACE) as DesktopSettings | undefined
-    const initialProfilePreferences: DesktopProfilePreferences = {
-      mode: prepared.mode,
-      port: prepared.port,
-      logLevel: storedProfilePreferences?.logLevel ?? resolvedDesktopSettings?.logLevel ?? 'info',
-    }
-    if (storedProfilePreferences === undefined
-      || storedProfilePreferences.mode !== initialProfilePreferences.mode
-      || storedProfilePreferences.port !== initialProfilePreferences.port
-      || storedProfilePreferences.logLevel !== initialProfilePreferences.logLevel) {
+    const reconciliation = reconcileDesktopProfilePreferences(storedProfilePreferences, {
+      mode: resolvedDesktopSettings?.mode ?? prepared.mode,
+      port: resolvedDesktopSettings?.port ?? prepared.port,
+      logLevel: resolvedDesktopSettings?.logLevel ?? 'info',
+    })
+    const initialProfilePreferences = reconciliation.preferences
+    if (reconciliation.synchronizeShared) {
       await ctx.settings.update(DESKTOP_SETTINGS_NAMESPACE, initialProfilePreferences)
+    }
+    if (reconciliation.persistPrivate) {
       await writeDesktopProfilePreferences(profilePreferencesUserDataDir, activeProfileDir, initialProfilePreferences)
     }
     let currentProfilePreferences = initialProfilePreferences

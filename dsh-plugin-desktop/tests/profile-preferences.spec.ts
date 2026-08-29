@@ -6,6 +6,7 @@ import {
   desktopProfilePreferencesProfileHash,
   desktopProfilePreferencesStatePath,
   readDesktopProfilePreferences,
+  reconcileDesktopProfilePreferences,
   writeDesktopProfilePreferences,
 } from '../src/profile-preferences.ts'
 
@@ -70,5 +71,26 @@ describe('Desktop Profile preferences', () => {
       chmodSync(path, 0o644)
       expect(readDesktopProfilePreferences(userData, profile)).toMatchObject(preferences)
     }
+  })
+
+  it('imports shared settings once and synchronizes existing Profile values back to the settings service', async () => {
+    expect(reconcileDesktopProfilePreferences(undefined, preferences)).toEqual({
+      preferences,
+      synchronizeShared: false,
+      persistPrivate: true,
+    })
+
+    const userData = temporaryDirectory('dsh-profile-preferences-user-')
+    const profile = temporaryDirectory('dsh-profile-preferences-profile-')
+    const stored = await writeDesktopProfilePreferences(userData, profile, {
+      mode: 'advanced',
+      port: 43121,
+      logLevel: 'debug',
+    })
+    expect(reconcileDesktopProfilePreferences(stored, preferences)).toEqual({
+      preferences: { mode: 'advanced', port: 43121, logLevel: 'debug' },
+      synchronizeShared: true,
+      persistPrivate: false,
+    })
   })
 })

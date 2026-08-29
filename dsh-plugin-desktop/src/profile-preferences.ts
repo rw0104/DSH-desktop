@@ -32,6 +32,12 @@ export interface DesktopProfilePreferencesStateV1 extends DesktopProfilePreferen
   readonly recordedAt: string
 }
 
+export interface DesktopProfilePreferencesReconciliation {
+  readonly preferences: DesktopProfilePreferences
+  readonly synchronizeShared: boolean
+  readonly persistPrivate: boolean
+}
+
 export const desktopProfilePreferencesConstants = Object.freeze({
   rootDirectory: STATE_ROOT,
   stateFilename: STATE_FILE,
@@ -130,4 +136,28 @@ export async function clearDesktopProfilePreferences(userDataDir: string, profil
   if (!existsSync(path)) return
   assertStateTarget(path)
   unlinkSync(path)
+}
+
+function samePreferences(left: DesktopProfilePreferences, right: DesktopProfilePreferences): boolean {
+  return left.mode === right.mode && left.port === right.port && left.logLevel === right.logLevel
+}
+
+/** Decide how one Profile-private state overlays the legacy shared settings section. */
+export function reconcileDesktopProfilePreferences(
+  stored: DesktopProfilePreferencesStateV1 | undefined,
+  shared: DesktopProfilePreferences,
+): DesktopProfilePreferencesReconciliation {
+  if (stored === undefined) {
+    return { preferences: { ...shared }, synchronizeShared: false, persistPrivate: true }
+  }
+  const preferences: DesktopProfilePreferences = {
+    mode: stored.mode,
+    port: stored.port,
+    logLevel: stored.logLevel,
+  }
+  return {
+    preferences,
+    synchronizeShared: !samePreferences(preferences, shared),
+    persistPrivate: false,
+  }
 }
