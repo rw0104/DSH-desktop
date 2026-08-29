@@ -55,6 +55,14 @@ git submodule status -- deepseek-harness
 - Setup `DSH-Desktop-2.0.14-x64-Setup.exe` 为 `330,862,733` bytes，SHA-256 `423B00F77911C8EAFDC3EF711B2DE0804FD08C2FC8D23D82058F8927C5E57E53`，Authenticode `NotSigned`。
 - `latest.yml` 为 `342` bytes，SHA-256 `346513C34E023ADF6EFC7D36472ECF0ED5328B3F0D300522F17AAB3C3228F41D`；unpacked 主程序为 `225,552,896` bytes，SHA-256 `AF08F57C3212BF48BD402CDD1647D469564E6640476FA27E626ED9E6B8DAA2DA`，FileVersion `2.0.14`，ProductVersion `2.0.14.0`，Authenticode `NotSigned`。
 
+## 2026-08-29 v2.0.14 部署结果
+
+- 远端 `main` 与 annotated tag `v2.0.14` 均解引用到本地安装包证据提交 `f76dab10b72749b52d699891540ebb080cee5bf5`；tag object 为 `d183ec85213b4446b6c3068277c10e469cab473d`。
+- GitHub Release `v2.0.14` 于 `2026-08-29T16:26:12Z` 发布为 Latest，非 draft、非 prerelease：<https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.14>。
+- Setup 远端资产为 `330,862,733` bytes，GitHub digest `sha256:423b00f77911c8eafdc3ef711b2de0804fd08c2fc8d23d82058f8927c5e57e53`，与本地一致。
+- `latest.yml` 远端资产为 `342` bytes，GitHub digest `sha256:346513c34e023adf6efc7d36472ecf0ed5328b3f0d300522f17aab3c3228f41d`，与本地一致。
+- Release 只包含上述两个资产；`v2.0.13` 保留为不可变历史版本并在 Release 正文标记已由 `v2.0.14` 取代。
+
 ## 升级准入
 
 只有在以下证据齐全后，才能把上游新版本放进 release：
