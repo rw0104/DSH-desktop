@@ -191,6 +191,16 @@ git submodule status -- deepseek-harness
 - Annotated tag `v2.0.11` 解引用到 `beaa23811a753bba70c89e902b33d34f35181151`；GitHub Release 于 `2026-08-28T11:34:15Z` 发布为 Latest，非 draft、非 prerelease。
 - GitHub Setup/`latest.yml` 的远端 size 与 digest 均与上述本地成品一致；Release 未上传 unpacked 目录、缓存或诊断 Profile。
 
+## 2026-08-28 v2.0.12 本地构建结果
+
+- Better Sidebar 从精确 `0.16.1` 升级到精确 `0.17.1`，Git/npm 均指向 `3b1898f9cb74edf4ca542ff84430eaf346dd05f4`；npm integrity 为 `sha512-7me2X6w+ecbzAMEHtuWkSPUrfLDLTBvL9qugzgBbg1FyWyy2dzS9QNDvnZjjkst4kr4LjUJTTG4rsXBcz41YzQ==`。`dsh-better-sidebar` 的 `dsh-client-runtime` peer 已删除，但 rc2 runtime closure 仍闭合。
+- 新增 Sidebar 消费侧回归：legacy/damaged pin fail-soft、workspace/global visibility、home session/cwd/tabId、unpin/close 分离、Agent terminal 离线保留、terminal URL scheme/modifier 安全边界和 detached cwd persistence fallback。
+- Desktop 新增 Host → Renderer 只读更新状态 contract：GET snapshot + 同源 SSE；下载真实字节节流、独立 verifying/ready 状态、generation/revision 防旧事件覆盖；About 页使用 ARIA progressbar、失败 alert、中文/英文状态文本和 reduced-motion 样式。
+- `app-builder-lib@26.15.7` 下游 patch 增加 Yarn Berry `npm list --workspaces=false`。修复前 electron-builder 因 npm 自动跳回外层 workspace 而回退 manual traversal，`package:dir`/`dist:win` 可连续运行 60+ 分钟；修复后 collector 在 27.5 秒内收集 834 个模块并直接进入 ASAR。正式 NSIS 构建在约 18 分钟完成依赖复制后进入压缩；中间 zip 的 `-bd` 关闭进度条，导致表面上长时间无输出。
+- 最终 `corepack yarn check`：Market `270` 项、Desktop `725` 项（`11` skipped）、runtime closure `201`、production licenses `691`；Windows preflight `206` 项；installer verifier 通过。
+- 最终 Windows Setup：`330,773,657` bytes，SHA-256 `43012BC5C89F57C77B8AD5049E271DCA30EF665C971A865C09D050BF3D873B94`，SHA-512 base64 与 `latest.yml` 一致；`latest.yml`：`342` bytes，SHA-256 `0FD44B3CBBC6E28485B848D7FDD8977AE0ED3E91EDDE6A32BA2A6F077025B5A2`。unpacked 主程序 FileVersion `2.0.12`、ProductVersion `2.0.12.0`、Authenticode `NotSigned`。
+- 成品只发布 Setup 与 `latest.yml`；`win-unpacked`、NSIS 中间 zip、builder debug 和诊断目录在发布前清理。Harness submodule 仍为 `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`，官方 npm family 仍固定 `0.1.1-rc.2`，未混入 `0.1.2-alpha.1`。
+
 ## 2026-08-28 v2.0.12 Better Sidebar 0.17.1 升级前审计
 
 本批次在升级依赖和创建 release 前重新核对三条权威 Git remote、GitHub Release、npm registry 与本地 pin。Git 查询继续使用本机既有代理 `http://127.0.0.1:10808`；registry 结果来自 npm 官方元数据。
