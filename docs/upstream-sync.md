@@ -201,6 +201,14 @@ git submodule status -- deepseek-harness
 - 最终 Windows Setup：`330,773,657` bytes，SHA-256 `43012BC5C89F57C77B8AD5049E271DCA30EF665C971A865C09D050BF3D873B94`，SHA-512 base64 与 `latest.yml` 一致；`latest.yml`：`342` bytes，SHA-256 `0FD44B3CBBC6E28485B848D7FDD8977AE0ED3E91EDDE6A32BA2A6F077025B5A2`。unpacked 主程序 FileVersion `2.0.12`、ProductVersion `2.0.12.0`、Authenticode `NotSigned`。
 - 成品只发布 Setup 与 `latest.yml`；`win-unpacked`、NSIS 中间 zip、builder debug 和诊断目录在发布前清理。Harness submodule 仍为 `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`，官方 npm family 仍固定 `0.1.1-rc.2`，未混入 `0.1.2-alpha.1`。
 
+## 2026-08-28 v2.0.12 部署结果
+
+- 远端 `main` 与 annotated tag `v2.0.12` 均解引用到本地安装包证据提交 `93183ace60048310ce18ff93070238d7928a4d86`；tag object 为 `2e03b978d548314a896ce200bec442173c6907fd`。
+- GitHub Release `v2.0.12` 于 `2026-08-29T06:26:11Z` 发布为 Latest，非 draft、非 prerelease：<https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.12>。
+- Setup 远端资产为 `330,773,657` bytes，GitHub digest `sha256:43012bc5c89f57c77b8ad5049e271dca30ef665c971a865c09d050bf3d873b94`，与本地一致。
+- `latest.yml` 远端资产为 `342` bytes，GitHub digest `sha256:0fd44b3cbbc6e28485b848d7fdd8977ae0ed3e91edde6a32ba2a6f077025b5a2`，与本地一致。
+- Release 只包含上述两个资产；未上传 `win-unpacked`、NSIS 中间 zip、builder debug、缓存、诊断 Profile 或 `docs/local/` 开发资料。
+
 ## 2026-08-28 v2.0.12 Better Sidebar 0.17.1 升级前审计
 
 本批次在升级依赖和创建 release 前重新核对三条权威 Git remote、GitHub Release、npm registry 与本地 pin。Git 查询继续使用本机既有代理 `http://127.0.0.1:10808`；registry 结果来自 npm 官方元数据。
