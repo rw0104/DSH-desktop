@@ -283,6 +283,7 @@
       "cordis.patch.yml",
       "build/**",
       "lib/**",
+      "!lib/types/**",
       "node_modules/pnpm/**"
     ],
     "afterPack": "./scripts/verify-packaged-runtime.ts",

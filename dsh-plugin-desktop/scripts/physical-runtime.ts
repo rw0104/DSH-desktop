@@ -28,7 +28,13 @@ interface AsarUnpackedConsumer {
   readonly reason: string
 }
 
-export type PhysicalRuntimeConsumer = PathPrefixConsumer | PackageConsumer | AsarUnpackedConsumer
+interface ClientBundleConsumer {
+  readonly id: string
+  readonly kind: 'client-bundles'
+  readonly reason: string
+}
+
+export type PhysicalRuntimeConsumer = PathPrefixConsumer | PackageConsumer | AsarUnpackedConsumer | ClientBundleConsumer
 
 export interface PhysicalRuntimePolicy {
   readonly schemaVersion: 1
@@ -100,7 +106,7 @@ export function parsePhysicalRuntimePolicy(value: unknown): PhysicalRuntimePolic
       if (!Array.isArray(consumer.roots) || consumer.roots.some(root => typeof root !== 'string' || root.length === 0)) {
         throw new Error(`physical runtime consumer ${consumer.id} requires package roots`)
       }
-    } else if (consumer.kind !== 'asar-unpacked') {
+    } else if (consumer.kind !== 'asar-unpacked' && consumer.kind !== 'client-bundles') {
       throw new Error(`physical runtime consumer ${consumer.id} has unsupported kind ${String(consumer.kind)}`)
     }
   }
@@ -146,7 +152,33 @@ function resolveArchivePackageRoot(
 }
 
 function pathBelongsToPackage(path: string, packageRoot: string): boolean {
+  if (packageRoot.length === 0) return path.length > 0 && !path.startsWith('../')
   return path === `${packageRoot}/package.json` || path.startsWith(`${packageRoot}/`)
+}
+
+function clientExportPath(value: unknown): string | undefined {
+  if (typeof value === 'string') return value
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined
+  const record = value as Record<string, unknown>
+  for (const key of ['default', 'import', 'require', 'node', 'browser']) {
+    const path = clientExportPath(record[key])
+    if (path !== undefined) return path
+  }
+  return undefined
+}
+
+function packageClientPath(packageRoot: string, manifest: Record<string, unknown>): string | undefined {
+  const dsh = manifest.dsh
+  if (dsh === null || typeof dsh !== 'object' || Array.isArray(dsh)) return undefined
+  const client = (dsh as Record<string, unknown>).client
+  if (client === null || typeof client !== 'object' || Array.isArray(client)) return undefined
+  if ((client as Record<string, unknown>).platform !== 'web') return undefined
+  const exports = manifest.exports
+  if (exports === null || typeof exports !== 'object' || Array.isArray(exports)) return undefined
+  const clientExport = clientExportPath((exports as Record<string, unknown>)['./client'])
+  if (clientExport === undefined || !clientExport.startsWith('./')) return undefined
+  const path = normalizePath(posix.join(packageRoot, clientExport.slice(2)))
+  return pathBelongsToPackage(path, packageRoot) ? path : undefined
 }
 
 async function physicalFiles(root: string): Promise<readonly string[]> {
@@ -223,6 +255,14 @@ export async function selectPhysicalRuntimeFiles(
       }
     } else if (consumer.kind === 'asar-unpacked') {
       for (const entry of entries) if (entry.unpacked) select(entry.path, consumer.id)
+    } else if (consumer.kind === 'client-bundles') {
+      for (const packageRoot of packageRoots) {
+        const manifest = await readManifest(packageRoot)
+        const clientPath = packageClientPath(packageRoot, manifest)
+        if (clientPath === undefined) continue
+        select(packageRoot.length === 0 ? 'package.json' : `${packageRoot}/package.json`, consumer.id)
+        select(clientPath, consumer.id)
+      }
     } else {
       const roots = consumer.roots.map((root) => {
         const resolved = resolveArchivePackageRoot(packageRoots, '', root)

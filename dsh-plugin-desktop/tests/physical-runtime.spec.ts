@@ -69,4 +69,36 @@ describe('physical runtime projection', () => {
       ],
     })).toThrow('unique')
   })
+
+  it('selects the root package manifest together with its client bundle', async () => {
+    const result = await selectPhysicalRuntimeFiles(
+      [
+        { path: 'package.json', size: 1, unpacked: true, executable: false },
+        { path: 'lib/client.js', size: 1, unpacked: true, executable: false },
+        { path: 'node_modules/client/package.json', size: 1, unpacked: false, executable: false },
+        { path: 'node_modules/client/lib/client.js', size: 1, unpacked: false, executable: false },
+      ],
+      parsePhysicalRuntimePolicy({
+        schemaVersion: 1,
+        consumers: [{ id: 'clients', kind: 'client-bundles', reason: 'browser bundles' }],
+      }),
+      async path => Buffer.from(path === 'package.json'
+        ? JSON.stringify({
+            name: 'root-client',
+            dsh: { client: { platform: 'web' } },
+            exports: { './client': './lib/client.js' },
+          })
+        : JSON.stringify({
+            dsh: { client: { platform: 'web' } },
+            exports: { './client': './lib/client.js' },
+          })),
+    )
+    expect([...result.selected.keys()].sort()).toEqual([
+      'lib/client.js',
+      'node_modules/client/lib/client.js',
+      'node_modules/client/package.json',
+      'package.json',
+    ])
+    expect(result.selected.get('package.json')).toEqual(new Set(['clients']))
+  })
 })

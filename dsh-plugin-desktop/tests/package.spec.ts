@@ -408,6 +408,7 @@ describe('published package surface', () => {
       'cordis.patch.yml',
       'build/**',
       'lib/**',
+      '!lib/types/**',
       'node_modules/pnpm/**',
     ])
     expect(manifest.build?.electronFuses).toEqual({ runAsNode: true })

@@ -29,6 +29,7 @@ import FileSettingsProvider, {
 } from '@deepseek-ai/dsh-settings-file'
 import { parseDocument } from 'yaml'
 import { unpackedAsarPath } from './packaged-runtime-path.ts'
+import { ensurePackagedClientModuleFallback } from './client-module-fallback.ts'
 import type { DesktopShellMode } from './runtime.ts'
 import {
   activeDesktopProfileLayers,
@@ -464,7 +465,9 @@ export function prepareDesktopProfile(
   // Electron's patched filesystem can resolve installation bundles directly
   // from app.asar. The packaged resolver hook supplies their peers to
   // profile-local plugins without recreating the full dependency tree.
-  if (!/[\\/]app\.asar[\\/]/u.test(INSTALL_ANCHOR)) {
+  if (/[\\/]app\.asar[\\/]/u.test(INSTALL_ANCHOR)) {
+    ensurePackagedClientModuleFallback(INSTALL_ANCHOR, home)
+  } else {
     healProfilesModuleFallback(INSTALL_ANCHOR, home)
   }
   const disabledBundles = pluginStatePath === undefined

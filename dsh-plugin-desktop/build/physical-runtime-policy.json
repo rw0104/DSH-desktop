@@ -21,6 +21,11 @@
       "reason": "Agent preset and skill scanners consume ordinary filesystem paths outside Electron's ASAR-aware module loader."
     },
     {
+      "id": "client-bundles",
+      "kind": "client-bundles",
+      "reason": "ClientModuleRegistry uses CommonJS package resolution for every dsh.client package and the web server reads its ./client bundle from that resolved path."
+    },
+    {
       "id": "packaged-pnpm",
       "kind": "package-tree",
       "roots": [

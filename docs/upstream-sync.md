@@ -53,9 +53,23 @@ git submodule status -- deepseek-harness
 
 本批次只修改 Desktop 自有 packaging、installer feedback loop、app-builder-lib 审计补丁、测试、workflow 和发布文档。没有修改 `deepseek-harness/` gitlink、`@deepseek-ai/dsh-*` 正式版本、`dsh-better-sidebar` pin 或 Market live-source 合同。
 
-当前本地 `package:dir` 证据为 321 个物理文件、`664,254,147` bytes、19,989 个 ASAR 逻辑文件；source map、类型声明、测试、示例和未授权文档均为 0。物理 runtime manifest 为 246 个文件、`49,207,901` bytes，并已通过 DSH CLI、pnpm、Profile 和 preset 路径的真实 RunAsNode smoke。
+进入发布门禁前的本地 `package:dir` 初始证据为 321 个物理文件、`664,254,147` bytes、19,989 个 ASAR 逻辑文件；修复客户端包发现后，最终 afterPack 证据更新为 413 个物理文件、`669,194,705` bytes、19,991 个 ASAR 逻辑文件，source map、类型声明、测试、示例和未授权文档仍为 0。最终 physical runtime manifest 为 338 个文件、`54,124,441` bytes，并通过 DSH CLI、pnpm、Profile、preset 路径和真实 Renderer smoke。
 
 发布仍由 `.github/workflows/windows-installer-performance.yml` 阻断：v2.0.15、ZIP、默认 7z、7z 原地方案需要各 5 台全新 runner；长路径基线/ZIP 各 5 台；ZIP 失败恢复必须只产生完整旧版或完整新版。未通过前不创建 tag/Release。
+
+### 2026-08-30 客户端包发现回归修复与本地部署
+
+已复现用户在已安装 v2.0.16 候选包看到的白屏：`client-modules: HTML did not preload @deepseek-ai/dsh-client-modules/client.js`。ASAR 内的 `@deepseek-ai/dsh-client-modules/lib/client.js` 存在且可由 HTTP 路由读取；真正缺失的是 ClientModuleRegistry 从 Profile 锚点执行 CommonJS `require.resolve(<package>/package.json)` 时的包发现。桌面自己的 client bundle 还位于 ASAR 根，不能由 `node_modules` 路径推导得到。
+
+本次修复没有修改 Harness submodule 或上游包：
+
+- `physical-runtime-policy.json` 新增 `client-bundles` 消费者，按每个 `dsh.client.platform=web` manifest 只投影 `package.json` 与 `./client` bundle，共 92 个文件。
+- `ensurePackagedClientModuleFallback` 从版本化 physical manifest 建立受控 Profile junction；除 `node_modules` client 包外，显式处理根包 `dsh-plugin-desktop`。
+- 修正根包 `package.json` 的 consumer 标记，并补充物理选择策略与 fallback 回归测试。
+
+最终本地证据：`package:dir`/afterPack 413 个物理文件、`669,194,705` bytes、19,991 个 ASAR entry；physical manifest 338 files / `54,124,441` bytes。桌面类型检查和相关回归共 76 项通过。直接运行新打包目录及实际 `D:\DSH Desktop` 均得到 45 个客户端 entry，包含 `dsh-plugin-desktop` 和 `@deepseek-ai/dsh-client-modules`；真实 Chromium DOM 显示 Harness 主界面，桌面 bundle HTTP 200，等待超过 30 秒无 Renderer timeout，退出码 0。D 盘安装版本为 FileVersion `2.0.16` / ProductVersion `2.0.16.0`；用户数据和 DSH Profile 未清理。
+
+本地最终 Setup 为 `DSH-Desktop-2.0.16-x64-Setup.exe`，`220,864,754` bytes，SHA-256 `0D6D958080D6B2164B4E40A44795961BA57409040DBC7FA469D909043BDC7BA4`，Authenticode `NotSigned`；`latest.yml` 为 `342` bytes，SHA-256 `D27CFA96D5C042DA61C883F4524C0D7970B7435B231C84D642EA9D6136B6AFEA`。版本化 Windows 性能 workflow、长路径与失败恢复门禁仍需在创建 tag/Release 前完成。
 
 复核命令：
 
