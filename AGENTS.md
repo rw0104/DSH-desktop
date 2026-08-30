@@ -20,7 +20,7 @@ This repository owns the desktop product around an unmodified DeepSeek Harness c
 - `deepseek-harness/` is a pinned upstream Git submodule. Never edit files inside it from a desktop feature branch.
 - `dsh-plugin-desktop/` owns the Cordis Host and Client faces, Electron bootstrap, packaging, and release tests.
 - `dsh-community-fabric/` owns the community interoperability RFC. Until schemas and a reviewed reference adapter exist, it remains a private documentation scaffold and must not declare loadable DSH or package entry points.
-- `dsh-community-market/` owns the community-market shell. Until its runtime is implemented, it remains a private documentation scaffold and must not declare loadable DSH or package entry points.
+- `dsh-community-market/` owns the implemented community-market Host/Client runtime, public catalog contracts, reviewed provider adapters, installation boundary, and release tests. Keep its loadable DSH/package entry points and generated contract surface aligned with the Desktop composition.
 - The outer repository and all owned packages use the root Yarn release with `nodeLinker: node-modules`.
 - The upstream submodule keeps its own pnpm workspace. Run upstream commands through the root `upstream:*` scripts, whose Yarn portable-shell commands enter the submodule before invoking Corepack.
 - Compatibility mode must run the upstream default client without overrides. Advanced presentation belongs to desktop-owned client plugins and may replace documented slots or services through profile composition.
@@ -58,6 +58,29 @@ Before every upstream, dependency, sidebar, or release change:
 
 The current audit snapshot and exact commands are maintained in
 [`docs/upstream-sync.md`](docs/upstream-sync.md).
+
+## Community Market live-source release discipline
+
+Fixture tests are necessary but are not sufficient evidence for changes that
+affect `dsh-community-market/`, a reviewed built-in catalog adapter, or the
+restricted catalog HTTP client. Before merging or tagging such a change:
+
+1. Replay every compiled-in reviewed source through the production restricted
+   client. Record the exact endpoint and representation, HTTP/content encoding,
+   provider total, normalized total, elapsed time, and configured size/item
+   headroom in `docs/upstream-sync.md` or the versioned release record.
+2. Grant gzip, larger response limits, synthetic-proxy hostname exceptions, or
+   other relaxed transport policy only to an exact compiled-in reviewed client.
+   User-added and standard sources must never inherit those exceptions.
+3. Validate the exact representation the adapter consumes. Never combine or
+   trust totals, revisions, timestamps, or cursors observed through a different
+   endpoint, User-Agent, encoding variant, or provider view; a full catalog
+   representation must prove its own identity and completeness atomically.
+4. Treat a live catalog that exceeds an item, page, compressed-body,
+   decoded-body, schema, or timeout bound as a release blocker. Do not silently
+   raise a limit, publish a partial list, or fall back to another saved source;
+   document the incompatibility, review the new bound and trust impact, add a
+   regression test, and then repeat the live-source replay.
 
 ## Product README ownership
 

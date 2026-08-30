@@ -1,6 +1,6 @@
 # Upstream synchronization ledger
 
-更新时间：2026-08-29
+更新时间：2026-08-30
 
 本文件是 DSH Desktop 每次依赖、侧栏或发布变更前的上游审计入口。它区分“上游源码最新”“npm 最新发布”和“本产品当前经过验证的 pin”，不把未经回归的上游 HEAD 直接塞进安装包。
 
@@ -9,7 +9,7 @@
 | 角色 | 上游 | 当前上游信号 | 本产品当前 pin | 状态 |
 | --- | --- | --- | --- | --- |
 | 官方 Harness | [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) | `master` / `dsh-v0.1.2-alpha.1` 为 `cd5ef8148158c3a752a658978873241fdf8e2bbc`；npm `latest`/`next` 仍为 `0.1.1-rc.2` | 子模块 `dsh-v0.1.1-rc.2`，commit `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；桌面依赖为 `0.1.1-rc.2` | v2.0.15 不把未正式发布的 alpha 混入市场修复 |
-| 官方侧栏 | [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | `main` 为 `3941bd5f3ad32f37fdb109657dd44cc6d289fe4e`；最新 tag/npm `v0.17.1` / `0.17.1`，tag commit `3b1898f9cb74edf4ca542ff84430eaf346dd05f4` | `dsh-better-sidebar@0.17.1` | 当前正式版本已固定并通过既有产品门禁；本轮不升级 main 快照 |
+| 官方侧栏 | [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | `main` 为 `3aab7ca3a53357f9237a91978d57df4cf84c9c45`，比 `v0.17.1` 超前 32 个未发布提交；最新 tag/npm 仍为 `v0.17.1` / `0.17.1`，tag commit `3b1898f9cb74edf4ca542ff84430eaf346dd05f4` | `dsh-better-sidebar@0.17.1` | 正式 pin 仍最新；等待新 tag/npm 后独立审计 `workspaceFence`、文件树和 Market 共存，不使用 `main` 快照 |
 | 桌面参考 | [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop)（重定向到 `anywhere-labs/dsh-desktop`） | `master` 为 `b9758b4346f6a806e4407873c5269b9989a39fbe`；最新 tag `v2.0.4` 为 `d29bf7a965fc68bf09750bc329905ecb17afe48b` | 本 fork `rw0104/DSH-desktop` 的 `v2.0.15` 候选 | 只作只读对照，不整体合并或作为依赖 |
 
 补充：2026-08-29 通过代理复核三条 Git remote 与 npm registry。官方 Harness Git 已出现 `0.1.2-alpha.1`，但 npm 正式 `latest`/`next` 仍为 `0.1.1-rc.2`，因此本产品继续使用已验证 pin；Better Sidebar 正式版本与本地 pin 均为 `0.17.1`。仍然必须同时记录 Git tag、commit 和 registry 版本，不能只看任一信号。
@@ -24,6 +24,13 @@ npm view @deepseek-ai/dsh version
 npm view dsh-better-sidebar version
 git submodule status -- deepseek-harness
 ```
+
+## 2026-08-30 Better Sidebar 未发布 main 审计
+
+- `main` 为 `3aab7ca3a53357f9237a91978d57df4cf84c9c45`，相对正式 `v0.17.1` / `3b1898f9…` 超前 32 个提交；npm `latest` 仍是 `0.17.1`，本产品 pin 同为 `0.17.1`。
+- 未发布变更包括 `workspaceFence` 偏好与错误界面一键关闭入口、文件树 reveal/scroll 行为和测试、插件目录新增项以及多语言文案补齐。
+- `workspaceFence` 影响工作区安全边界，不能从 `main` 单独 cherry-pick。等待新 tag/npm 后，必须独立验证配置迁移、路径 containment、File/Git/Editor 错误面、现有 Yarn patch、Profile/Loader、Community Market 共存、完整 `check` 和 packaged smoke。
+- 在正式版本出现之前，不修改 `dsh-better-sidebar@0.17.1`、lockfile、patch baseline 或发布资产。
 
 ## 2026-08-29 v2.0.15 插件市场适配发布前审计
 
