@@ -111,7 +111,7 @@ try {
 
   $taskStopwatch = [Diagnostics.Stopwatch]::StartNew()
   if ($Scenario -eq 'uninstall') {
-    $taskProcess = Start-Process -FilePath $taskUninstallerPath -ArgumentList @('/currentuser', '/S') -PassThru -Wait -WindowStyle Hidden
+    $taskProcess = Start-Process -FilePath $taskUninstallerPath -ArgumentList @('/currentuser', '/S') -Verb RunAs -PassThru -Wait -WindowStyle Hidden
   } else {
     $taskProcess = Start-Process -FilePath $taskCandidate -ArgumentList @(
       '/S'
@@ -138,7 +138,7 @@ try {
   }
 } finally {
   if (Test-Path -LiteralPath $taskUninstallerPath) {
-    $null = Start-Process -FilePath $taskUninstallerPath -ArgumentList @('/currentuser', '/S') -PassThru -Wait -WindowStyle Hidden
+    $null = Start-Process -FilePath $taskUninstallerPath -ArgumentList @('/currentuser', '/S') -Verb RunAs -PassThru -Wait -WindowStyle Hidden
   }
   $taskResolvedRoot = [System.IO.Path]::GetFullPath($taskRunRoot)
   $taskSafeName = [System.IO.Path]::GetFileName($taskResolvedRoot).StartsWith('dsh-installer-benchmark-', [StringComparison]::Ordinal)
