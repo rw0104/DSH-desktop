@@ -97,14 +97,16 @@ jobs:
           } else {
             (Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'candidate') -Filter "*-Setup-$strategy.exe" -File -Recurse).FullName
           }
-          $seed = if ($strategy -eq 'base') { @('-SeedExistingExecutable') } else { @() }
-          & 'dsh-plugin-desktop/scripts/benchmark-windows-installer.ps1' `
-            -Scenario fresh `
-            -CandidateInstaller $installer `
-            -IsolationEvidence "gha-${{ github.run_id }}-${{ matrix.strategy }}-${{ matrix.run }}" `
-            -InstallPathLength 80 `
-            -OutputPath (Join-Path $env:RUNNER_TEMP "benchmark-${{ matrix.strategy }}-${{ matrix.run }}.json") `
-            @seed
+          $benchmarkArgs = @(
+            '-Scenario', 'fresh',
+            '-CandidateInstaller', $installer,
+            '-IsolationEvidence', "gha-${{ github.run_id }}-${{ matrix.strategy }}-${{ matrix.run }}",
+            '-InstallPathLength', '80',
+            '-OutputPath', (Join-Path $env:RUNNER_TEMP "benchmark-${{ matrix.strategy }}-${{ matrix.run }}.json")
+          )
+          if ($strategy -eq 'base') { $benchmarkArgs += '-SeedExistingExecutable' }
+          & 'dsh-plugin-desktop/scripts/benchmark-windows-installer.ps1' @benchmarkArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload benchmark record
         uses: actions/upload-artifact@v4
@@ -149,14 +151,16 @@ jobs:
           } else {
             (Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'candidate') -Filter '*-Setup-zip-direct.exe' -File -Recurse).FullName
           }
-          $seed = if ($strategy -eq 'base') { @('-SeedExistingExecutable') } else { @() }
-          & 'dsh-plugin-desktop/scripts/benchmark-windows-installer.ps1' `
-            -Scenario fresh `
-            -CandidateInstaller $installer `
-            -IsolationEvidence "gha-${{ github.run_id }}-long-${{ matrix.strategy }}-${{ matrix.run }}" `
-            -InstallPathLength 180 `
-            -OutputPath (Join-Path $env:RUNNER_TEMP "long-${{ matrix.strategy }}-${{ matrix.run }}.json") `
-            @seed
+          $benchmarkArgs = @(
+            '-Scenario', 'fresh',
+            '-CandidateInstaller', $installer,
+            '-IsolationEvidence', "gha-${{ github.run_id }}-long-${{ matrix.strategy }}-${{ matrix.run }}",
+            '-InstallPathLength', '180',
+            '-OutputPath', (Join-Path $env:RUNNER_TEMP "long-${{ matrix.strategy }}-${{ matrix.run }}.json")
+          )
+          if ($strategy -eq 'base') { $benchmarkArgs += '-SeedExistingExecutable' }
+          & 'dsh-plugin-desktop/scripts/benchmark-windows-installer.ps1' @benchmarkArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
           name: long-${{ matrix.strategy }}-${{ matrix.run }}
