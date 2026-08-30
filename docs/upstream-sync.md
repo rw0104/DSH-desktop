@@ -8,11 +8,11 @@
 
 | 角色 | 上游 | 当前上游信号 | 本产品当前 pin | 状态 |
 | --- | --- | --- | --- | --- |
-| 官方 Harness | [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) | `master` / `dsh-v0.1.1-rc.2`，commit `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；npm `latest` `0.1.1-rc.2` | 子模块 `dsh-v0.1.1-rc.2`，commit `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；桌面依赖为 `0.1.1-rc.2` | 本轮迁移、check 和 packaged smoke 已通过 |
-| 官方侧栏 | [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | `main` / `v0.16.1` commit `f9153dfc1ce47cf43445c1b351ee3ae47b4ad9f1`；npm `latest` `0.16.1` | `dsh-better-sidebar@0.16.1` | v2.0.10 完成 patch、peer closure、完整 check 与本地 packaged smoke |
-| 桌面参考 | [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop)（重定向到 `anywhere-labs/dsh-desktop`） | `master` commit `83e706ab6882e054607609d3c9f25a0dba6e8924`；最新 tag `v2.0.2` commit `9d18856ddea4f20eb3ef8c88b0436921c6b19606` | 本 fork `rw0104/DSH-desktop` 的 `v2.0.10` | 旧台账 `2172b1b2…` 后前进 84 个提交；只作选择性对照，不整体合并或作为依赖 |
+| 官方 Harness | [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) | `master` / `dsh-v0.1.2-alpha.1` 为 `cd5ef8148158c3a752a658978873241fdf8e2bbc`；npm `latest`/`next` 仍为 `0.1.1-rc.2` | 子模块 `dsh-v0.1.1-rc.2`，commit `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；桌面依赖为 `0.1.1-rc.2` | v2.0.15 不把未正式发布的 alpha 混入市场修复 |
+| 官方侧栏 | [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | `main` 为 `3941bd5f3ad32f37fdb109657dd44cc6d289fe4e`；最新 tag/npm `v0.17.1` / `0.17.1`，tag commit `3b1898f9cb74edf4ca542ff84430eaf346dd05f4` | `dsh-better-sidebar@0.17.1` | 当前正式版本已固定并通过既有产品门禁；本轮不升级 main 快照 |
+| 桌面参考 | [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop)（重定向到 `anywhere-labs/dsh-desktop`） | `master` 为 `b9758b4346f6a806e4407873c5269b9989a39fbe`；最新 tag `v2.0.4` 为 `d29bf7a965fc68bf09750bc329905ecb17afe48b` | 本 fork `rw0104/DSH-desktop` 的 `v2.0.15` 候选 | 只作只读对照，不整体合并或作为依赖 |
 
-补充：2026-08-25 通过代理复核三条 Git remote 与 npm registry。官方 Harness 源码、tag、npm 发布和本地 pin 完全一致；Better Sidebar `0.16.1` 已在 v2.0.10 独立批次完成兼容验证。仍然必须同时记录 Git tag、commit 和 registry 版本，不能只看任一信号。
+补充：2026-08-29 通过代理复核三条 Git remote 与 npm registry。官方 Harness Git 已出现 `0.1.2-alpha.1`，但 npm 正式 `latest`/`next` 仍为 `0.1.1-rc.2`，因此本产品继续使用已验证 pin；Better Sidebar 正式版本与本地 pin 均为 `0.17.1`。仍然必须同时记录 Git tag、commit 和 registry 版本，不能只看任一信号。
 
 ## 每次更新的审计命令
 
@@ -24,6 +24,15 @@ npm view @deepseek-ai/dsh version
 npm view dsh-better-sidebar version
 git submodule status -- deepseek-harness
 ```
+
+## 2026-08-29 v2.0.15 插件市场适配发布前审计
+
+- 三条权威 Git remote 与 npm registry 已按上表重新核对；本轮只修复 Desktop 自有 Community Market，不更新 Harness 子模块、正式 package family 或 Better Sidebar。
+- 1024Store 当前公开 v1 response 可完整提供 500 条目录记录，但未压缩响应会显著延长首次同步；仅其编译期固定 Host client 新增 identity/gzip 白名单与 16 MiB 解压后上限，自定义来源仍保持 identity-only 和 2 MiB 默认上限。
+- dshfind 当前分页目录为 12,366 条、124 页，已超过旧 adapter 的 10,000 条/100 页上限；改用其公开原子 `/v1/catalog`，单次真实受限客户端重放标准化 12,365 条，避免触发匿名 30 次/分钟分页配额。
+- 市场弹窗默认打开“发现”，首次“可安装”完整同步提供明确状态；补齐焦点陷阱/恢复、`aria-busy` 和合作来源双语文案。
+- `corepack yarn workspace dsh-community-market check`：19 个文件、275 项测试通过；仓库级 `corepack yarn check`：Market 275、Desktop 734（11 skipped）、runtime closure 201、production licenses 691。
+- 发布候选继续使用 Harness `0.1.1-rc.2`、gitlink `b150a551…` 和 Better Sidebar `0.17.1`；Harness `0.1.2-alpha.1` 与参考桌面 `v2.0.4` 均不混入本次市场修复。
 
 ## 2026-08-29 v2.0.13 选择性接入与本地构建结果
 
