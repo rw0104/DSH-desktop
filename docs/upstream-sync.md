@@ -34,6 +34,16 @@ git submodule status -- deepseek-harness
 - `corepack yarn workspace dsh-community-market check`：19 个文件、275 项测试通过；仓库级 `corepack yarn check`：Market 275、Desktop 734（11 skipped）、runtime closure 201、production licenses 691。
 - 发布候选继续使用 Harness `0.1.1-rc.2`、gitlink `b150a551…` 和 Better Sidebar `0.17.1`；Harness `0.1.2-alpha.1` 与参考桌面 `v2.0.4` 均不混入本次市场修复。
 
+## 2026-08-30 v2.0.15 本地构建结果
+
+- `corepack yarn install --immutable`、完整 `corepack yarn check` 与 Windows package preflight 均通过；Windows preflight 为 210 项、runtime closure 201。
+- 正式构建复用 `%LOCALAPPDATA%\electron\Cache` 中的 Electron 43.4.0，且只通过 `DSH_PACKAGE_CHECK_ALREADY_RAN=1` 跳过刚刚已通过的重复 Windows preflight；afterPack、fuses、NSIS、installer verifier 未跳过。
+- 依赖装配约 15 分钟后进入 NSIS；7z 静默压缩阶段约 11 分钟，中间 zip 从 27 MB 持续增长到成品规模，CPU 与 I/O 始终前进，没有复刻数小时无进展等待。
+- Setup `DSH-Desktop-2.0.15-x64-Setup.exe` 为 `330,779,607` bytes，SHA-256 `679BDE89AA32A24DE27B8330E3479B9C43A174DFA712E034FC9A484CB7222BC2`，Authenticode `NotSigned`。
+- `latest.yml` 为 `342` bytes，SHA-256 `BC6377D3A7774EA2D85882EABAD708C5D1E40032035F58DF2B355B1381BAA546`，两处 SHA-512 与本地 Setup 一致。
+- unpacked 主程序为 `225,552,384` bytes，SHA-256 `C3C1DF56365A2646A28C6A6CE81E1C734C9B7DFDFCCC83D0C51CCDEA46DAF55F`，FileVersion `2.0.15`，ProductVersion `2.0.15.0`，Authenticode `NotSigned`。
+- installer verifier、packaged market payload 回读和隔离 quit probe 通过；本机存在 `D:\DSH Desktop` 2.0.14 all-users 安装，因此真实 upgrade smoke 按安全前置条件不执行。
+
 ## 2026-08-29 v2.0.13 选择性接入与本地构建结果
 
 - 参考桌面 `v2.0.4` 只作为证据源；本产品实现 Windows installer quit handoff 和 `mode` / `port` / `logLevel` Profile 隔离，没有 cherry-pick 参考产品提交。
