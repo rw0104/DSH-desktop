@@ -44,6 +44,14 @@ git submodule status -- deepseek-harness
 - unpacked 主程序为 `225,552,384` bytes，SHA-256 `C3C1DF56365A2646A28C6A6CE81E1C734C9B7DFDFCCC83D0C51CCDEA46DAF55F`，FileVersion `2.0.15`，ProductVersion `2.0.15.0`，Authenticode `NotSigned`。
 - installer verifier、packaged market payload 回读和隔离 quit probe 通过；本机存在 `D:\DSH Desktop` 2.0.14 all-users 安装，因此真实 upgrade smoke 按安全前置条件不执行。
 
+## 2026-08-30 v2.0.15 部署结果
+
+- Annotated tag `v2.0.15` 解引用到安装包证据提交 `0893da1289895cfafb1d398c14bedc4eb7c773f8`；tag object 为 `02c399948a700746f656d9cd6f28fa11f689cc8b`。
+- GitHub Release `v2.0.15` 于 `2026-08-30T10:59:02Z` 发布为 Latest，非 draft、非 prerelease：<https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.15>。
+- Setup 远端资产为 `330,779,607` bytes，GitHub digest `sha256:679bde89aa32a24de27b8330e3479b9c43a174dfa712e034fc9a484cb7222bc2`，与本地一致。
+- `latest.yml` 远端资产为 `342` bytes，GitHub digest `sha256:bc6377d3a7774ea2d85882eabad708c5d1e40032035f58df2b355b1381baa546`，与本地一致。
+- Release 只包含上述两个资产；未上传 `win-unpacked`、旧 Setup、builder debug、缓存、诊断 Profile 或 `docs/local/` 开发资料。
+
 ## 2026-08-29 v2.0.13 选择性接入与本地构建结果
 
 - 参考桌面 `v2.0.4` 只作为证据源；本产品实现 Windows installer quit handoff 和 `mode` / `port` / `logLevel` Profile 隔离，没有 cherry-pick 参考产品提交。
