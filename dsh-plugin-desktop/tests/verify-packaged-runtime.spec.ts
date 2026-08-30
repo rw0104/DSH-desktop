@@ -108,9 +108,16 @@ describe('packaged desktop runtime verification', () => {
       runtimeContext,
       () => { calls.push('static') },
       async (unpackedRoot) => { calls.push(unpackedRoot) },
+      async () => { calls.push('materialize'); return {} as never },
+      async () => { calls.push('manifest'); return {} as never },
     )
 
-    expect(calls).toEqual(['static', resolvePackagedUnpackedRoot(runtimeContext)])
+    expect(calls).toEqual([
+      'materialize',
+      'static',
+      'manifest',
+      resolvePackagedUnpackedRoot(runtimeContext),
+    ])
   })
 
   it('tracks the ConPTY-only native surface shipped by node-pty 1.2', () => {
@@ -147,7 +154,6 @@ describe('packaged desktop runtime verification', () => {
     expect(exists).toHaveBeenCalledTimes(
       REQUIRED_UNPACKED_RUNTIME_ENTRIES.length
         + (platform === 'win32' ? REQUIRED_WINDOWS_X64_NODE_PTY_ENTRIES.length : 0)
-        + completeArchiveEntries().length,
     )
     expect(resolvePackage.mock.calls.map(([specifier]) => specifier))
       .toEqual(REQUIRED_UNPACKED_PACKAGE_SPECIFIERS)
@@ -182,7 +188,6 @@ describe('packaged desktop runtime verification', () => {
       REQUIRED_UNPACKED_RUNTIME_ENTRIES.length
         + REQUIRED_MACOS_UNIVERSAL_ENTRIES.length
         + FORBIDDEN_MACOS_UNIVERSAL_ENTRIES.length
-        + completeArchiveEntries().length,
     )
   })
 
@@ -237,7 +242,6 @@ describe('packaged desktop runtime verification', () => {
     'lib/diagnostic-export-worker.js',
     'lib/update-download.js',
     'lib/windows-agent-presets.js',
-    'node_modules/@deepseek-ai/dsh/lib/bin.js',
     'node_modules/pnpm/bin/pnpm.mjs',
     'node_modules/node-pty/prebuilds/win32-x64/conpty.node',
   ])('fails loud when physical runtime entry %s is absent from app.asar.unpacked', (missing) => {
@@ -295,9 +299,9 @@ describe('packaged desktop runtime verification', () => {
   it('fails loud when a required package export escapes app.asar.unpacked', () => {
     const runtimeContext = context('/build', 'win32')
     const unpackedRoot = resolvePackagedUnpackedRoot(runtimeContext)
-    const escapedPath = join('/workspace', 'node_modules', '@deepseek-ai', 'dsh-base', 'lib', 'index.js')
+    const escapedPath = join('/workspace', 'node_modules', 'dsh-plugin-desktop', 'package.json')
     const resolvePackage = vi.fn<PackageResolver>((specifier) => {
-      if (specifier === '@deepseek-ai/dsh-base/package.json') return escapedPath
+      if (specifier === 'dsh-plugin-desktop/package.json') return escapedPath
       return completePackageResolver(unpackedRoot)(specifier)
     })
 
@@ -307,7 +311,7 @@ describe('packaged desktop runtime verification', () => {
       () => true,
       resolvePackage,
     )).toThrow(
-      `required package export @deepseek-ai/dsh-base/package.json resolved outside ${unpackedRoot}: ${escapedPath}`,
+      `required package export dsh-plugin-desktop/package.json resolved outside ${unpackedRoot}: ${escapedPath}`,
     )
   })
 })

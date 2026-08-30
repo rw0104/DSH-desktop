@@ -60,7 +60,7 @@ const OBSOLETE_DESKTOP_BUNDLE_SET = new Set([
 const REMOVED_DESKTOP_BUNDLE_SET = new Set([
   '@anionex/dsh-vision-toolkit',
 ])
-const INSTALL_ANCHOR = unpackedAsarPath(fileURLToPath(new URL('../package.json', import.meta.url)))
+const INSTALL_ANCHOR = fileURLToPath(new URL('../package.json', import.meta.url))
 const DESKTOP_PATCH_PATH = fileURLToPath(new URL('../cordis.patch.yml', import.meta.url))
 const DIRECTORY_PICKER_ROW_ID = 'directory-picker'
 const AUTO_PICKER_PACKAGE = '@deepseek-ai/dsh-host-directory-picker-auto'
@@ -461,7 +461,12 @@ export function prepareDesktopProfile(
   const profileDir = profileName === DESKTOP_PROFILE_NAME
     ? ensureDesktopProfile(home)
     : resolveProfileDir(profileName, home)
-  healProfilesModuleFallback(INSTALL_ANCHOR, home)
+  // Electron's patched filesystem can resolve installation bundles directly
+  // from app.asar. The packaged resolver hook supplies their peers to
+  // profile-local plugins without recreating the full dependency tree.
+  if (!/[\\/]app\.asar[\\/]/u.test(INSTALL_ANCHOR)) {
+    healProfilesModuleFallback(INSTALL_ANCHOR, home)
+  }
   const disabledBundles = pluginStatePath === undefined
     ? new Set<string>()
     : readDesktopDisabledBundles(pluginStatePath, profileName)

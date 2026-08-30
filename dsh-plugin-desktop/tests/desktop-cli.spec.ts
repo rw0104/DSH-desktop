@@ -12,7 +12,12 @@ import {
   DESKTOP_INSTALL_RECOVERY_STATE_ENV,
   desktopInstallRecoveryStatePath,
 } from '../src/install-recovery.ts'
-import { packagedDependencyPath, unpackedAsarPath } from '../src/packaged-runtime-path.ts'
+import {
+  archivedAsarPath,
+  packagedArchiveDependencyPath,
+  packagedDependencyPath,
+  unpackedAsarPath,
+} from '../src/packaged-runtime-path.ts'
 
 describe('packaged dsh bootstrap', () => {
   it('removes every Windows casing of Electron Node mode', () => {
@@ -190,6 +195,8 @@ describe('packaged dsh bootstrap', () => {
     expect(unpackedAsarPath('/Applications/DSH Desktop.app/Contents/Resources/app.asar/package.json'))
       .toBe('/Applications/DSH Desktop.app/Contents/Resources/app.asar.unpacked/package.json')
     expect(unpackedAsarPath('/workspace/node_modules/pkg')).toBe('/workspace/node_modules/pkg')
+    expect(archivedAsarPath('C:\\Program Files\\DSH Desktop\\resources\\app.asar.unpacked\\node_modules\\pkg'))
+      .toBe('C:\\Program Files\\DSH Desktop\\resources\\app.asar\\node_modules\\pkg')
     expect(() => packagedDependencyPath(import.meta.url, '../outside.js'))
       .toThrow('relative POSIX path')
   })
@@ -211,6 +218,21 @@ describe('packaged dsh bootstrap', () => {
       expect(packagedDependencyPath(moduleUrl, '@deepseek-ai/dsh/lib/bin.js')).toBe(join(
         realpathSync(root),
         'app.asar.unpacked',
+        'node_modules',
+        '@deepseek-ai',
+        'dsh',
+        'lib',
+        'bin.js',
+      ))
+      const physicalModuleUrl = pathToFileURL(join(
+        root,
+        'app.asar.unpacked',
+        'lib',
+        'desktop-cli.js',
+      )).href
+      expect(packagedArchiveDependencyPath(physicalModuleUrl, '@deepseek-ai/dsh/lib/bin.js')).toBe(join(
+        realpathSync(root),
+        'app.asar',
         'node_modules',
         '@deepseek-ai',
         'dsh',

@@ -29,7 +29,10 @@ function options(calls: CommandCall[], logs: string[] = []): WindowsPackageOptio
     desktopRoot: 'C:\\repo\\dsh-plugin-desktop',
     commandShell: 'C:\\Windows\\System32\\cmd.exe',
     builderCli: 'C:\\repo\\node_modules\\electron-builder\\cli.js',
+    builderConfig: 'C:\\repo\\dsh-plugin-desktop\\scripts\\electron-builder.config.mjs',
     verifier: 'C:\\repo\\dsh-plugin-desktop\\scripts\\verify-win-installer.ts',
+    footprintVerifier: 'C:\\repo\\dsh-plugin-desktop\\scripts\\verify-package-footprint.mjs',
+    packagedProfileVerifier: 'C:\\repo\\dsh-plugin-desktop\\scripts\\verify-packaged-profile.mjs',
     nodeExecutable: 'C:\\Program Files\\nodejs\\node.exe',
     run: (command, args, cwd, env) => {
       calls.push({ command, args: [...args], cwd, env: { ...env } })
@@ -45,7 +48,7 @@ describe('Windows x64 installer packaging', () => {
 
     packageWindowsInstaller(options(calls, logs))
 
-    expect(calls).toHaveLength(3)
+    expect(calls).toHaveLength(5)
     expect(calls[0]).toEqual({
       command: 'C:\\Windows\\System32\\cmd.exe',
       args: [
@@ -61,6 +64,8 @@ describe('Windows x64 installer packaging', () => {
       command: 'C:\\Program Files\\nodejs\\node.exe',
       args: [
         'C:\\repo\\node_modules\\electron-builder\\cli.js',
+        '--config',
+        'C:\\repo\\dsh-plugin-desktop\\scripts\\electron-builder.config.mjs',
         '--win',
         'nsis',
         '--x64',
@@ -77,6 +82,18 @@ describe('Windows x64 installer packaging', () => {
       },
     })
     expect(calls[2]).toEqual({
+      command: 'C:\\Program Files\\nodejs\\node.exe',
+      args: ['C:\\repo\\dsh-plugin-desktop\\scripts\\verify-package-footprint.mjs'],
+      cwd: 'C:\\repo\\dsh-plugin-desktop',
+      env: { PATH: 'C:\\Windows\\System32', SAFE_VALUE: 'kept' },
+    })
+    expect(calls[3]).toEqual({
+      command: 'C:\\Program Files\\nodejs\\node.exe',
+      args: ['C:\\repo\\dsh-plugin-desktop\\scripts\\verify-packaged-profile.mjs'],
+      cwd: 'C:\\repo\\dsh-plugin-desktop',
+      env: { PATH: 'C:\\Windows\\System32', SAFE_VALUE: 'kept' },
+    })
+    expect(calls[4]).toEqual({
       command: 'C:\\Program Files\\nodejs\\node.exe',
       args: ['C:\\repo\\dsh-plugin-desktop\\scripts\\verify-win-installer.ts'],
       cwd: 'C:\\repo\\dsh-plugin-desktop',
@@ -99,6 +116,8 @@ describe('Windows x64 installer packaging', () => {
 
     expect(calls[1]?.args).toEqual([
       'C:\\repo\\node_modules\\electron-builder\\cli.js',
+      '--config',
+      'C:\\repo\\dsh-plugin-desktop\\scripts\\electron-builder.config.mjs',
       '--win',
       'zip',
       '--x64',
@@ -107,7 +126,7 @@ describe('Windows x64 installer packaging', () => {
       '--config.win.signExecutable=false',
       '--config.npmRebuild=false',
     ])
-    expect(calls[2]?.args).toEqual([
+    expect(calls[4]?.args).toEqual([
       'C:\\repo\\dsh-plugin-desktop\\scripts\\verify-win-portable.ts',
     ])
     expect(logs).toEqual([
@@ -128,9 +147,11 @@ describe('Windows x64 installer packaging', () => {
 
     packageWindowsInstaller(value)
 
-    expect(calls).toHaveLength(2)
+    expect(calls).toHaveLength(4)
     expect(calls[0]?.args).toEqual([
       'C:\\repo\\node_modules\\electron-builder\\cli.js',
+      '--config',
+      'C:\\repo\\dsh-plugin-desktop\\scripts\\electron-builder.config.mjs',
       '--win',
       'nsis',
       '--x64',

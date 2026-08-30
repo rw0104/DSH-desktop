@@ -24,10 +24,11 @@ describe('installProfilePackageResolver', () => {
     hooks.deregister.mockClear()
   })
 
-  it('routes Loader bare imports through the selected profile and keeps relative imports unchanged', async () => {
+  it('prefers installed bundles and keeps relative imports unchanged', () => {
     const profileBaseUrl = 'file:///C:/Users/test/profile/'
-    const dispose = installProfilePackageResolver(profileBaseUrl)
-    const nextResolve = vi.fn(async (specifier: string, context: { parentURL?: string }) => ({
+    const installationBaseUrl = 'file:///C:/Program%20Files/DSH/resources/app.asar/package.json'
+    const dispose = installProfilePackageResolver(profileBaseUrl, installationBaseUrl)
+    const nextResolve = vi.fn((specifier: string, context: { parentURL?: string }) => ({
       specifier,
       context,
     }))
@@ -42,35 +43,67 @@ describe('installProfilePackageResolver', () => {
       url: new URL('../lib/index.js', new URL('../src/module-resolution.ts', import.meta.url)).href,
     })
 
-    await expect(hooks.resolve?.(
+    expect(hooks.resolve?.(
       'left-pad',
       { parentURL: loaderEntryUrl },
       nextResolve,
-    )).resolves.toEqual({
+    )).toEqual({
       specifier: 'left-pad',
-      context: { parentURL: profileBaseUrl },
+      context: { parentURL: installationBaseUrl },
     })
 
-    await expect(hooks.resolve?.(
+    expect(hooks.resolve?.(
       './relative.js',
       { parentURL: loaderEntryUrl },
       nextResolve,
-    )).resolves.toEqual({
+    )).toEqual({
       specifier: './relative.js',
       context: { parentURL: loaderEntryUrl },
     })
 
-    await expect(hooks.resolve?.(
+    expect(hooks.resolve?.(
       'left-pad',
       { parentURL: 'file:///C:/Users/test/other.js' },
       nextResolve,
-    )).resolves.toEqual({
+    )).toEqual({
       specifier: 'left-pad',
       context: { parentURL: 'file:///C:/Users/test/other.js' },
     })
 
     dispose()
     expect(hooks.deregister).toHaveBeenCalledTimes(1)
+  })
+
+  it('falls back across the installation and profile boundary only for missing packages', () => {
+    const profileBaseUrl = 'file:///C:/Users/test/profile/package.json'
+    const installationBaseUrl = 'file:///C:/Program%20Files/DSH/resources/app.asar/package.json'
+    installProfilePackageResolver(profileBaseUrl, installationBaseUrl)
+    const loaderEntryUrl = import.meta.resolve('@deepseek-ai/cordis-plugin-loader')
+    const nextResolve = vi.fn((specifier: string, context: { parentURL?: string }) => {
+      if (specifier === 'profile-only' && context.parentURL === installationBaseUrl) {
+        throw Object.assign(new Error('missing'), { code: 'ERR_MODULE_NOT_FOUND' })
+      }
+      if (specifier === 'installed-peer' && context.parentURL?.includes('/profile/peer.js') === true) {
+        throw Object.assign(new Error('missing'), { code: 'ERR_MODULE_NOT_FOUND' })
+      }
+      if (specifier === 'broken') throw new Error('invalid package exports')
+      return { specifier, context }
+    })
+
+    expect(hooks.resolve?.('profile-only', { parentURL: loaderEntryUrl }, nextResolve)).toEqual({
+      specifier: 'profile-only',
+      context: { parentURL: profileBaseUrl },
+    })
+    expect(hooks.resolve?.(
+      'installed-peer',
+      { parentURL: 'file:///C:/Users/test/profile/peer.js' },
+      nextResolve,
+    )).toEqual({
+      specifier: 'installed-peer',
+      context: { parentURL: installationBaseUrl },
+    })
+    expect(() => hooks.resolve?.('broken', { parentURL: loaderEntryUrl }, nextResolve))
+      .toThrow('invalid package exports')
   })
 
   it('deregisters hooks only once even if the disposer is reused', () => {

@@ -8,14 +8,14 @@ import {
   DesktopInstallRecoveryStore,
   desktopInstallRecoveryStatePath,
 } from './install-recovery.ts'
-import { packagedDependencyPath } from './packaged-runtime-path.ts'
+import { packagedArchiveDependencyPath } from './packaged-runtime-path.ts'
 import { assertDesktopProfileName } from './profile-manager.ts'
 
 const RUN_AS_NODE = 'ELECTRON_RUN_AS_NODE'
 const DEFAULT_PROFILE = 'DSH_DESKTOP_DEFAULT_PROFILE'
 const DSH_HOME = 'DSH_HOME'
 const DSH_ENTRY_URL = pathToFileURL(
-  packagedDependencyPath(import.meta.url, '@deepseek-ai/dsh/lib/bin.js'),
+  packagedArchiveDependencyPath(import.meta.url, '@deepseek-ai/dsh/lib/bin.js'),
 ).href
 
 /** Remove Electron Node mode before the DSH CLI creates any child process. */

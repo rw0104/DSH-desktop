@@ -11,6 +11,11 @@ import {
   FORBIDDEN_MACOS_UNIVERSAL_ENTRIES,
   MACOS_UNIVERSAL_NATIVE_ENTRIES,
 } from './mac-universal.ts'
+import {
+  materializePhysicalRuntime,
+  PHYSICAL_RUNTIME_MANIFEST,
+  verifyPhysicalRuntimeManifest,
+} from './physical-runtime.ts'
 
 /** AfterPack fields consumed without importing Electron Builder's incomplete declaration graph. */
 export interface PackagedRuntimeContext {
@@ -60,6 +65,8 @@ export const REQUIRED_PACKAGED_RUNTIME_ENTRIES = [
 export const REQUIRED_UNPACKED_RUNTIME_ENTRIES = [
   'package.json',
   'cordis.patch.yml',
+  'build/physical-runtime-policy.json',
+  'build/production-artifact-allowlist.json',
   'build/app-icon.png',
   'build/app-icon-mac.png',
   'build/tray-iconTemplate.png',
@@ -80,14 +87,11 @@ export const REQUIRED_UNPACKED_RUNTIME_ENTRIES = [
   'lib/deliverable-copy.js',
   'lib/windows-agent-presets.js',
   'lib/windows-pwsh-sandbox.js',
-  'node_modules/@deepseek-ai/dsh/package.json',
   'node_modules/@deepseek-ai/dsh/config/agent-presets/cordis/agent.cordis.yml',
   'node_modules/@deepseek-ai/dsh/config/agent-presets/cordis/skills/cordis-plugin-development/SKILL.md',
   'node_modules/@deepseek-ai/dsh/config/agent-presets/cordis/skills/editing-cordis-compositions/SKILL.md',
-  'node_modules/@deepseek-ai/dsh/lib/bin.js',
-  'node_modules/@deepseek-ai/dsh-app-boot/lib/index.js',
-  'node_modules/@deepseek-ai/dsh-web-frontend/dist/index.html',
   'node_modules/pnpm/bin/pnpm.mjs',
+  PHYSICAL_RUNTIME_MANIFEST,
 ] as const
 
 /** Prebuilt Node-API modules required when the Windows package skips native source rebuilds. */
@@ -118,8 +122,6 @@ export const REQUIRED_UNPACKED_PACKAGE_SPECIFIERS = [
   'dsh-plugin-desktop/windows-agent-presets',
   'dsh-plugin-desktop/windows-pwsh-sandbox',
   'dsh-plugin-desktop/package.json',
-  '@deepseek-ai/dsh-base/package.json',
-  '@deepseek-ai/dsh-web-app/package.json',
 ] as const
 
 /** Injectable archive listing seam used by focused tests. */
@@ -312,13 +314,8 @@ export function verifyRemovedProductBundles(
 }
 
 /**
- * Require every ASAR header entry to have a physical counterpart.
- *
- * The Desktop packaging contract unpacks every included application file so
- * profile fallback links and Node ESM resolution never target virtual paths.
- * Checking the complete header closes the gap left by a curated entry list:
- * a collector regression cannot silently omit transitive packages such as
- * yaml, zod, or typebox from app.asar.unpacked.
+ * Legacy full-mirror assertion retained for focused regression fixtures.
+ * Production packaging validates the consumer-driven physical manifest.
  */
 export function verifyUnpackedArchiveMirror(
   archiveEntries: ReadonlySet<string>,
@@ -406,7 +403,6 @@ export function verifyPackagedRuntime(
       )
     }
   }
-  verifyUnpackedArchiveMirror(archiveEntries, unpackedRoot, exists)
   verifyUnpackedPackageResolution(unpackedRoot, resolvePackage)
 }
 
@@ -419,9 +415,15 @@ export async function afterPack(
   context: PackagedRuntimeContext,
   verify: typeof verifyPackagedRuntime = verifyPackagedRuntime,
   smoke: PackagedDiagnosticWorkerSmoke = smokePackagedDiagnosticWorker,
+  materialize: typeof materializePhysicalRuntime = materializePhysicalRuntime,
+  verifyManifest: typeof verifyPhysicalRuntimeManifest = verifyPhysicalRuntimeManifest,
 ): Promise<void> {
+  const archivePath = resolvePackagedAsarPath(context)
+  const unpackedRoot = resolvePackagedUnpackedRoot(context)
+  await materialize(archivePath, unpackedRoot)
   verify(context)
-  await smoke(resolvePackagedUnpackedRoot(context))
+  await verifyManifest(unpackedRoot)
+  await smoke(unpackedRoot)
 }
 
 export default afterPack

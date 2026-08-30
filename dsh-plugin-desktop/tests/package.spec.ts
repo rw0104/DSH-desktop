@@ -408,13 +408,14 @@ describe('published package surface', () => {
       'cordis.patch.yml',
       'build/**',
       'lib/**',
-      'node_modules/**',
+      'node_modules/pnpm/**',
     ])
     expect(manifest.build?.electronFuses).toEqual({ runAsNode: true })
     expect(manifest.files).toEqual(expect.arrayContaining([
       'build/app-icon.png',
       'build/app-icon-mac.png',
       'build/installer.nsh',
+      'build/physical-runtime-policy.json',
       'build/production-artifact-allowlist.json',
       'build/tray-icon.svg',
       'build/tray-icon*.png',
@@ -423,6 +424,7 @@ describe('published package surface', () => {
     expect(manifest.build?.files).toEqual([
       'build/app-icon.png',
       'build/app-icon-mac.png',
+      'build/physical-runtime-policy.json',
       'build/production-artifact-allowlist.json',
       'build/tray-icon.svg',
       'build/tray-icon*.png',
@@ -430,6 +432,14 @@ describe('published package surface', () => {
       'lib/**',
       'package.json',
       '!node_modules/node-pty/build/**',
+      '!**/*.map',
+      '!**/*.d.ts',
+      '!**/*.d.mts',
+      '!**/*.d.cts',
+      '!**/{test,tests,__tests__,fixture,fixtures,benchmark,benchmarks,example,examples}/**',
+      '!**/{docs,documentation}/**',
+      '!**/{README,README.*,CHANGELOG,CHANGELOG.*,CHANGES,CHANGES.*,HISTORY,HISTORY.*}',
+      'node_modules/dsh-community-market/docs/schemas/*.schema.json',
     ])
     expect(manifest.build?.mac?.icon).toBe('build/app-icon-mac.png')
     expect(manifest.build?.mac?.mergeASARs).toBe(false)
@@ -787,9 +797,11 @@ describe('published package surface', () => {
     expect(patch).toContain('importCerts(keychainFile, certPaths, cscPasswords, keychainPassword)')
     expect(patch).toContain('"-k", keychainPassword, keychainFile')
     expect(patch).toContain('"--workspaces=false"')
+    expect(patch).toContain('tree.devDependencies?.[packageName]')
     expect(installedCodeSign).toContain('importCerts(keychainFile, certPaths, cscPasswords, keychainPassword)')
     expect(installedCodeSign).toContain('"-k", keychainPassword, keychainFile')
     expect(installedNpmCollector).toContain('"--workspaces=false"')
+    expect(installedNpmCollector).toContain('tree.devDependencies?.[packageName]')
   })
 
   it('starts restricted Windows shells with a hidden console show state', () => {

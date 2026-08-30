@@ -34,3 +34,15 @@ diff --git a/out/node-module-collector/npmNodeModulesCollector.js b/out/node-mod
      }
      async collectAllDependencies(tree) {
          for (const [key, value] of Object.entries(tree.dependencies || {})) {
+@@ -67,5 +67,11 @@ class NpmNodeModulesCollector extends nodeModulesCollector_js_1.NodeModulesColl
+     isProdDependency(packageName, tree) {
+         var _a;
++        // npm list incorrectly exposes linked workspace devDependencies in
++        // both _dependencies and dependencies even with --omit=dev. Keep an
++        // explicit workspace development edge out of the packaged graph.
++        if (tree.devDependencies?.[packageName] != null && tree._dependencies?.[packageName] === tree.devDependencies[packageName]) {
++            return false;
++        }
+         return ((_a = tree._dependencies) === null || _a === void 0 ? void 0 : _a[packageName]) != null;
+     }
+ }

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "consumers": [
+    {
+      "id": "desktop-subprocess",
+      "kind": "path-prefix",
+      "entries": [
+        "package.json",
+        "cordis.patch.yml",
+        "build/",
+        "lib/"
+      ],
+      "reason": "Electron RunAsNode, the diagnostics Worker, Profile patches, icons, and generated command shims require ordinary filesystem paths."
+    },
+    {
+      "id": "packaged-agent-presets",
+      "kind": "path-prefix",
+      "entries": [
+        "node_modules/@deepseek-ai/dsh/config/agent-presets/"
+      ],
+      "reason": "Agent preset and skill scanners consume ordinary filesystem paths outside Electron's ASAR-aware module loader."
+    },
+    {
+      "id": "packaged-pnpm",
+      "kind": "package-tree",
+      "roots": [
+        "pnpm"
+      ],
+      "reason": "Profile package operations execute pnpm's bundled CLI from an ordinary filesystem path."
+    },
+    {
+      "id": "electron-native-runtime",
+      "kind": "asar-unpacked",
+      "reason": "Electron Builder marks native modules and executable assets that cannot run directly from ASAR."
+    }
+  ]
+}

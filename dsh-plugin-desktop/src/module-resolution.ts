@@ -4,6 +4,7 @@ import { registerHooks } from 'node:module'
 
 const LOADER_ENTRY_URL = import.meta.resolve('@deepseek-ai/cordis-plugin-loader')
 const DESKTOP_ENTRY_URL = new URL('../lib/index.js', import.meta.url).href
+const INSTALLATION_BASE_URL = new URL('../package.json', import.meta.url).href
 const DESKTOP_PACKAGE_NAME = 'dsh-plugin-desktop'
 
 /** Return whether a Loader request needs Node package resolution. */
@@ -16,17 +17,37 @@ function isBareSpecifier(specifier: string): boolean {
  * @param profileBaseUrl - file URL inside the profile that owns plugin dependencies.
  * @returns an idempotent hook disposer.
  */
-export function installProfilePackageResolver(profileBaseUrl: string): () => void {
+export function installProfilePackageResolver(
+  profileBaseUrl: string,
+  installationBaseUrl: string = INSTALLATION_BASE_URL,
+): () => void {
+  const profileDirectoryUrl = new URL('.', profileBaseUrl).href
   const hooks = registerHooks({
     resolve(specifier, context, nextResolve) {
       const fromLoader = context.parentURL === LOADER_ENTRY_URL
       if (fromLoader && specifier === DESKTOP_PACKAGE_NAME) {
         return { shortCircuit: true, url: DESKTOP_ENTRY_URL }
       }
-      if (!fromLoader || !isBareSpecifier(specifier)) {
+      if (!isBareSpecifier(specifier)) {
         return nextResolve(specifier, context)
       }
-      return nextResolve(specifier, { ...context, parentURL: profileBaseUrl })
+      if (fromLoader) {
+        try {
+          return nextResolve(specifier, { ...context, parentURL: installationBaseUrl })
+        } catch (cause) {
+          if (!isMissingModule(cause)) throw cause
+          return nextResolve(specifier, { ...context, parentURL: profileBaseUrl })
+        }
+      }
+      if (context.parentURL?.startsWith(profileDirectoryUrl) === true) {
+        try {
+          return nextResolve(specifier, context)
+        } catch (cause) {
+          if (!isMissingModule(cause)) throw cause
+          return nextResolve(specifier, { ...context, parentURL: installationBaseUrl })
+        }
+      }
+      return nextResolve(specifier, context)
     },
   })
   let active = true
@@ -35,4 +56,10 @@ export function installProfilePackageResolver(profileBaseUrl: string): () => voi
     active = false
     hooks.deregister()
   }
+}
+
+function isMissingModule(cause: unknown): boolean {
+  return cause instanceof Error
+    && 'code' in cause
+    && (cause.code === 'ERR_MODULE_NOT_FOUND' || cause.code === 'MODULE_NOT_FOUND')
 }

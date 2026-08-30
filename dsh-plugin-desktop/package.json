@@ -81,6 +81,7 @@
     "build/app-icon.png",
     "build/app-icon-mac.png",
     "build/installer.nsh",
+    "build/physical-runtime-policy.json",
     "build/production-artifact-allowlist.json",
     "build/tray-icon.svg",
     "build/tray-icon*.png",
@@ -123,7 +124,7 @@
     "verify:footprint": "node scripts/verify-package-footprint.mjs",
     "test:packaging-performance": "node --test scripts/package-footprint.spec.mjs scripts/installer-benchmark.spec.mjs",
     "check": "yarn run build && yarn run typecheck && yarn run test && yarn run verify:closure && yarn run verify:cli && yarn run verify:loader && yarn run verify:profile && yarn run verify:licenses",
-    "check:win-package": "yarn run build && yarn run typecheck && vitest run tests/package.spec.ts tests/package-win.spec.ts tests/desktop-installer-quit.spec.ts tests/installer-nsh.spec.ts tests/update-checker.spec.ts tests/update-download.spec.ts tests/verify-win-installer.spec.ts tests/verify-win-portable.spec.ts tests/verify-packaged-runtime.spec.ts tests/windows-agent-presets.spec.ts tests/windows-pwsh-sandbox.spec.ts tests/windows-volume-diagnostics.spec.ts tests/window-options.spec.ts tests/workspace-workbench.spec.ts tests/workspace-worktree.spec.ts tests/workspace-worktree-route.spec.ts && yarn run test:packaging-performance && yarn run verify:closure",
+    "check:win-package": "yarn run build && yarn run typecheck && vitest run tests/package.spec.ts tests/package-win.spec.ts tests/desktop-installer-quit.spec.ts tests/installer-nsh.spec.ts tests/update-checker.spec.ts tests/update-download.spec.ts tests/verify-win-installer.spec.ts tests/verify-win-portable.spec.ts tests/verify-packaged-runtime.spec.ts tests/physical-runtime.spec.ts tests/windows-agent-presets.spec.ts tests/windows-pwsh-sandbox.spec.ts tests/windows-volume-diagnostics.spec.ts tests/window-options.spec.ts tests/workspace-workbench.spec.ts tests/workspace-worktree.spec.ts tests/workspace-worktree-route.spec.ts && yarn run test:packaging-performance && yarn run verify:closure",
     "check:mac-package": "yarn run -T check",
     "start": "node lib/bin.js",
     "dev": "yarn run build && node lib/bin.js",
@@ -277,7 +278,7 @@
       "cordis.patch.yml",
       "build/**",
       "lib/**",
-      "node_modules/**"
+      "node_modules/pnpm/**"
     ],
     "afterPack": "./scripts/verify-packaged-runtime.ts",
     "electronFuses": {
@@ -290,13 +291,22 @@
     "files": [
       "build/app-icon.png",
       "build/app-icon-mac.png",
+      "build/physical-runtime-policy.json",
       "build/production-artifact-allowlist.json",
       "build/tray-icon.svg",
       "build/tray-icon*.png",
       "cordis.patch.yml",
       "lib/**",
       "package.json",
-      "!node_modules/node-pty/build/**"
+      "!node_modules/node-pty/build/**",
+      "!**/*.map",
+      "!**/*.d.ts",
+      "!**/*.d.mts",
+      "!**/*.d.cts",
+      "!**/{test,tests,__tests__,fixture,fixtures,benchmark,benchmarks,example,examples}/**",
+      "!**/{docs,documentation}/**",
+      "!**/{README,README.*,CHANGELOG,CHANGELOG.*,CHANGES,CHANGES.*,HISTORY,HISTORY.*}",
+      "node_modules/dsh-community-market/docs/schemas/*.schema.json"
     ],
     "mac": {
       "target": [

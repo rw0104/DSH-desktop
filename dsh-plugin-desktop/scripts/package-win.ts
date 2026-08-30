@@ -32,8 +32,14 @@ export interface WindowsPackageOptions {
   readonly commandShell: string
   /** Absolute electron-builder CLI module. */
   readonly builderCli: string
+  /** Absolute generated Electron Builder configuration. */
+  readonly builderConfig: string
   /** Absolute packaged-installer verification script. */
   readonly verifier: string
+  /** Absolute package-footprint verification script. */
+  readonly footprintVerifier: string
+  /** Absolute packaged Profile verification script. */
+  readonly packagedProfileVerifier: string
   /** Node executable used to run package-local scripts. */
   readonly nodeExecutable: string
   /** Execute one packaging command. */
@@ -93,7 +99,10 @@ export function createWindowsPackageOptions(verifier = './verify-win-installer.t
       ? 'cmd.exe'
       : join(windowsRoot, 'System32', 'cmd.exe'),
     builderCli: require.resolve('electron-builder/cli.js'),
+    builderConfig: fileURLToPath(new URL('./electron-builder.config.mjs', import.meta.url)),
     verifier: fileURLToPath(new URL(verifier, import.meta.url)),
+    footprintVerifier: fileURLToPath(new URL('./verify-package-footprint.mjs', import.meta.url)),
+    packagedProfileVerifier: fileURLToPath(new URL('./verify-packaged-profile.mjs', import.meta.url)),
     nodeExecutable: process.execPath,
     run,
     log: message => console.log(message),
@@ -147,6 +156,8 @@ export function packageWindowsArtifact(
     options.nodeExecutable,
     [
       options.builderCli,
+      '--config',
+      options.builderConfig,
       '--win',
       target,
       '--x64',
@@ -160,6 +171,18 @@ export function packageWindowsArtifact(
       ...cleanEnvironment,
       CSC_IDENTITY_AUTO_DISCOVERY: 'false',
     },
+  )
+  options.run(
+    options.nodeExecutable,
+    [options.footprintVerifier],
+    options.desktopRoot,
+    cleanEnvironment,
+  )
+  options.run(
+    options.nodeExecutable,
+    [options.packagedProfileVerifier],
+    options.desktopRoot,
+    cleanEnvironment,
   )
   options.run(
     options.nodeExecutable,

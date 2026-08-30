@@ -4,5 +4,26 @@
   "declarations": [],
   "testPaths": [],
   "examplePaths": [],
-  "documentationPaths": []
+  "documentationPaths": [
+    {
+      "path": "node_modules/dsh-community-market/docs/schemas/catalog-provider-page.schema.json",
+      "consumer": "dsh-community-market/contracts",
+      "reason": "The production contract validator reads the reviewed provider-page schema at runtime."
+    },
+    {
+      "path": "node_modules/dsh-community-market/docs/schemas/catalog-query.schema.json",
+      "consumer": "dsh-community-market/contracts",
+      "reason": "The production contract validator reads the catalog-query schema at runtime."
+    },
+    {
+      "path": "node_modules/dsh-community-market/docs/schemas/catalog-snapshot.schema.json",
+      "consumer": "dsh-community-market/contracts",
+      "reason": "The production contract validator reads the catalog-snapshot schema at runtime."
+    },
+    {
+      "path": "node_modules/dsh-community-market/docs/schemas/catalog-source.schema.json",
+      "consumer": "dsh-community-market/contracts",
+      "reason": "The production contract validator reads the catalog-source schema at runtime."
+    }
+  ]
 }
