@@ -415,6 +415,7 @@ describe('published package surface', () => {
       'build/app-icon.png',
       'build/app-icon-mac.png',
       'build/installer.nsh',
+      'build/production-artifact-allowlist.json',
       'build/tray-icon.svg',
       'build/tray-icon*.png',
       'docs/**',
@@ -422,6 +423,7 @@ describe('published package surface', () => {
     expect(manifest.build?.files).toEqual([
       'build/app-icon.png',
       'build/app-icon-mac.png',
+      'build/production-artifact-allowlist.json',
       'build/tray-icon.svg',
       'build/tray-icon*.png',
       'cordis.patch.yml',
