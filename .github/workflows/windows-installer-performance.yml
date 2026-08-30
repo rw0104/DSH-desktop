@@ -91,6 +91,11 @@ jobs:
       - name: Measure one clean image
         shell: pwsh
         run: |
+          # v2.0.15's released NSIS process probe treats a restricted child
+          # PowerShell policy as an unavailable probe and exits 2 before it
+          # writes the first file. This only normalizes the disposable CI
+          # benchmark environment; it does not change the released installer.
+          $env:PSExecutionPolicyPreference = 'Bypass'
           $strategy = '${{ matrix.strategy }}'
           $installer = if ($strategy -eq 'base') {
             Join-Path $env:RUNNER_TEMP 'baseline\DSH-Desktop-2.0.15-x64-Setup.exe'
@@ -145,6 +150,7 @@ jobs:
       - name: Measure one long-path clean image
         shell: pwsh
         run: |
+          $env:PSExecutionPolicyPreference = 'Bypass'
           $strategy = '${{ matrix.strategy }}'
           $installer = if ($strategy -eq 'base') {
             Join-Path $env:RUNNER_TEMP 'baseline\DSH-Desktop-2.0.15-x64-Setup.exe'
