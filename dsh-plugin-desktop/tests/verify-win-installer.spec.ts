@@ -14,7 +14,7 @@ function portableExecutable(): Buffer {
   return executable
 }
 
-function fixture(version = '2.0.0'): {
+function fixture(version = '2.0.0', artifactSuffix?: string): {
   readonly root: string
   readonly installer: string
   readonly application: string
@@ -24,7 +24,7 @@ function fixture(version = '2.0.0'): {
   const dist = join(root, 'dist')
   const unpacked = join(dist, 'win-unpacked')
   mkdirSync(unpacked, { recursive: true })
-  const installer = join(dist, `DSH-Desktop-${version}-x64-Setup.exe`)
+  const installer = join(dist, `DSH-Desktop-${version}-x64-Setup${artifactSuffix === undefined ? '' : `-${artifactSuffix}`}.exe`)
   const application = join(unpacked, 'DSH Desktop.exe')
   writeFileSync(installer, portableExecutable())
   writeFileSync(application, portableExecutable())
@@ -43,6 +43,16 @@ describe('Windows installer artifact verification', () => {
       installerPath: value.installer,
       applicationPath: value.application,
     })
+  })
+
+  it('accepts a strategy-suffixed experiment without changing the release name', () => {
+    const value = fixture('2.0.0', '7z-in-place')
+
+    expect(verifyWindowsInstaller({
+      desktopRoot: value.root,
+      version: '2.0.0',
+      artifactSuffix: '7z-in-place',
+    }).installerPath).toBe(value.installer)
   })
 
   it('rejects a stale installer from a different version', () => {

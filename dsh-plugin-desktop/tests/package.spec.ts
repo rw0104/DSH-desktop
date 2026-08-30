@@ -415,6 +415,7 @@ describe('published package surface', () => {
       'build/app-icon.png',
       'build/app-icon-mac.png',
       'build/installer.nsh',
+      'build/installer-7z-in-place.nsh',
       'build/physical-runtime-policy.json',
       'build/production-artifact-allowlist.json',
       'build/tray-icon.svg',
@@ -424,6 +425,7 @@ describe('published package surface', () => {
     expect(manifest.build?.files).toEqual([
       'build/app-icon.png',
       'build/app-icon-mac.png',
+      'build/installer-7z-in-place.nsh',
       'build/physical-runtime-policy.json',
       'build/production-artifact-allowlist.json',
       'build/tray-icon.svg',
@@ -788,6 +790,10 @@ describe('published package surface', () => {
       join(dirname(appBuilderManifest), 'out/node-module-collector/npmNodeModulesCollector.js'),
       'utf8',
     )
+    const installedNsisExtractor = readFileSync(
+      join(dirname(appBuilderManifest), 'templates/nsis/include/extractAppPackage.nsh'),
+      'utf8',
+    )
 
     expect(workspaceManifest.resolutions).toMatchObject({
       'app-builder-lib@npm:26.15.7': patchResolution,
@@ -798,10 +804,12 @@ describe('published package surface', () => {
     expect(patch).toContain('"-k", keychainPassword, keychainFile')
     expect(patch).toContain('"--workspaces=false"')
     expect(patch).toContain('tree.devDependencies?.[packageName]')
+    expect(patch).toContain('DSH_7Z_IN_PLACE')
     expect(installedCodeSign).toContain('importCerts(keychainFile, certPaths, cscPasswords, keychainPassword)')
     expect(installedCodeSign).toContain('"-k", keychainPassword, keychainFile')
     expect(installedNpmCollector).toContain('"--workspaces=false"')
     expect(installedNpmCollector).toContain('tree.devDependencies?.[packageName]')
+    expect(installedNsisExtractor).toContain('DSH_7Z_IN_PLACE')
   })
 
   it('starts restricted Windows shells with a hidden console show state', () => {

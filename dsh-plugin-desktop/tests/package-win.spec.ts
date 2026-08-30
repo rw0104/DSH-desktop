@@ -100,7 +100,7 @@ describe('Windows x64 installer packaging', () => {
       env: { PATH: 'C:\\Windows\\System32', SAFE_VALUE: 'kept' },
     })
     expect(logs).toEqual([
-      'Building an unsigned Windows x64 installer; Authenticode is a separate release step.',
+      'Building an unsigned Windows x64 installer (zip-direct); Authenticode is a separate release step.',
     ])
   })
 
@@ -130,7 +130,7 @@ describe('Windows x64 installer packaging', () => {
       'C:\\repo\\dsh-plugin-desktop\\scripts\\verify-win-portable.ts',
     ])
     expect(logs).toEqual([
-      'Building an unsigned Windows x64 portable archive; Authenticode is a separate release step.',
+      'Building an unsigned Windows x64 portable archive (zip-direct); Authenticode is a separate release step.',
     ])
   })
 
@@ -161,7 +161,7 @@ describe('Windows x64 installer packaging', () => {
       '--config.npmRebuild=false',
     ])
     expect(logs).toEqual([
-      'Building an unsigned Windows x64 installer; Authenticode is a separate release step.',
+      'Building an unsigned Windows x64 installer (zip-direct); Authenticode is a separate release step.',
       'Skipping the Windows package preflight; the CI shared gate already passed.',
     ])
   })
@@ -180,6 +180,35 @@ describe('Windows x64 installer packaging', () => {
       expect(calls).toEqual([])
     },
   )
+
+  it.each([
+    ['7z-staged', [
+      '--config.nsis.useZip=false',
+      '--config.nsis.artifactName=DSH-Desktop-${version}-${arch}-Setup-7z-staged.${ext}',
+    ]],
+    ['7z-in-place', [
+      '--config.nsis.useZip=false',
+      '--config.nsis.artifactName=DSH-Desktop-${version}-${arch}-Setup-7z-in-place.${ext}',
+      '--config.nsis.include=installer-7z-in-place.nsh',
+    ]],
+  ] as const)('builds the %s experiment without changing the ZIP default', (strategy, expected) => {
+    const calls: CommandCall[] = []
+    packageWindowsInstaller(options(calls), strategy)
+
+    expect(calls[1]?.args.slice(-expected.length)).toEqual(expected)
+    expect(calls.slice(1).every(call => call.env.DSH_WINDOWS_PAYLOAD_STRATEGY === strategy)).toBe(true)
+  })
+
+  it('rejects an unknown payload strategy before running commands', () => {
+    const calls: CommandCall[] = []
+    const value = {
+      ...options(calls),
+      env: { ...options([]).env, DSH_WINDOWS_PAYLOAD_STRATEGY: 'tar' },
+    }
+
+    expect(() => packageWindowsInstaller(value)).toThrow('unsupported Windows payload strategy')
+    expect(calls).toEqual([])
+  })
 
   it('stops before packaging when the headless check fails', () => {
     const calls: CommandCall[] = []

@@ -46,3 +46,19 @@ diff --git a/out/node-module-collector/npmNodeModulesCollector.js b/out/node-mod
          return ((_a = tree._dependencies) === null || _a === void 0 ? void 0 : _a[packageName]) != null;
      }
  }
+diff --git a/templates/nsis/include/extractAppPackage.nsh b/templates/nsis/include/extractAppPackage.nsh
+--- a/templates/nsis/include/extractAppPackage.nsh
++++ b/templates/nsis/include/extractAppPackage.nsh
+@@ -93,4 +93,8 @@
+ !macro extractUsing7za FILE
++  !ifdef DSH_7Z_IN_PLACE
++  SetOutPath "$INSTDIR"
++  Nsis7z::Extract "${FILE}"
++  !else
+   Push $OUTDIR
+   CreateDirectory "$PLUGINSDIR\7z-out"
+   ClearErrors
+@@ -135,2 +139,3 @@
+   DoneExtract7za:
++  !endif
+ !macroend

@@ -14,6 +14,28 @@ const WINDOWS_SIGNING_KEYS = [
   'WIN_CSC_LINK',
 ] as const
 
+export type WindowsPayloadStrategy = 'zip-direct' | '7z-staged' | '7z-in-place'
+
+/** Parse one explicit experiment strategy without changing the ZIP default. */
+export function windowsPayloadStrategy(environment: NodeJS.ProcessEnv): WindowsPayloadStrategy {
+  const value = environment.DSH_WINDOWS_PAYLOAD_STRATEGY ?? 'zip-direct'
+  if (value === 'zip-direct' || value === '7z-staged' || value === '7z-in-place') return value
+  throw new Error(`unsupported Windows payload strategy ${JSON.stringify(value)}`)
+}
+
+/** Electron Builder overrides that keep payload experiments distinct. */
+export function windowsPayloadBuilderArgs(strategy: WindowsPayloadStrategy): readonly string[] {
+  if (strategy === 'zip-direct') return []
+  const artifactName = `DSH-Desktop-\${version}-\${arch}-Setup-${strategy}.\${ext}`
+  return [
+    '--config.nsis.useZip=false',
+    `--config.nsis.artifactName=${artifactName}`,
+    ...(strategy === '7z-in-place'
+      ? ['--config.nsis.include=installer-7z-in-place.nsh']
+      : []),
+  ]
+}
+
 /** Injectable native Windows packaging boundary used by focused tests. */
 export interface WindowsPackageOptions {
   /** Environment inherited by the packaging command. */
@@ -132,11 +154,20 @@ export function packageWindowsArtifact(
   options: WindowsPackageOptions,
   target: 'nsis' | 'zip',
   artifact: 'installer' | 'portable archive',
+  strategy: WindowsPayloadStrategy = windowsPayloadStrategy(options.env),
 ): void {
   assertWindowsPackageHost(options, artifact)
+  if (target === 'zip' && strategy !== 'zip-direct') {
+    throw new Error('portable ZIP packaging does not accept an NSIS payload strategy')
+  }
 
   const cleanEnvironment = withoutWindowsSigningSecrets(options.env)
-  options.log(`Building an unsigned Windows x64 ${artifact}; Authenticode is a separate release step.`)
+  const payloadEnvironment = strategy === 'zip-direct'
+    ? cleanEnvironment
+    : { ...cleanEnvironment, DSH_WINDOWS_PAYLOAD_STRATEGY: strategy }
+  options.log(
+    `Building an unsigned Windows x64 ${artifact} (${strategy}); Authenticode is a separate release step.`,
+  )
   if (options.env.DSH_PACKAGE_CHECK_ALREADY_RAN !== '1') {
     options.run(
       options.commandShell,
@@ -165,10 +196,11 @@ export function packageWindowsArtifact(
       'never',
       '--config.win.signExecutable=false',
       '--config.npmRebuild=false',
+      ...windowsPayloadBuilderArgs(strategy),
     ],
     options.desktopRoot,
     {
-      ...cleanEnvironment,
+      ...payloadEnvironment,
       CSC_IDENTITY_AUTO_DISCOVERY: 'false',
     },
   )
@@ -176,27 +208,28 @@ export function packageWindowsArtifact(
     options.nodeExecutable,
     [options.footprintVerifier],
     options.desktopRoot,
-    cleanEnvironment,
+    payloadEnvironment,
   )
   options.run(
     options.nodeExecutable,
     [options.packagedProfileVerifier],
     options.desktopRoot,
-    cleanEnvironment,
+    payloadEnvironment,
   )
   options.run(
     options.nodeExecutable,
     [options.verifier],
     options.desktopRoot,
-    cleanEnvironment,
+    payloadEnvironment,
   )
 }
 
 /** Run the headless release gates and package one unsigned x64 NSIS installer. */
 export function packageWindowsInstaller(
   options: WindowsPackageOptions = createWindowsPackageOptions(),
+  strategy: WindowsPayloadStrategy = windowsPayloadStrategy(options.env),
 ): void {
-  packageWindowsArtifact(options, 'nsis', 'installer')
+  packageWindowsArtifact(options, 'nsis', 'installer', strategy)
 }
 
 const invokedPath = process.argv[1]

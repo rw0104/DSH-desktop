@@ -32,6 +32,8 @@ export interface WindowsInstallerVerificationOptions {
   readonly desktopRoot: string
   /** Product version embedded in the expected artifact name. */
   readonly version: string
+  /** Optional experiment suffix placed after Setup. */
+  readonly artifactSuffix?: string
 }
 
 function readVersion(desktopRoot: string): string {
@@ -76,6 +78,10 @@ function defaultOptions(): WindowsInstallerVerificationOptions {
   return {
     desktopRoot,
     version: readVersion(desktopRoot),
+    ...(process.env.DSH_WINDOWS_PAYLOAD_STRATEGY === '7z-staged'
+      || process.env.DSH_WINDOWS_PAYLOAD_STRATEGY === '7z-in-place'
+      ? { artifactSuffix: process.env.DSH_WINDOWS_PAYLOAD_STRATEGY }
+      : {}),
   }
 }
 
@@ -90,7 +96,7 @@ export function verifyWindowsInstaller(
   const distDir = join(options.desktopRoot, 'dist')
   const installerPath = join(
     distDir,
-    `DSH-Desktop-${options.version}-x64-Setup.exe`,
+    `DSH-Desktop-${options.version}-x64-Setup${options.artifactSuffix === undefined ? '' : `-${options.artifactSuffix}`}.exe`,
   )
   const applicationPath = join(distDir, 'win-unpacked', 'DSH Desktop.exe')
 
