@@ -69,7 +69,7 @@ git submodule status -- deepseek-harness
 
 最终本地证据：`package:dir`/afterPack 413 个物理文件、`669,194,705` bytes、19,991 个 ASAR entry；physical manifest 338 files / `54,124,441` bytes。桌面类型检查和相关回归共 76 项通过。直接运行新打包目录及实际 `D:\DSH Desktop` 均得到 45 个客户端 entry，包含 `dsh-plugin-desktop` 和 `@deepseek-ai/dsh-client-modules`；真实 Chromium DOM 显示 Harness 主界面，桌面 bundle HTTP 200，等待超过 30 秒无 Renderer timeout，退出码 0。D 盘安装版本为 FileVersion `2.0.16` / ProductVersion `2.0.16.0`；用户数据和 DSH Profile 未清理。
 
-本地最终 Setup 为 `DSH-Desktop-2.0.16-x64-Setup.exe`，`220,864,754` bytes，SHA-256 `0D6D958080D6B2164B4E40A44795961BA57409040DBC7FA469D909043BDC7BA4`，Authenticode `NotSigned`；`latest.yml` 为 `342` bytes，SHA-256 `D27CFA96D5C042DA61C883F4524C0D7970B7435B231C84D642EA9D6136B6AFEA`。版本化 Windows 性能 workflow、长路径与失败恢复门禁仍需在创建 tag/Release 前完成。
+本地最终 Setup 为 `DSH-Desktop-2.0.16-x64-Setup.exe`，`220,864,754` bytes，SHA-256 `0D6D958080D6B2164B4E40A44795961BA57409040DBC7FA469D909043BDC7BA4`，Authenticode `NotSigned`；`latest.yml` 为 `342` bytes，SHA-256 `D27CFA96D5C042DA61C883F4524C0D7970B7435B231C84D642EA9D6136B6AFEA`。版本化性能对比未形成有效样本：run `33329496200` 的 workflow 参数展开失败，run `33330219034` 修复参数后仍因数组 splatting 失败，run `33331055886` 参数正确但 v2.0.15 基线安装器在 clean runner 实际安装前固定退出码 2，fail-fast 取消候选测量。故本版本不宣称性能收益；后续先修复/重建可测的 v2.0.15 基线，再补跑长路径和失败恢复矩阵。
 
 复核命令：
 
