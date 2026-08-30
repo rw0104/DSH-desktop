@@ -5,16 +5,14 @@ import { normalizeRepositoryIdentity } from '../contracts/identity.js'
 import { parseCatalogSnapshot } from '../contracts/validate.js'
 
 export const DSHFIND_KEY = 'dshfind'
-export const DSHFIND_ENDPOINT = 'https://api.dshfind.com/v1/plugins'
+export const DSHFIND_ENDPOINT = 'https://api.dshfind.com/v1/catalog'
 export const DSHFIND_HOSTNAME = 'api.dshfind.com'
 export const DSHFIND_PROVIDER_ID = 'com.dshfind.catalog'
 export const DSHFIND_ADAPTER_ID = 'market.dshfind-v1'
 
 const DSHFIND_ORIGIN = `https://${DSHFIND_HOSTNAME}`
 const DSHFIND_PAGE_SIZE = 100
-const MAX_DSHFIND_ITEMS = 10_000
-const MAX_DSHFIND_PAGES = 100
-const DEFAULT_INTER_PAGE_DELAY_MS = 2_100
+const MAX_DSHFIND_ITEMS = 25_000
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$/u
 const GITHUB_OWNER_PATTERN = /^[a-z0-9][a-z0-9-]{0,99}$/iu
 const GITHUB_REPOSITORY_PATTERN = /^[a-z0-9._-]{1,100}$/iu
@@ -28,27 +26,13 @@ const UNSAFE_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u20
 
 type CatalogItem = CatalogSnapshot['items'][number]
 
-interface DshfindRawPage {
-  readonly data: readonly unknown[]
-  readonly page: number
-  readonly perPage: number
-  readonly total: number
-  readonly totalPages: number
-  readonly dataVersion: string
-  readonly asOf: string
-}
-
 interface DshfindDatasetIdentity {
-  readonly total: number
-  readonly totalPages: number
   readonly dataVersion: string
   readonly asOf: string
   readonly finalUrl: string
 }
 
 export interface DshfindAdapterOptions {
-  /** Keep the anonymous production client below dshfind's documented 30/minute quota. */
-  readonly interPageDelayMs?: number
   readonly now?: () => Date
 }
 
@@ -93,42 +77,22 @@ function assertFinalOrigin(value: string): string {
   return url.href
 }
 
-function parseRawPage(value: unknown, expectedPage: number): DshfindRawPage {
+function parseRawCatalog(value: unknown, finalUrl: string): {
+  readonly data: readonly unknown[]
+  readonly dataset: DshfindDatasetIdentity
+} {
   const raw = record(value)
-  if (raw === undefined || !Array.isArray(raw.data)) throw new Error('dshfind response is invalid')
-
-  const page = safeInteger(raw.page, 'page', 1)
-  const perPage = safeInteger(raw.per_page, 'per_page', 1)
-  const total = safeInteger(raw.total, 'total')
-  const totalPages = safeInteger(raw.total_pages, 'total_pages')
-  if (page !== expectedPage) throw new Error('dshfind response page did not match the request')
-  if (perPage !== DSHFIND_PAGE_SIZE) throw new Error('dshfind response changed the requested page size')
+  if (raw === undefined || !Array.isArray(raw.data)) throw new Error('dshfind full catalog response is invalid')
+  const total = safeInteger(raw.total, 'catalog total')
   if (total > MAX_DSHFIND_ITEMS) throw new Error('dshfind catalog exceeded the item limit')
-  if (totalPages > MAX_DSHFIND_PAGES) throw new Error('dshfind catalog exceeded the page limit')
-
-  const calculatedPages = total === 0 ? 0 : Math.ceil(total / DSHFIND_PAGE_SIZE)
-  if (totalPages !== calculatedPages) throw new Error('dshfind response page metadata is inconsistent')
-  if (totalPages > 0 && page > totalPages) throw new Error('dshfind response page exceeded total_pages')
-  const expectedItems = totalPages === 0
-    ? 0
-    : page < totalPages
-      ? DSHFIND_PAGE_SIZE
-      : total - (page - 1) * DSHFIND_PAGE_SIZE
-  if (raw.data.length !== expectedItems || raw.data.length > DSHFIND_PAGE_SIZE) {
-    throw new Error('dshfind response item count did not match its page metadata')
-  }
-
+  if (raw.data.length !== total) throw new Error('dshfind full catalog item count did not match its metadata')
   if (typeof raw.data_version !== 'string' || !DATA_VERSION_PATTERN.test(raw.data_version)) {
-    throw new Error('dshfind data_version is invalid')
+    throw new Error('dshfind catalog data_version is invalid')
   }
+  const asOf = dateTime(raw.as_of, 'catalog as_of')
   return {
     data: raw.data,
-    page,
-    perPage,
-    total,
-    totalPages,
-    dataVersion: raw.data_version,
-    asOf: dateTime(raw.as_of, 'as_of'),
+    dataset: { dataVersion: raw.data_version, asOf, finalUrl },
   }
 }
 
@@ -279,32 +243,6 @@ function normalizeItem(value: unknown, context: CatalogFetchContext): CatalogIte
   }
 }
 
-function waitForNextPage(delayMs: number, signal: AbortSignal): Promise<void> {
-  signal.throwIfAborted()
-  if (delayMs === 0) return Promise.resolve()
-  return new Promise((resolve, reject) => {
-    const onAbort = () => {
-      clearTimeout(timer)
-      signal.removeEventListener('abort', onAbort)
-      reject(signal.reason ?? new DOMException('The operation was aborted', 'AbortError'))
-    }
-    const timer = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort)
-      resolve()
-    }, delayMs)
-    signal.addEventListener('abort', onAbort, { once: true })
-    if (signal.aborted) onAbort()
-  })
-}
-
-function pageUrl(page: number, dataVersion?: string): string {
-  const url = new URL(DSHFIND_ENDPOINT)
-  url.searchParams.set('page', String(page))
-  url.searchParams.set('per_page', String(DSHFIND_PAGE_SIZE))
-  if (dataVersion !== undefined) url.searchParams.set('data_version', dataVersion)
-  return url.href
-}
-
 function buildSnapshots(
   items: readonly CatalogItem[],
   dataset: DshfindDatasetIdentity,
@@ -400,65 +338,35 @@ function querySnapshot(query: CatalogQuery, snapshots: readonly CatalogSnapshot[
 }
 
 export function createDshfindAdapter(options: DshfindAdapterOptions = {}): CatalogAdapter {
-  const interPageDelayMs = options.interPageDelayMs ?? DEFAULT_INTER_PAGE_DELAY_MS
-  if (!Number.isSafeInteger(interPageDelayMs) || interPageDelayMs < 0) {
-    throw new TypeError('invalid dshfind inter-page delay')
-  }
   const now = options.now ?? (() => new Date())
 
   const scanCatalog: NonNullable<CatalogAdapter['scanCatalog']> = async (_query, context) => {
     const items: CatalogItem[] = []
     const seen = new Set<string>()
-    let dataset: DshfindDatasetIdentity | undefined
-    let expectedPage = 1
+    context.signal.throwIfAborted()
+    const response = await context.http.getJson(
+      DSHFIND_ENDPOINT,
+      context.signal,
+      { allowedOrigin: DSHFIND_ORIGIN },
+    )
+    context.signal.throwIfAborted()
+    const { data: rawItems, dataset } = parseRawCatalog(
+      response.value,
+      assertFinalOrigin(response.finalUrl),
+    )
 
-    while (true) {
-      context.signal.throwIfAborted()
-      const response = await context.http.getJson(
-        pageUrl(expectedPage, dataset?.dataVersion),
-        context.signal,
-        { allowedOrigin: DSHFIND_ORIGIN },
-      )
-      context.signal.throwIfAborted()
-      const finalUrl = assertFinalOrigin(response.finalUrl)
-      const page = parseRawPage(response.value, expectedPage)
-
-      if (dataset === undefined) {
-        dataset = {
-          total: page.total,
-          totalPages: page.totalPages,
-          dataVersion: page.dataVersion,
-          asOf: page.asOf,
-          finalUrl,
-        }
-      } else if (
-        page.total !== dataset.total
-        || page.totalPages !== dataset.totalPages
-        || page.dataVersion !== dataset.dataVersion
-        || page.asOf !== dataset.asOf
-      ) {
-        throw new Error('dshfind dataset changed during pagination')
+    for (const rawItem of rawItems) {
+      const raw = record(rawItem)
+      const rawId = raw === undefined ? undefined : plainText(raw.full_name, 160)
+      if (rawId !== undefined && IDENTIFIER_PATTERN.test(rawId)) {
+        const duplicateKey = rawId.toLocaleLowerCase('en-US')
+        if (seen.has(duplicateKey)) throw new Error('dshfind catalog contains duplicate item IDs')
+        seen.add(duplicateKey)
       }
-
-      for (const rawItem of page.data) {
-        const raw = record(rawItem)
-        const rawId = raw === undefined ? undefined : plainText(raw.full_name, 160)
-        if (rawId !== undefined && IDENTIFIER_PATTERN.test(rawId)) {
-          const duplicateKey = rawId.toLocaleLowerCase('en-US')
-          if (seen.has(duplicateKey)) throw new Error('dshfind catalog contains duplicate item IDs')
-          seen.add(duplicateKey)
-        }
-        const item = normalizeItem(rawItem, context)
-        if (item !== undefined) items.push(item)
-      }
-
-      if (page.totalPages === 0 || expectedPage >= page.totalPages) break
-      if (expectedPage >= MAX_DSHFIND_PAGES) throw new Error('dshfind catalog exceeded the page limit')
-      await waitForNextPage(interPageDelayMs, context.signal)
-      expectedPage += 1
+      const item = normalizeItem(rawItem, context)
+      if (item !== undefined) items.push(item)
     }
 
-    if (dataset === undefined) throw new Error('dshfind scan did not return dataset metadata')
     return buildSnapshots(items, dataset, context, now().toISOString())
   }
 

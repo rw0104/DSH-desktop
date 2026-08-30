@@ -1,6 +1,7 @@
 import dns from 'node:dns'
 import { BlockList, isIP } from 'node:net'
 import https from 'node:https'
+import { gunzipSync } from 'node:zlib'
 import type { IncomingHttpHeaders, IncomingMessage } from 'node:http'
 import type { CatalogHttpClient, CatalogHttpRequestPolicy, CatalogHttpResponse } from '../contracts/types.js'
 
@@ -70,6 +71,8 @@ export interface RestrictedHttpClientOptions {
   ) => Promise<RestrictedHttpResponse>
   readonly totalTimeoutMs?: number
   readonly maxBodyBytes?: number
+  /** Response encodings accepted by this exact client; user-added sources remain identity-only. */
+  readonly acceptedContentEncodings?: readonly ('identity' | 'gzip')[]
 }
 
 const syntheticProxyAddresses = new BlockList()
@@ -155,6 +158,7 @@ function requestOnce(
   signal: AbortSignal,
   pinned: PinnedAddress,
   maxBodyBytes: number,
+  acceptEncoding: string,
 ): Promise<RestrictedHttpResponse> {
   return new Promise((resolve, reject) => {
     let settled = false
@@ -169,7 +173,7 @@ function requestOnce(
       method: 'GET',
       headers: {
         accept: 'application/json',
-        'accept-encoding': 'identity',
+        'accept-encoding': acceptEncoding,
         'user-agent': 'dsh-community-market/0.1',
       },
       servername: url.hostname,
@@ -209,6 +213,8 @@ async function fetchJson(
   resolveAddress: (hostname: string) => Promise<PinnedAddress>,
   request: (url: URL, signal: AbortSignal, pinned: PinnedAddress) => Promise<RestrictedHttpResponse>,
   allowedOrigin: string | undefined,
+  acceptedContentEncodings: ReadonlySet<'identity' | 'gzip'>,
+  maxBodyBytes: number,
   redirectCount = 0,
 ): Promise<CatalogHttpResponse> {
   if (signal.aborted) throw new CatalogNetworkError('timeout')
@@ -228,19 +234,31 @@ async function fetchJson(
       resolveAddress,
       request,
       allowedOrigin,
+      acceptedContentEncodings,
+      maxBodyBytes,
       redirectCount + 1,
     )
   }
   if (status < 200 || status >= 300) throw new CatalogNetworkError('http')
   const contentType = response.headers['content-type'] ?? ''
-  const encoding = response.headers['content-encoding']
+  const rawEncoding = response.headers['content-encoding']
+  const encoding = Array.isArray(rawEncoding) ? rawEncoding.join(',') : rawEncoding ?? 'identity'
   if (!/^(?:application\/json|application\/[^;]+\+json)(?:;|$)/iu.test(contentType)
-    || encoding !== undefined && encoding !== 'identity') {
+    || !acceptedContentEncodings.has(encoding as 'identity' | 'gzip')) {
     throw new CatalogNetworkError('response')
   }
+  let body = response.body
+  if (encoding === 'gzip') {
+    try {
+      body = gunzipSync(body, { maxOutputLength: maxBodyBytes })
+    } catch {
+      throw new CatalogNetworkError('response')
+    }
+  }
+  if (body.byteLength > maxBodyBytes) throw new CatalogNetworkError('response')
   let value: unknown
   try {
-    value = JSON.parse(response.body.toString('utf8')) as unknown
+    value = JSON.parse(body.toString('utf8')) as unknown
   } catch {
     throw new CatalogNetworkError('response')
   }
@@ -257,8 +275,14 @@ export function createRestrictedHttpClient(
   const resolveAddress = options.resolveAddress
     ?? (async hostname => await resolvePinnedAddress(hostname, lookupAddresses, syntheticProxyHostnames))
   const maxBodyBytes = options.maxBodyBytes ?? MAX_BODY_BYTES
+  const acceptedContentEncodings = new Set<'identity' | 'gzip'>(options.acceptedContentEncodings ?? ['identity'])
+  if (acceptedContentEncodings.size === 0
+    || [...acceptedContentEncodings].some(value => value !== 'identity' && value !== 'gzip')) {
+    throw new TypeError('invalid catalog content encoding policy')
+  }
+  const acceptEncoding = acceptedContentEncodings.has('gzip') ? 'gzip, identity' : 'identity'
   const request = options.request
-    ?? (async (url, signal, pinned) => await requestOnce(url, signal, pinned, maxBodyBytes))
+    ?? (async (url, signal, pinned) => await requestOnce(url, signal, pinned, maxBodyBytes, acceptEncoding))
   const totalTimeoutMs = options.totalTimeoutMs ?? TOTAL_TIMEOUT_MS
 
   return {
@@ -281,7 +305,15 @@ export function createRestrictedHttpClient(
           reject(cause)
         }, totalTimeoutMs)
       })
-      const operation = fetchJson(start, totalController.signal, resolveAddress, request, policy.allowedOrigin)
+      const operation = fetchJson(
+        start,
+        totalController.signal,
+        resolveAddress,
+        request,
+        policy.allowedOrigin,
+        acceptedContentEncodings,
+        maxBodyBytes,
+      )
       try {
         return await Promise.race([operation, aborted, timedOut])
       } finally {

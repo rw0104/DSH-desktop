@@ -70,7 +70,7 @@ DSH Community Market 以开放方式与各种插件数据源合作。任何人�
 
 ## 完整本地索引与 cache
 
-Host 会先针对已选来源和当前 locale 完成一次全量标准化扫描，再提供目录交互。标准来源按照声明的 cursor 和有效 page limit 扫描到结束；经过审核的 1024Store adapter 则只执行一次完整 registry GET，标准化每个合法条目，并按每块最多 100 条的 Schema 上限输出。dshfind adapter 会遍历每页最多 100 条的 REST 数据，并在所有后续分页中固定首页的 `data_version`。由于其公布的匿名配额低于当前首次同步所需的 page 数，首次扫描会主动节流，可能明显更慢；版本过期或限流失败时不会发布部分索引。10,000 条 Host 上限、来源身份、取消、provenance 和同源检查覆盖整次扫描。
+Host 会先针对已选来源和当前 locale 完成一次全量标准化扫描，再提供目录交互。标准来源按照声明的 cursor 和有效 page limit 扫描到结束；经过审核的 1024Store adapter 则只执行一次完整 registry GET，标准化每个合法条目，并按每块最多 100 条的 Schema 上限输出。dshfind adapter 会执行一次原子的完整目录 GET，校验 response 自带的 `data_version`、总数、时间戳、条目身份和精确 origin，再在本地输出相同的有界分块。经过审查的 Host 传输层只接受 identity 或 gzip，把 1024Store 解压后 response 限制在 16 MiB、dshfind 限制在 32 MiB，并且绝不把这些例外扩展给用户添加的来源。25,000 条规范化 Host 上限、来源身份、取消、provenance 和同源检查覆盖整次扫描。
 
 搜索、排序、多分类 OR 筛选、分类枚举和分页只在这份完整本地索引上运行。UI 每页最多展示 50 条匹配结果；**加载更多**推进 Host 拥有的本地 cursor，不会再次向 provider 发出带筛选的请求。分类列表是索引中存在的完整分类集合。**可安装**是同一索引上 fail-closed 的结构子集，不是第二个 provider feed，也不是逐包请求 registry 得出的结果。它的目录成员资格与本地安装、receipt、卸载历史及启用/禁用状态无关。
 

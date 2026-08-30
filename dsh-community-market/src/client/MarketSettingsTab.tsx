@@ -936,7 +936,7 @@ export function MarketSurface({ initialView = 'installable', readLocale, t, show
     <section
       className="dshMarketRoot"
       aria-label={t('title')}
-      aria-busy={loading || loadingMore || mutationPending || installationsLoading || operationPending || desktopActionPending}
+      aria-busy={loading || loadingMore || installableLoading || mutationPending || installationsLoading || operationPending || desktopActionPending}
     >
       {showHeader && (
         <header className="dshMarketHeader">
@@ -1334,7 +1334,11 @@ function InstallableView(props: {
     </div>
   )
   if (props.loading) return (
-    <div className="dshMarketEmpty"><StateDot state="ongoing" size={16} /><p>{props.t('scanningInstallable')}</p></div>
+    <div className="dshMarketEmpty" role="status" aria-live="polite">
+      <StateDot state="ongoing" size={16} />
+      <h2>{props.t('scanningInstallable')}</h2>
+      <p>{props.t('scanningInstallableBody')}</p>
+    </div>
   )
   if (!props.loaded && props.error !== undefined) return (
     <div className="dshMarketEmpty" role="alert">
@@ -1344,7 +1348,11 @@ function InstallableView(props: {
     </div>
   )
   if (!props.loaded) return (
-    <div className="dshMarketEmpty"><StateDot state="ongoing" size={16} /><p>{props.t('scanningInstallable')}</p></div>
+    <div className="dshMarketEmpty" role="status" aria-live="polite">
+      <StateDot state="ongoing" size={16} />
+      <h2>{props.t('scanningInstallable')}</h2>
+      <p>{props.t('scanningInstallableBody')}</p>
+    </div>
   )
   return (
     <div className="dshMarketContent">
@@ -1635,8 +1643,9 @@ function PluginCard({ value, actionLabel, disabled = false, onClick, t }: {
   )
 }
 
-function SourceAttribution({ attribution }: {
+function SourceAttribution({ attribution, notice }: {
   attribution: NonNullable<MarketSourceView['attribution']>
+  notice?: string
 }) {
   const href = safeHttpsExternalHref(attribution.url)
   return (
@@ -1644,7 +1653,7 @@ function SourceAttribution({ attribution }: {
       {href === undefined
         ? <span>{attribution.name}</span>
         : <a href={href} target="_blank" rel="noopener noreferrer">{attribution.name}</a>}
-      {attribution.notice !== undefined && <span>{attribution.notice}</span>}
+      {(notice ?? attribution.notice) !== undefined && <span>{notice ?? attribution.notice}</span>}
     </div>
   )
 }
@@ -1771,8 +1780,13 @@ function SourceRow({ source, result, pending, canMoveUp, canMoveDown, onMoveUp, 
     <div className="dshMarketSource">
       <div>
         <h3>{source.name}{source.partnership && <Pill>{t('partner')}</Pill>}</h3>
-        <p>{source.description ?? source.endpoint}</p>
-        {source.attribution !== undefined && <SourceAttribution attribution={source.attribution} />}
+        <p>{source.partnership ? t('partnerSourceDescription') : source.description ?? source.endpoint}</p>
+        {source.attribution !== undefined && (
+          <SourceAttribution
+            attribution={source.attribution}
+            {...(source.partnership ? { notice: t('partnerSourceAttribution') } : {})}
+          />
+        )}
         <div className="dshMarketSourceMeta">
           {source.attribution === undefined && <span>{source.providerId}</span>}
           <span>{endpointHost}</span>
@@ -1838,8 +1852,11 @@ function AvailableSource({ provider, pending, onAdd, t }: {
     <div className="dshMarketSource">
       <div>
         <h3>{provider.name}{provider.partnership && <Pill>{t('partner')}</Pill>}</h3>
-        <p>{provider.description}</p>
-        <SourceAttribution attribution={provider.attribution} />
+        <p>{provider.partnership ? t('partnerSourceDescription') : provider.description}</p>
+        <SourceAttribution
+          attribution={provider.attribution}
+          {...(provider.partnership ? { notice: t('partnerSourceAttribution') } : {})}
+        />
       </div>
       <Button variant="outline" size="sm" disabled={pending} icon={<IconPlusOutline16 />} onClick={onAdd}>{t('add')}</Button>
     </div>

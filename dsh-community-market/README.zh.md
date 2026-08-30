@@ -23,13 +23,13 @@ DSH Community Market 是 [DSH Desktop](../README.md) 内置的开放插件市场
 
 任何人都可以提供、接入和使用插件数据源。符合规范的数据源只需发布一份 [`catalog-source` manifest](docs/schemas/catalog-source.schema.json)，并由其 `/v1/plugins` 接口返回符合 [`catalog-provider-page` Schema](docs/schemas/catalog-provider-page.schema.json) 的数据，无需为 Market 编写自定义代码。已有 API 无需更换自己的格式，也可以联系我们，通过随 Market 发布的受审 adapter 作为合作数据源接入。来源可以提供 `media.icon`，Desktop 会先校验并代理图片再显示；没有图标的来源仍然合法，界面会使用本地 fallback。
 
-展示已选来源前，Host 会先建立一份完整、经过校验的本地索引。标准来源按照声明的 cursor 与 page limit 扫描；经过审核的 1024Store adapter 只读取一次完整 registry，再按 Schema 上限分块标准化；经过审核的 dshfind adapter 则遍历 REST 分页，并在整次扫描中固定同一个 `data_version`。之后的搜索、多分类 OR 筛选、分类选项和分页都在这份完整本地索引上进行，不会因为每次交互重新请求 provider。每个可见页面最多展示 50 条，分类选项覆盖索引中的全部分类，而不只是已经显示的页面。**可安装**是同一索引上 fail-closed 的结构子集，不随本地安装、receipt 或启用/禁用状态变化；只有用户预览某个候选时，才开始权威 npm 与本地操作复核。
+展示已选来源前，Host 会先建立一份完整、经过校验的本地索引。标准来源按照声明的 cursor 与 page limit 扫描；经过审核的 1024Store adapter 只读取一次完整 registry，再按 Schema 上限分块标准化；经过审核的 dshfind adapter 则读取一份原子的完整目录快照，校验其中自带的 `data_version`、总数和时间戳，再在本地输出同样有界的分块。之后的搜索、多分类 OR 筛选、分类选项和分页都在这份完整本地索引上进行，不会因为每次交互重新请求 provider。每个可见页面最多展示 50 条，分类选项覆盖索引中的全部分类，而不只是已经显示的页面。**可安装**是同一索引上 fail-closed 的结构子集，不随本地安装、receipt 或启用/禁用状态变化；只有用户预览某个候选时，才开始权威 npm 与本地操作复核。
 
 Host 会在 cache 过期前复用已经完成的索引（当前默认五分钟）。如果 response 提供可选索引 metadata，`scannedAt` 表示扫描完成时间，`expiresAt` 表示 cache 截止时间，可选 `providerRevision` 表示整次扫描中一致观察到的来源 revision，`cacheStatus` 表示本次使用新扫描还是复用 cache。用户明确刷新时会替换索引并绕过底层目录 response cache，不只是重新绘制当前 50 条。
 
 [DSH 1024Store](https://github.com/imsai-sh/awesome-deepseek-harness-plugins) 是目前与本项目合作的目录提供方之一。市场随包提供一份针对其公开 API、经过审查的本地 adapter，但合作关系不代表默认启用、排序优先、未选择来源时的兜底，也不代表对其收录内容的推荐。该项目独立维护插件发现、校验、网站、API 和另行发布的 `dsh-1024store` 插件。DSH Community Market 不是该插件的 fork、重新打包版本或官方客户端。
 
-[dshfind](https://dshfind.com) 是另一个可选合作目录来源。只有用户添加并选择它之后，经审查的 adapter 才会读取其公开 REST 目录。Adapter 会把首页的 `data_version` 固定到所有后续分页，再从完成的本地索引提供搜索、分类和分页。由于 dshfind 公布的匿名配额限制，首次完整同步会主动节流，可能明显慢于普通页面加载。它不会被默认选择、优先排序、推荐或用作兜底。
+[dshfind](https://dshfind.com) 是另一个可选合作目录来源。只有用户添加并选择它之后，经审查的 adapter 才会读取公开、原子的 `/v1/catalog` 快照。Host 会先校验快照版本、时间戳、总数、条目身份、provenance 和精确 origin，再发布本地索引；一次有界、支持 gzip 的请求避免了 provider 分页接口的匿名限流。它不会被默认选择、优先排序、推荐或用作兜底。
 
 dshfind 可以提供包含精确稳定版本和 `repository_backlink` 证据、由提供方复核的 npm method。只有恰好一个 method 同时满足 `npm`、`verified`、`repository_backlink`、无需 build allowance，并且与已提供的 `install.pkg_name` 一致时，adapter 才会输出 `package` 和 `latestVersion`；其他条目仍然只能浏览。Adapter 不展示也不执行 `install.cmd`，也绝不会从命令文本中推断身份。进入**可安装**仍只代表结构候选；Host 会在 preview 和执行阶段独立复核 npm、仓库、integrity、runtime、lifecycle、bundle 与 profile 事实。dshfind 的分数、等级、精选/官方标记、风险标记与安装探测都只是 provider claim；它们都不代表 Anywhere Labs 完成了安全审核或作出推荐。
 

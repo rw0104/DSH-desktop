@@ -90,12 +90,14 @@ const MAX_BODY_BYTES = 16 * 1024
 // The full registry was already about 6.7 MiB in August 2026. Keep bounded
 // headroom without relaxing the 2 MiB default used by user-added sources.
 const MAX_DSH_1024STORE_BODY_BYTES = 16 * 1024 * 1024
+const MAX_DSHFIND_BODY_BYTES = 32 * 1024 * 1024
 const CATALOG_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000
 
 const dsh1024StoreHttpClient = createCachedCatalogHttpClient(
   createRestrictedHttpClient({
     syntheticProxyHostnames: [DSH_1024STORE_HOSTNAME],
     maxBodyBytes: MAX_DSH_1024STORE_BODY_BYTES,
+    acceptedContentEncodings: ['identity', 'gzip'],
   }),
 )
 
@@ -104,6 +106,8 @@ const dshfindHttpClient = createCachedCatalogHttpClient(
     // This exact hostname is compiled into the reviewed adapter. User-added
     // source hostnames must never inherit this local-proxy exception.
     syntheticProxyHostnames: [DSHFIND_HOSTNAME],
+    maxBodyBytes: MAX_DSHFIND_BODY_BYTES,
+    acceptedContentEncodings: ['identity', 'gzip'],
   }),
 )
 

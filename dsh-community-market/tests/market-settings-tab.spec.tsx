@@ -1156,6 +1156,33 @@ describe('MarketSettingsTab', () => {
     expect(guide.rel).toContain('noopener')
   })
 
+  it('localizes reviewed partner descriptions instead of rendering mixed-language Host copy', async () => {
+    const partnerSource = {
+      ...firstSource,
+      partnership: true,
+      description: '固定中文 Host 文案',
+      attribution: {
+        name: 'Fixture provider',
+        url: 'https://catalog.example/',
+        notice: 'Fixed English Host notice.',
+      },
+    }
+    vi.mocked(readMarketState).mockResolvedValue({
+      sources: [partnerSource],
+      builtIns: [],
+      desktopActions,
+    })
+    vi.mocked(readMarketCatalog).mockResolvedValue(catalogForSource(partnerSource, []))
+    render(<MarketSettingsTab {...props} />)
+
+    await screen.findByRole('heading', { name: en.noResults })
+    fireEvent.click(screen.getByRole('button', { name: en.sources }))
+    expect(screen.getByText(en.partnerSourceDescription)).toBeTruthy()
+    expect(screen.getByText(en.partnerSourceAttribution)).toBeTruthy()
+    expect(screen.queryByText('固定中文 Host 文案')).toBeNull()
+    expect(screen.queryByText('Fixed English Host notice.')).toBeNull()
+  })
+
   it('moves sources in either direction and disables controls at the list boundaries', async () => {
     const first = { ...firstSource, enabled: false, order: 0, name: 'First catalog' }
     const second = { ...makeSecondSource(false), order: 1 }

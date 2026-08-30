@@ -60,7 +60,9 @@ const adapters = new Map<string, CatalogAdapter>([
   [dshfindAdapter.adapterId, dshfindAdapter],
 ])
 
-const MAX_CATALOG_ITEMS = 10_000
+// Reviewed providers now exceed ten thousand raw records. User-added sources
+// remain constrained by the 2 MiB transport cap; this is the normalized index ceiling.
+const MAX_CATALOG_ITEMS = 25_000
 const MAX_CATALOG_PAGES = 10_001
 const DEFAULT_CATALOG_SCAN_CACHE_TTL_MS = 5 * 60 * 1000
 

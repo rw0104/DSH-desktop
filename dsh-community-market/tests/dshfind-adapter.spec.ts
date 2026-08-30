@@ -8,7 +8,6 @@ import {
 import type { CatalogHttpClient, LocalSourceRecord } from '../src/contracts/index.js'
 
 const DATA_VERSION = `sha256:${'a'.repeat(64)}`
-const NEXT_DATA_VERSION = `sha256:${'b'.repeat(64)}`
 const AS_OF = '2026-08-18T03:30:27Z'
 
 const source = (): LocalSourceRecord => ({
@@ -46,18 +45,14 @@ function rawItem(index: number): Record<string, unknown> {
   }
 }
 
-function rawPage(
+function rawCatalog(
   data: readonly unknown[],
-  page: number,
-  total: number,
   dataVersion = DATA_VERSION,
+  total = data.length,
 ): Record<string, unknown> {
   return {
     data,
-    page,
-    per_page: 100,
     total,
-    total_pages: total === 0 ? 0 : Math.ceil(total / 100),
     data_version: dataVersion,
     as_of: AS_OF,
     generated_at: AS_OF,
@@ -65,21 +60,11 @@ function rawPage(
 }
 
 describe('dshfind adapter', () => {
-  it('scans every REST page with one pinned data version and emits browse-only identity', async () => {
-    const firstPage = Array.from({ length: 100 }, (_, index) => rawItem(index))
-    const getJson = vi.fn(async (url: string) => {
-      const request = new URL(url)
-      const page = Number(request.searchParams.get('page'))
-      return {
-        value: page === 1 ? rawPage(firstPage, 1, 101) : rawPage([rawItem(100)], 2, 101),
-        finalUrl: url,
-      }
-    })
+  it('downloads one atomic full catalog and emits browse-only identity', async () => {
+    const allItems = Array.from({ length: 101 }, (_, index) => rawItem(index))
+    const getJson = vi.fn(async (url: string) => ({ value: rawCatalog(allItems), finalUrl: url }))
     const register = vi.fn(() => 'mktimg_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
-    const adapter = createDshfindAdapter({
-      interPageDelayMs: 0,
-      now: () => new Date('2026-08-18T09:30:00Z'),
-    })
+    const adapter = createDshfindAdapter({ now: () => new Date('2026-08-18T09:30:00Z') })
 
     const snapshots = await adapter.scanCatalog!({}, {
       source: source(),
@@ -116,13 +101,11 @@ describe('dshfind adapter', () => {
     expect(JSON.stringify(snapshots)).not.toContain('unsafe-command')
     expect(JSON.stringify(snapshots)).not.toContain('unsafe-package')
     expect(register).not.toHaveBeenCalled()
-    expect(getJson).toHaveBeenCalledTimes(2)
+    expect(getJson).toHaveBeenCalledOnce()
 
     const firstUrl = new URL(getJson.mock.calls[0]![0])
-    const secondUrl = new URL(getJson.mock.calls[1]![0])
-    expect(firstUrl.searchParams.get('per_page')).toBe('100')
+    expect(firstUrl.pathname).toBe('/v1/catalog')
     expect(firstUrl.searchParams.has('data_version')).toBe(false)
-    expect(secondUrl.searchParams.get('data_version')).toBe(DATA_VERSION)
     expect(getJson).toHaveBeenNthCalledWith(
       1,
       expect.any(String),
@@ -133,12 +116,12 @@ describe('dshfind adapter', () => {
 
   it('rejects redirects outside the exact reviewed origin', async () => {
     const http: CatalogHttpClient = {
-      getJson: vi.fn(async () => ({
-        value: rawPage([], 1, 0),
-        finalUrl: 'https://attacker.example/v1/plugins?page=1&per_page=100',
-      })),
+      getJson: vi.fn().mockResolvedValue({
+        value: rawCatalog([rawItem(0)]),
+        finalUrl: 'https://attacker.example/v1/catalog',
+      }),
     }
-    const adapter = createDshfindAdapter({ interPageDelayMs: 0 })
+    const adapter = createDshfindAdapter()
 
     await expect(adapter.scanCatalog!({}, {
       source: source(),
@@ -156,10 +139,10 @@ describe('dshfind adapter', () => {
       is_risky: true,
       risk_note: 'Known impersonation fixture',
     }
-    const adapter = createDshfindAdapter({ interPageDelayMs: 0 })
+    const adapter = createDshfindAdapter()
     const http: CatalogHttpClient = {
       getJson: vi.fn(async url => ({
-        value: rawPage([rawItem(0), risky, unknownRisk], 1, 3),
+        value: rawCatalog([rawItem(0), risky, unknownRisk]),
         finalUrl: url,
       })),
     }
@@ -178,11 +161,11 @@ describe('dshfind adapter', () => {
     expect(snapshots[0]?.page.total).toBe(2)
   })
 
-  it('rejects catalogs above the bounded item and page limits', async () => {
-    const adapter = createDshfindAdapter({ interPageDelayMs: 0 })
+  it('rejects catalogs above the bounded item limit or with an incomplete full snapshot', async () => {
+    const adapter = createDshfindAdapter()
     const itemLimitHttp: CatalogHttpClient = {
       getJson: vi.fn(async url => ({
-        value: { ...rawPage([], 1, 10_001), total_pages: 101 },
+        value: rawCatalog([], DATA_VERSION, 25_001),
         finalUrl: url,
       })),
     }
@@ -194,31 +177,27 @@ describe('dshfind adapter', () => {
       media: { register: vi.fn() },
     })).rejects.toThrow(/item limit/u)
 
-    const pageLimitHttp: CatalogHttpClient = {
+    const incompleteHttp: CatalogHttpClient = {
       getJson: vi.fn(async url => ({
-        value: { ...rawPage([], 1, 10_000), total_pages: 101 },
+        value: rawCatalog([], DATA_VERSION, 1),
         finalUrl: url,
       })),
     }
     await expect(adapter.scanCatalog!({}, {
       source: source(),
       signal: new AbortController().signal,
-      http: pageLimitHttp,
+      http: incompleteHttp,
       media: { register: vi.fn() },
-    })).rejects.toThrow(/page limit/u)
+    })).rejects.toThrow(/item count/u)
   })
 
-  it('rejects duplicate IDs and dataset metadata changes across pages', async () => {
-    const firstPage = Array.from({ length: 100 }, (_, index) => rawItem(index))
-    const adapter = createDshfindAdapter({ interPageDelayMs: 0 })
+  it('rejects duplicate IDs and invalid dataset metadata in the full snapshot', async () => {
+    const adapter = createDshfindAdapter()
     const duplicateHttp: CatalogHttpClient = {
-      getJson: vi.fn(async url => {
-        const page = Number(new URL(url).searchParams.get('page'))
-        return {
-          value: page === 1 ? rawPage(firstPage, 1, 101) : rawPage([rawItem(0)], 2, 101),
-          finalUrl: url,
-        }
-      }),
+      getJson: vi.fn(async url => ({
+        value: rawCatalog([rawItem(0), rawItem(0)]),
+        finalUrl: url,
+      })),
     }
     await expect(adapter.scanCatalog!({}, {
       source: source(),
@@ -227,39 +206,33 @@ describe('dshfind adapter', () => {
       media: { register: vi.fn() },
     })).rejects.toThrow(/duplicate item IDs/u)
 
-    const changedHttp: CatalogHttpClient = {
-      getJson: vi.fn(async url => {
-        const page = Number(new URL(url).searchParams.get('page'))
-        return {
-          value: page === 1
-            ? rawPage(firstPage, 1, 101)
-            : rawPage([rawItem(100)], 2, 101, NEXT_DATA_VERSION),
-          finalUrl: url,
-        }
-      }),
+    const invalidVersionHttp: CatalogHttpClient = {
+      getJson: vi.fn(async url => ({
+        value: rawCatalog([rawItem(0)], 'latest'),
+        finalUrl: url,
+      })),
     }
     await expect(adapter.scanCatalog!({}, {
       source: source(),
       signal: new AbortController().signal,
-      http: changedHttp,
+      http: invalidVersionHttp,
       media: { register: vi.fn() },
-    })).rejects.toThrow(/dataset changed/u)
+    })).rejects.toThrow(/data_version/u)
   })
 
-  it('lets cancellation interrupt the anonymous-quota delay before the next page', async () => {
-    const firstPage = Array.from({ length: 100 }, (_, index) => rawItem(index))
-    const getJson = vi.fn(async (url: string) => ({ value: rawPage(firstPage, 1, 101), finalUrl: url }))
-    const adapter = createDshfindAdapter({ interPageDelayMs: 60_000 })
+  it('checks cancellation after the full catalog response arrives', async () => {
     const controller = new AbortController()
+    const getJson = vi.fn(async (url: string) => {
+      controller.abort(new DOMException('fixture abort', 'AbortError'))
+      return { value: rawCatalog([rawItem(0)]), finalUrl: url }
+    })
+    const adapter = createDshfindAdapter()
     const scan = adapter.scanCatalog!({}, {
       source: source(),
       signal: controller.signal,
       http: { getJson },
       media: { register: vi.fn() },
     })
-
-    await vi.waitFor(() => expect(getJson).toHaveBeenCalledOnce())
-    controller.abort(new DOMException('fixture abort', 'AbortError'))
 
     await expect(scan).rejects.toMatchObject({ name: 'AbortError' })
     expect(getJson).toHaveBeenCalledOnce()
@@ -283,10 +256,10 @@ describe('dshfind install target normalization', () => {
   }
 
   async function scanInstall(install: unknown) {
-    const adapter = createDshfindAdapter({ interPageDelayMs: 0 })
+    const adapter = createDshfindAdapter()
     const http: CatalogHttpClient = {
       getJson: vi.fn(async url => ({
-        value: rawPage([{ ...rawItem(0), install }], 1, 1),
+        value: rawCatalog([{ ...rawItem(0), install }]),
         finalUrl: url,
       })),
     }

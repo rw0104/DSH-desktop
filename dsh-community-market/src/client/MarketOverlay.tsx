@@ -13,20 +13,43 @@ export type MarketOverlayProps = PropsRuntime<'shell.overlay'>
   & PropsLocale<'community-market'>
   & { readLocale: () => string; initialView?: MarketView }
 
-export function MarketOverlay({ useStore, actions, readLocale, t, initialView }: MarketOverlayProps) {
+export function MarketOverlay({ useStore, actions, readLocale, t, initialView = 'discover' }: MarketOverlayProps) {
   const open = useStore(state => state.open)
   const panel = useRef<HTMLElement>(null)
 
   useEffect(() => {
     if (!open) return
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
     panel.current?.querySelector<HTMLButtonElement>('button')?.focus()
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      if (document.querySelectorAll('[role="dialog"]').length > 1) return
-      actions.close()
+      const nestedDialogOpen = document.querySelectorAll('[role="dialog"]').length > 1
+      if (event.key === 'Escape') {
+        if (!nestedDialogOpen) actions.close()
+        return
+      }
+      if (event.key !== 'Tab' || nestedDialogOpen || panel.current === null) return
+      const focusable = [...panel.current.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      )].filter(element => !element.hidden && element.getAttribute('aria-hidden') !== 'true')
+      const first = focusable[0]
+      const last = focusable.at(-1)
+      if (first === undefined || last === undefined) {
+        event.preventDefault()
+        return
+      }
+      if (event.shiftKey && (document.activeElement === first || !panel.current.contains(document.activeElement))) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && (document.activeElement === last || !panel.current.contains(document.activeElement))) {
+        event.preventDefault()
+        first.focus()
+      }
     }
     document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      previousFocus?.focus()
+    }
   }, [actions, open])
 
   if (!open) return null
@@ -51,7 +74,7 @@ export function MarketOverlay({ useStore, actions, readLocale, t, initialView }:
         </header>
         <div className="dshMarketOverlayBody">
           <MarketSurface
-            {...(initialView === undefined ? {} : { initialView })}
+            initialView={initialView}
             readLocale={readLocale}
             showHeader={false}
             t={t}

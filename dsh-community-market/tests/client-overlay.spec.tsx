@@ -95,6 +95,25 @@ function renderOpenOverlay() {
   return { ...rendered, instance }
 }
 
+function renderDefaultOverlay() {
+  const instance = createMarketViewStore().create()
+  const useStore = <T,>(selector: (state: { open: boolean }) => T): T => useSyncExternalStore(
+    instance.subscribe,
+    () => selector(instance.getSnapshot()),
+  )
+  const props = {
+    actions: instance.actions,
+    useStore,
+    readLocale: () => 'en',
+    t,
+  } as unknown as MarketOverlayProps
+  const rendered = render(<><button data-testid="market-trigger">trigger</button><MarketOverlay {...props} /></>)
+  const trigger = screen.getByTestId('market-trigger')
+  trigger.focus()
+  act(() => { instance.actions.open() })
+  return { ...rendered, instance, trigger }
+}
+
 function response(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), {
     status,
@@ -157,6 +176,55 @@ const catalogWithItem: MarketCatalogResponse = {
 }
 
 describe('community market overlay', () => {
+  it('opens the sidebar surface on discovery and reports installable work as busy only when selected', async () => {
+    let installableRequests = 0
+    const request = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input)
+      if (url.includes('/state')) return response(stateWithSource)
+      if (url.includes('/installable')) {
+        installableRequests += 1
+        return await new Promise<Response>(() => {})
+      }
+      return response(catalogWithItem)
+    })
+    vi.stubGlobal('fetch', request)
+    renderDefaultOverlay()
+
+    expect((await screen.findByRole('button', { name: 'discover' })).getAttribute('aria-pressed')).toBe('true')
+    expect(await screen.findByText('Better Sidebar')).toBeTruthy()
+    expect(installableRequests).toBe(0)
+    expect(screen.getByRole('region', { name: 'title' }).getAttribute('aria-busy')).toBe('false')
+
+    fireEvent.click(screen.getByRole('button', { name: 'installable' }))
+    await waitFor(() => expect(installableRequests).toBe(1))
+    expect(screen.getByRole('region', { name: 'title' }).getAttribute('aria-busy')).toBe('true')
+  })
+
+  it('traps focus in the overlay and restores the launcher focus on close', async () => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async (input) => (
+      String(input).includes('/state') ? response(stateWithSource) : response(catalogWithItem)
+    )))
+    const view = renderDefaultOverlay()
+    const dialog = await screen.findByRole('dialog', { name: 'title' })
+    const panel = dialog.querySelector('.dshMarketOverlayPanel')
+    expect(panel).not.toBeNull()
+    const focusable = [...(panel as HTMLElement).querySelectorAll<HTMLElement>(
+      'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+    )].filter(element => !element.hidden && element.getAttribute('aria-hidden') !== 'true')
+    const first = focusable[0]!
+    const last = focusable.at(-1)!
+
+    last.focus()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(document.activeElement).toBe(first)
+    first.focus()
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(last)
+
+    act(() => { view.instance.actions.close() })
+    expect(document.activeElement).toBe(view.trigger)
+  })
+
   it('shows the empty source state without requesting a catalog', async () => {
     const state: MarketStateResponse = {
       sources: [],

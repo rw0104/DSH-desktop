@@ -229,9 +229,9 @@ Provider cursor 只属于一个已选来源和一个有效 wire query。Host 绝
 
 ## 与 dshfind 的合作
 
-[dshfind](https://dshfind.com) 是一个可选合作来源，Market 为其公开 REST API 提供经过审查的内置 adapter。Adapter 只使用编译期固定的 `https://api.dshfind.com` origin 和公开匿名请求。它以 `per_page=100` 请求首页，记录返回的 `data_version`，并在所有后续分页中携带完全相同的值。遇到 `409 stale_data`、版本/总数不一致、非法分页或遍历不完整时，整次扫描失败，不能发布部分索引。搜索、分类筛选、分类枚举、排序和每页 50 条的 UI 分页随后都在完整本地索引上运行，不会把这些交互继续发给 dshfind。
+[dshfind](https://dshfind.com) 是一个可选合作来源，Market 为其公开 REST API 提供经过审查的内置 adapter。Adapter 只使用编译期固定的 `https://api.dshfind.com` origin 和公开匿名请求。它读取一次原子的 `GET /v1/catalog` response，并在发布任何索引前校验其中的 `data`、`total`、`data_version`、`as_of`、重复身份和精确最终 origin。版本非法、总数不一致、条目集合异常、取消、传输失败或 response 超限都会使整次扫描失败，不能发布部分索引。搜索、分类筛选、分类枚举、排序和每页 50 条的 UI 分页随后都在完整本地索引上运行，不会把这些交互继续发给 dshfind。
 
-dshfind 文档说明匿名配额为每分钟 30 次、突发 10 次，而当前目录以每页 100 条读取时需要超过 30 个 page。因此 adapter 会使用低于已公布持续速率的固定串行间隔，并把较慢的首次同步表现为来源加载状态，不能通过并发绕过 provider 限制。限流 response 会使整轮扫描失败，用户可以通过普通来源“重试”重新开始。完成的本地索引仍遵循普通有界 cache；明确刷新会启动一轮新的、一致的完整扫描。
+内置 adapter 会明确使用 dshfind 文档中的完整目录接口，而不是重放分页列表。这会把完整同步压缩为一次 provider 请求，目录增长不再把已公布的匿名配额变成数分钟的客户端遍历。经过审查的 Host client 只接受 identity 或 gzip 编码，把解压后的 response 限制在 32 MiB，并保留 25,000 条规范化索引上限。完成的本地索引仍遵循普通有界 cache；明确刷新会启动一次新的原子完整下载。
 
 dshfind response 可能包含 `install.cmd`、其他安装 claim 和 `install.methods`。命令文本与普通 claim 都不是执行权限：adapter 会在标准化前丢弃 `install.cmd`，不展示、不执行，也绝不从中解析 package 身份。只有 `install.methods` 恰好包含一个不同目标，并且其 `kind` 为 `npm`、`verification` 为 `verified`、`code` 为 `repository_backlink`、`requiresBuildAllowance` 为 false、`spec` 是有界合法 npm 名称、`revision` 是有界精确稳定版本，而且 `spec` 与已提供的 `install.pkg_name` 一致时，adapter 才会输出 `package` 与 `latestVersion`。同一目标的重复副本不会造成歧义；出现多个不同目标时会 fail closed。缺少这些证据的条目仍然只能浏览。符合条件的结果也只是不可执行的规范化身份，不代表安全审核或安装授权；preview 与执行阶段仍会独立复核官方 npm metadata、规范仓库、integrity、lifecycle script、runtime、bundle 和当前 profile 状态。
 

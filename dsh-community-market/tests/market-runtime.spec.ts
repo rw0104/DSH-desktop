@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import https from 'node:https'
+import { gzipSync } from 'node:zlib'
 import { describe, expect, it, vi } from 'vitest'
 import { dsh1024StoreAdapter, DSH_1024STORE_ADAPTER_ID, DSH_1024STORE_KEY, DSH_1024STORE_PROVIDER_ID } from '../src/adapters/dsh-1024store.js'
 import { DSHFIND_ADAPTER_ID, DSHFIND_KEY, DSHFIND_PROVIDER_ID } from '../src/adapters/dshfind.js'
@@ -1491,6 +1492,54 @@ describe('source mutation boundary', () => {
 })
 
 describe('restricted HTTP boundary', () => {
+  it('accepts bounded gzip only for an explicitly configured reviewed client', async () => {
+    const value = { packages: [{ id: 'example/plugin' }] }
+    const body = gzipSync(Buffer.from(JSON.stringify(value)))
+    const request = vi.fn(async () => ({
+      body,
+      headers: { 'content-type': 'application/json', 'content-encoding': 'gzip' },
+      statusCode: 200,
+    }))
+    const reviewed = createRestrictedHttpClient({
+      acceptedContentEncodings: ['identity', 'gzip'],
+      maxBodyBytes: 1024,
+      resolveAddress: async () => ({ address: '93.184.216.34', family: 4 }),
+      request,
+    })
+    await expect(reviewed.getJson(
+      'https://deepseek1024.com/api/v1/plugins',
+      new AbortController().signal,
+    )).resolves.toMatchObject({ value })
+
+    const strict = createRestrictedHttpClient({
+      maxBodyBytes: 1024,
+      resolveAddress: async () => ({ address: '93.184.216.34', family: 4 }),
+      request,
+    })
+    await expect(strict.getJson(
+      'https://deepseek1024.com/api/v1/plugins',
+      new AbortController().signal,
+    )).rejects.toMatchObject({ code: 'response' })
+  })
+
+  it('rejects gzip whose decoded JSON exceeds the configured body limit', async () => {
+    const request = vi.fn(async () => ({
+      body: gzipSync(Buffer.from(JSON.stringify({ packages: ['x'.repeat(2048)] }))),
+      headers: { 'content-type': 'application/json', 'content-encoding': 'gzip' },
+      statusCode: 200,
+    }))
+    const client = createRestrictedHttpClient({
+      acceptedContentEncodings: ['identity', 'gzip'],
+      maxBodyBytes: 1024,
+      resolveAddress: async () => ({ address: '93.184.216.34', family: 4 }),
+      request,
+    })
+    await expect(client.getJson(
+      'https://deepseek1024.com/api/v1/plugins',
+      new AbortController().signal,
+    )).rejects.toMatchObject({ code: 'response' })
+  })
+
   it('starts the first-byte deadline before response headers arrive', async () => {
     vi.useFakeTimers()
     const request = new EventEmitter()
