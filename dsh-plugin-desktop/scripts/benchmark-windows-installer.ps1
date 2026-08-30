@@ -14,6 +14,8 @@ param(
   [Parameter(Mandatory = $true)]
   [string]$OutputPath,
 
+  [switch]$SeedExistingExecutable,
+
   [ValidateRange(40, 220)]
   [int]$InstallPathLength = 80
 )
@@ -103,6 +105,12 @@ try {
     $taskResult.defenderSignatures = [string]$taskDefender.AntivirusSignatureVersion
   }
   New-Item -ItemType Directory -Path $taskRunRoot | Out-Null
+  if ($SeedExistingExecutable) {
+    # v2.0.15 predates the fresh-install guard and probes WMI before its first
+    # file exists. A non-running placeholder selects that released installer’s
+    # existing-install path without creating a process or changing the result.
+    New-Item -ItemType File -Path $taskAppPath -Force | Out-Null
+  }
   if ($Scenario -eq 'upgrade') {
     Invoke-TaskInstaller $taskBase
   } elseif ($Scenario -eq 'overwrite' -or $Scenario -eq 'uninstall') {
