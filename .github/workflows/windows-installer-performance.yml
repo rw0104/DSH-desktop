@@ -1,0 +1,247 @@
+name: DSH Desktop Windows installer performance
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  build-payloads:
+    name: Build one payload and three installers
+    runs-on: windows-latest
+    steps:
+      - name: Check out desktop and pinned upstream
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+
+      - name: Enable Corepack and install
+        shell: pwsh
+        run: |
+          corepack enable
+          corepack yarn install --immutable
+
+      - name: Run Windows packaging preflight
+        shell: pwsh
+        run: corepack yarn workspace dsh-plugin-desktop check:win-package
+
+      - name: Build and verify the shared payload
+        shell: pwsh
+        run: corepack yarn package:dir
+
+      - name: Build same-payload installer variants
+        shell: pwsh
+        run: corepack yarn workspace dsh-plugin-desktop dist:win:payload-variants
+
+      - name: Upload candidate installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-payloads
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Setup-zip-direct.exe
+            dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Setup-7z-staged.exe
+            dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Setup-7z-in-place.exe
+
+  benchmark:
+    name: Benchmark ${{ matrix.strategy }} run ${{ matrix.run }}
+    needs: build-payloads
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        strategy: [base, zip-direct, 7z-staged, 7z-in-place]
+        run: [1, 2, 3, 4, 5]
+    steps:
+      - name: Check out benchmark scripts
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+
+      - name: Download candidate installers
+        uses: actions/download-artifact@v5
+        with:
+          name: candidate-payloads
+          path: ${{ runner.temp }}/candidate
+
+      - name: Download v2.0.15 baseline
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download v2.0.15 --repo rw0104/DSH-desktop --pattern 'DSH-Desktop-2.0.15-x64-Setup.exe' --dir $env:RUNNER_TEMP\baseline
+
+      - name: Measure one clean image
+        shell: pwsh
+        run: |
+          $strategy = '${{ matrix.strategy }}'
+          $installer = if ($strategy -eq 'base') {
+            Join-Path $env:RUNNER_TEMP 'baseline\DSH-Desktop-2.0.15-x64-Setup.exe'
+          } else {
+            (Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'candidate') -Filter "*-Setup-$strategy.exe" -File -Recurse).FullName
+          }
+          & 'dsh-plugin-desktop/scripts/benchmark-windows-installer.ps1' `
+            -Scenario fresh `
+            -CandidateInstaller $installer `
+            -IsolationEvidence "gha-${{ github.run_id }}-${{ matrix.strategy }}-${{ matrix.run }}" `
+            -InstallPathLength 80 `
+            -OutputPath (Join-Path $env:RUNNER_TEMP "benchmark-${{ matrix.strategy }}-${{ matrix.run }}.json")
+
+      - name: Upload benchmark record
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ matrix.strategy }}-${{ matrix.run }}
+          if-no-files-found: error
+          retention-days: 7
+          path: ${{ runner.temp }}/benchmark-${{ matrix.strategy }}-${{ matrix.run }}.json
+
+  benchmark-long-path:
+    name: Long path ${{ matrix.strategy }} run ${{ matrix.run }}
+    needs: build-payloads
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        strategy: [base, zip-direct]
+        run: [1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+      - uses: actions/download-artifact@v5
+        with:
+          name: candidate-payloads
+          path: ${{ runner.temp }}/candidate
+      - name: Download v2.0.15 baseline
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download v2.0.15 --repo rw0104/DSH-desktop --pattern 'DSH-Desktop-2.0.15-x64-Setup.exe' --dir $env:RUNNER_TEMP\baseline
+      - name: Measure one long-path clean image
+        shell: pwsh
+        run: |
+          $strategy = '${{ matrix.strategy }}'
+          $installer = if ($strategy -eq 'base') {
+            Join-Path $env:RUNNER_TEMP 'baseline\DSH-Desktop-2.0.15-x64-Setup.exe'
+          } else {
+            (Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'candidate') -Filter '*-Setup-zip-direct.exe' -File -Recurse).FullName
+          }
+          & 'dsh-plugin-desktop/scripts/benchmark-windows-installer.ps1' `
+            -Scenario fresh `
+            -CandidateInstaller $installer `
+            -IsolationEvidence "gha-${{ github.run_id }}-long-${{ matrix.strategy }}-${{ matrix.run }}" `
+            -InstallPathLength 180 `
+            -OutputPath (Join-Path $env:RUNNER_TEMP "long-${{ matrix.strategy }}-${{ matrix.run }}.json")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: long-${{ matrix.strategy }}-${{ matrix.run }}
+          if-no-files-found: error
+          retention-days: 7
+          path: ${{ runner.temp }}/long-${{ matrix.strategy }}-${{ matrix.run }}.json
+
+  aggregate:
+    name: Enforce performance gate
+    needs: [benchmark, benchmark-long-path]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: benchmark-*
+          merge-multiple: true
+          path: results
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: long-*
+          merge-multiple: true
+          path: long-results
+      - name: Aggregate independent images
+        shell: bash
+        run: |
+          node dsh-plugin-desktop/scripts/aggregate-windows-installer-benchmarks.mjs results/benchmark-base-*.json --output baseline.json
+          node dsh-plugin-desktop/scripts/aggregate-windows-installer-benchmarks.mjs results/benchmark-zip-direct-*.json --output zip-direct.json
+          node dsh-plugin-desktop/scripts/aggregate-windows-installer-benchmarks.mjs results/benchmark-7z-staged-*.json --output 7z-staged.json
+          node dsh-plugin-desktop/scripts/aggregate-windows-installer-benchmarks.mjs results/benchmark-7z-in-place-*.json --output 7z-in-place.json
+          node dsh-plugin-desktop/scripts/aggregate-windows-installer-benchmarks.mjs long-results/long-base-*.json --output long-base.json
+          node dsh-plugin-desktop/scripts/aggregate-windows-installer-benchmarks.mjs long-results/long-zip-direct-*.json --output long-zip-direct.json
+          node dsh-plugin-desktop/scripts/verify-windows-performance-results.mjs baseline.json zip-direct.json 7z-staged.json 7z-in-place.json decision.json
+          node --input-type=module -e "import fs from 'node:fs'; const base=JSON.parse(fs.readFileSync('long-base.json')); const zip=JSON.parse(fs.readFileSync('long-zip-direct.json')); if(zip.p95Ms>120000||zip.medianMs>90000||1-zip.medianMs/base.medianMs<0.4) throw new Error('long-path ZIP gate failed');"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-performance-summary
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            baseline.json
+            zip-direct.json
+            7z-staged.json
+            7z-in-place.json
+            long-base.json
+            long-zip-direct.json
+            decision.json
+
+  failure-recovery:
+    name: Verify ZIP failure recovery
+    needs: aggregate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+      - uses: actions/download-artifact@v5
+        with:
+          name: candidate-payloads
+          path: ${{ runner.temp }}/candidate
+      - uses: actions/download-artifact@v5
+        with:
+          name: installer-performance-summary
+          path: ${{ runner.temp }}/summary
+      - name: Download v2.0.15 baseline
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download v2.0.15 --repo rw0104/DSH-desktop --pattern 'DSH-Desktop-2.0.15-x64-Setup.exe' --dir $env:RUNNER_TEMP\baseline
+      - name: Inject termination and lock failures
+        shell: pwsh
+        run: |
+          $summary = Get-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'summary\zip-direct.json') -Raw | ConvertFrom-Json
+          $candidate = (Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'candidate') -Filter '*-Setup-zip-direct.exe' -File -Recurse).FullName
+          & 'dsh-plugin-desktop/scripts/smoke-windows-installer-failures.ps1' `
+            -BaseInstaller (Join-Path $env:RUNNER_TEMP 'baseline\DSH-Desktop-2.0.15-x64-Setup.exe') `
+            -CandidateInstaller $candidate `
+            -CandidateBaselineMs ([int]$summary.medianMs) `
+            -IsolationEvidence "gha-${{ github.run_id }}-failure-recovery" `
+            -OutputPath (Join-Path $env:RUNNER_TEMP 'failure-recovery.json')
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-failure-recovery
+          if-no-files-found: error
+          retention-days: 30
+          path: ${{ runner.temp }}/failure-recovery.json

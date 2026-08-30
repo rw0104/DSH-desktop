@@ -41,6 +41,32 @@ git submodule status -- deepseek-harness
 - `corepack yarn workspace dsh-community-market check`：19 个文件、275 项测试通过；仓库级 `corepack yarn check`：Market 275、Desktop 734（11 skipped）、runtime closure 201、production licenses 691。
 - 发布候选继续使用 Harness `0.1.1-rc.2`、gitlink `b150a551…` 和 Better Sidebar `0.17.1`；Harness `0.1.2-alpha.1` 与参考桌面 `v2.0.4` 均不混入本次市场修复。
 
+## 2026-08-30 v2.0.16 Windows 安装性能发布前审计
+
+本轮在进入版本和发布批次前重新查询三条权威 Git remote、GitHub Release 和 npm registry。Git 查询使用本机既有代理 `http://127.0.0.1:10808`；没有把 Web 搜索缓存当成版本证据。
+
+| 组件 | 远端/registry 证据 | 本地基线与决策 |
+| --- | --- | --- |
+| DeepSeek Harness | `master`、tag `dsh-v0.1.2-alpha.2` 均为 `0a53fb55bea101816fa226bb964ae2bed71c343b`；npm `alpha` 为 `0.1.2-alpha.2`，但 `latest`/`next` 仍为 `0.1.1-rc.2` | submodule 与正式 package family 继续固定 `b150a551…` / `0.1.1-rc.2`；性能专项不混入 alpha 迁移 |
+| Better Sidebar | `main` 为 `3aab7ca3a53357f9237a91978d57df4cf84c9c45`；正式 tag/npm `latest` 仍为 `v0.17.1` / `0.17.1`，integrity `sha512-7me2X6w+…` | 继续固定 `0.17.1`；不使用超前 32 个提交的未发布 main |
+| Desktop reference | `master` 为 `e71a9ef0b168763d422042835a8c3b7d6d809800`；最新正式 tag/Release 仍为 `v2.0.4` / `d29bf7a…` | 只读比较 7z 实验，不整体合并、不作为运行时依赖、不覆盖根 README |
+
+本批次只修改 Desktop 自有 packaging、installer feedback loop、app-builder-lib 审计补丁、测试、workflow 和发布文档。没有修改 `deepseek-harness/` gitlink、`@deepseek-ai/dsh-*` 正式版本、`dsh-better-sidebar` pin 或 Market live-source 合同。
+
+当前本地 `package:dir` 证据为 321 个物理文件、`664,254,147` bytes、19,989 个 ASAR 逻辑文件；source map、类型声明、测试、示例和未授权文档均为 0。物理 runtime manifest 为 246 个文件、`49,207,901` bytes，并已通过 DSH CLI、pnpm、Profile 和 preset 路径的真实 RunAsNode smoke。
+
+发布仍由 `.github/workflows/windows-installer-performance.yml` 阻断：v2.0.15、ZIP、默认 7z、7z 原地方案需要各 5 台全新 runner；长路径基线/ZIP 各 5 台；ZIP 失败恢复必须只产生完整旧版或完整新版。未通过前不创建 tag/Release。
+
+复核命令：
+
+```powershell
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/deepseek-ai/deepseek-harness.git HEAD refs/heads/master "refs/tags/dsh-v*"
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/omdsh-dev/DSH-better-sidebar.git HEAD refs/heads/main "refs/tags/v*"
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/anywhere-labs/deepseek-harness-desktop.git HEAD refs/heads/master "refs/tags/v*"
+npm view @deepseek-ai/dsh version dist-tags time.modified --json
+npm view dsh-better-sidebar version dist-tags time.modified dist.integrity --json
+```
+
 ## 2026-08-30 v2.0.15 本地构建结果
 
 - `corepack yarn install --immutable`、完整 `corepack yarn check` 与 Windows package preflight 均通过；Windows preflight 为 210 项、runtime closure 201。
