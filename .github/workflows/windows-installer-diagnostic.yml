@@ -1,0 +1,67 @@
+name: DSH Desktop Windows installer diagnostic
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Run containing the candidate-payloads artifact
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Download baseline and candidate
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v2.0.15 --repo rw0104/DSH-desktop --pattern 'DSH-Desktop-2.0.15-x64-Setup.exe' --dir $env:RUNNER_TEMP\baseline
+          gh run download '${{ inputs.source_run_id }}' --repo rw0104/DSH-desktop --name candidate-payloads --dir $env:RUNNER_TEMP\candidate
+      - name: Probe silent installer result
+        shell: pwsh
+        run: |
+          $roots = @(
+            'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*'
+            'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*'
+            'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+          )
+          $results = @()
+          foreach ($case in @(
+            @{ name = 'base'; path = (Join-Path $env:RUNNER_TEMP 'baseline\DSH-Desktop-2.0.15-x64-Setup.exe') }
+            @{ name = 'zip-direct'; path = (Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'candidate') -Filter '*-Setup-zip-direct.exe' -File -Recurse).FullName }
+          )) {
+            $installRoot = Join-Path $env:RUNNER_TEMP "diagnostic-$($case.name)"
+            $process = Start-Process -FilePath $case.path -ArgumentList @('/S', '/currentuser', "/D=$installRoot") -PassThru -Wait -WindowStyle Hidden
+            $app = Join-Path $installRoot 'DSH Desktop.exe'
+            $uninstaller = Join-Path $installRoot 'Uninstall DSH Desktop.exe'
+            $registry = @(Get-ItemProperty $roots -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match '^DSH Desktop' })
+            $results += [ordered]@{
+              name = $case.name
+              exitCode = $process.ExitCode
+              appExists = Test-Path -LiteralPath $app
+              appVersion = if (Test-Path -LiteralPath $app) { (Get-Item -LiteralPath $app).VersionInfo.ProductVersion } else { $null }
+              uninstallerExists = Test-Path -LiteralPath $uninstaller
+              fileCount = @(Get-ChildItem -LiteralPath $installRoot -Recurse -File -Force -ErrorAction SilentlyContinue).Count
+              registry = @($registry | Select-Object DisplayName, DisplayVersion, UninstallString)
+            }
+            if (Test-Path -LiteralPath $uninstaller) {
+              $null = Start-Process -FilePath $uninstaller -ArgumentList '/S' -PassThru -Wait -WindowStyle Hidden
+            }
+          }
+          $output = Join-Path $env:RUNNER_TEMP 'installer-diagnostic.json'
+          [IO.File]::WriteAllText($output, ($results | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
+          Get-Content -LiteralPath $output
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-diagnostic
+          if-no-files-found: error
+          path: ${{ runner.temp }}/installer-diagnostic.json

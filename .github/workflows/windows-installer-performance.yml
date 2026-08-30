@@ -60,7 +60,8 @@ jobs:
     needs: build-payloads
     runs-on: windows-latest
     strategy:
-      fail-fast: false
+      fail-fast: true
+      max-parallel: 4
       matrix:
         strategy: [base, zip-direct, 7z-staged, 7z-in-place]
         run: [1, 2, 3, 4, 5]
@@ -116,7 +117,8 @@ jobs:
     needs: build-payloads
     runs-on: windows-latest
     strategy:
-      fail-fast: false
+      fail-fast: true
+      max-parallel: 4
       matrix:
         strategy: [base, zip-direct]
         run: [1, 2, 3, 4, 5]
