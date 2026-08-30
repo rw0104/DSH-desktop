@@ -5,6 +5,13 @@ import { DESKTOP_INSTALLER_QUIT_FLAG } from '../src/desktop-installer-quit.ts'
 
 describe('Windows NSIS running-app handoff', () => {
   const script = readFileSync(join(process.cwd(), 'build', 'installer.nsh'), 'utf8')
+  const inPlace = readFileSync(join(process.cwd(), 'build', 'installer-7z-in-place.nsh'), 'utf8')
+
+  it('gates the 7z in-place experiment without including app-builder internals twice', () => {
+    expect(inPlace).toContain('!define DSH_7Z_IN_PLACE')
+    expect(inPlace).toContain('!include "${BUILD_RESOURCES_DIR}\\installer.nsh"')
+    expect(inPlace).not.toContain('!include "installer.nsh"')
+  })
 
   it('detects only the installed application executable path', () => {
     const detection = script.indexOf('DSH_DESKTOP_INSTALLER_TARGET')
