@@ -20,6 +20,10 @@
 !macroend
 
 !macro customCheckAppRunning
+  ; A fresh installation has no process to probe. Skipping PowerShell/WMI here
+  ; also keeps silent installs working on clean Windows images where the exact
+  ; process-inspection boundary is unavailable until an application exists.
+  IfFileExists "$INSTDIR\${APP_EXECUTABLE_FILENAME}" 0 dsh_installer_app_stopped
   !insertmacro IS_POWERSHELL_AVAILABLE
   System::Call 'Kernel32::SetEnvironmentVariable(t, t) i("DSH_DESKTOP_INSTALLER_TARGET", "$INSTDIR\${APP_EXECUTABLE_FILENAME}").r0'
 

@@ -15,6 +15,8 @@ describe('Windows NSIS running-app handoff', () => {
 
   it('detects only the installed application executable path', () => {
     const detection = script.indexOf('DSH_DESKTOP_INSTALLER_TARGET')
+    const freshInstall = script.indexOf('IfFileExists "$INSTDIR\\${APP_EXECUTABLE_FILENAME}" 0 dsh_installer_app_stopped')
+    const powershellProbe = script.indexOf('!insertmacro IS_POWERSHELL_AVAILABLE')
     const request = script.indexOf(DESKTOP_INSTALLER_QUIT_FLAG)
     const wait = script.indexOf('dsh_installer_wait_for_exit:')
     const fallback = script.indexOf('dsh_installer_confirm_fallback:')
@@ -30,6 +32,8 @@ describe('Windows NSIS running-app handoff', () => {
     expect(script).not.toContain(".StartsWith('$INSTDIR'")
     expect(script).not.toContain('!insertmacro FIND_PROCESS')
     expect(script).not.toContain('!insertmacro KILL_PROCESS')
+    expect(freshInstall).toBeGreaterThanOrEqual(0)
+    expect(powershellProbe).toBeGreaterThan(freshInstall)
   })
 
   it('waits 30 seconds before an explicit scoped fallback', () => {
