@@ -71,6 +71,12 @@ git submodule status -- deepseek-harness
 
 本地最终 Setup 为 `DSH-Desktop-2.0.16-x64-Setup.exe`，`220,864,754` bytes，SHA-256 `0D6D958080D6B2164B4E40A44795961BA57409040DBC7FA469D909043BDC7BA4`，Authenticode `NotSigned`；`latest.yml` 为 `342` bytes，SHA-256 `D27CFA96D5C042DA61C883F4524C0D7970B7435B231C84D642EA9D6136B6AFEA`。版本化性能对比未形成有效样本：run `33329496200` 的 workflow 参数展开失败，run `33330219034` 修复参数后仍因数组 splatting 失败，run `33331055886` 参数正确但 v2.0.15 基线安装器在 clean runner 实际安装前固定退出码 2，fail-fast 取消候选测量。故本版本不宣称性能收益；后续先修复/重建可测的 v2.0.15 基线，再补跑长路径和失败恢复矩阵。
 
+### 2026-08-30 v2.0.16 发布回读
+
+- Annotated tag `v2.0.16` 解引用到提交 `8057429d7bc69ddf353516880dc6e6aadf8000f8`；GitHub Release 于 `2026-08-30T19:52:31Z` 发布为 Latest、非 draft、非 prerelease：<https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.16>。
+- Release 仅包含 `DSH-Desktop-2.0.16-x64-Setup.exe` 与 `latest.yml`。Setup 远端 size `220,864,754` bytes、digest `sha256:0d6d958080d6b2164b4e40a44795961ba57409040dbc7fa469d909043bdc7ba4`；`latest.yml` 远端 size `342` bytes、digest `sha256:d27cfa96d5c042da61c883f4524c0d7970b7435b231c84d642ea9d6136b6afea`，均与本地回读一致。
+- 本版本修复已安装候选包的 ClientModuleRegistry CommonJS 发现缺口；D 盘实际安装运行时通过 45 个客户端 entry、完整 Harness DOM、客户端 bundle HTTP 200、30 秒 Renderer health 和退出码 0 验收。性能 workflow `33331055886` 未能测量旧基线：v2.0.15 安装器在 clean runner 实际安装前固定退出码 2，因此不发布未经测量的性能收益。
+
 复核命令：
 
 ```powershell
