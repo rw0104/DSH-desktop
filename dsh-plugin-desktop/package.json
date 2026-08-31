@@ -123,7 +123,7 @@
     "verify:notices": "node scripts/verify-licenses.mjs --notices THIRD_PARTY_NOTICES.md",
     "analyze:footprint": "node scripts/analyze-package-footprint.mjs",
     "verify:footprint": "node scripts/verify-package-footprint.mjs",
-    "test:packaging-performance": "node --test scripts/package-footprint.spec.mjs scripts/installer-benchmark.spec.mjs scripts/installer-tree-manifest.spec.mjs scripts/production-package-closure.spec.mjs scripts/windows-performance-results.spec.mjs",
+    "test:packaging-performance": "node --test scripts/package-footprint.spec.mjs scripts/installer-benchmark.spec.mjs scripts/installer-tree-manifest.spec.mjs scripts/production-package-closure.spec.mjs scripts/windows-performance-results.spec.mjs scripts/legacy-baseline-installer.spec.mjs",
     "check": "yarn run build && yarn run typecheck && yarn run test && yarn run verify:closure && yarn run verify:cli && yarn run verify:loader && yarn run verify:profile && yarn run verify:licenses",
     "check:win-package": "yarn run build && yarn run typecheck && vitest run tests/package.spec.ts tests/package-win.spec.ts tests/desktop-installer-quit.spec.ts tests/installer-nsh.spec.ts tests/update-checker.spec.ts tests/update-download.spec.ts tests/verify-win-installer.spec.ts tests/verify-win-portable.spec.ts tests/verify-packaged-runtime.spec.ts tests/physical-runtime.spec.ts tests/windows-agent-presets.spec.ts tests/windows-pwsh-sandbox.spec.ts tests/windows-volume-diagnostics.spec.ts tests/window-options.spec.ts tests/workspace-workbench.spec.ts tests/workspace-worktree.spec.ts tests/workspace-worktree-route.spec.ts && yarn run test:packaging-performance && yarn run verify:closure",
     "check:mac-package": "yarn run -T check",

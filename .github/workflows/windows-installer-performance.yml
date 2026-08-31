@@ -44,6 +44,24 @@ jobs:
         shell: pwsh
         run: corepack yarn workspace dsh-plugin-desktop dist:win:payload-variants
 
+      - name: Download v2.0.15 payload source
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download v2.0.15 --repo rw0104/DSH-desktop --pattern 'DSH-Desktop-2.0.15-x64-Setup.exe' --dir $env:RUNNER_TEMP\legacy-source
+
+      - name: Build measurable v2.0.15 compatibility baseline
+        shell: pwsh
+        run: |
+          $seven = Get-ChildItem -LiteralPath (Join-Path $env:LOCALAPPDATA 'electron-builder\Cache') -Filter '7za.exe' -File -Recurse | Select-Object -First 1
+          if ($null -eq $seven) { throw 'electron-builder 7za cache was not found after payload packaging' }
+          New-Item -ItemType Directory -Force -Path 'dsh-plugin-desktop/dist/legacy-baseline' | Out-Null
+          & node dsh-plugin-desktop/scripts/legacy-baseline-installer.mjs `
+            --source (Join-Path $env:RUNNER_TEMP 'legacy-source\DSH-Desktop-2.0.15-x64-Setup.exe') `
+            --output (Resolve-Path 'dsh-plugin-desktop/dist/legacy-baseline').Path `
+            --seven-zip $seven.FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Upload candidate installers
         uses: actions/upload-artifact@v4
         with:
@@ -54,6 +72,7 @@ jobs:
             dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Setup-zip-direct.exe
             dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Setup-7z-staged.exe
             dsh-plugin-desktop/dist/DSH-Desktop-*-x64-Setup-7z-in-place.exe
+            dsh-plugin-desktop/dist/legacy-baseline/DSH-Desktop-2.0.15-baseline-x64-Setup.exe
 
   benchmark:
     name: Benchmark ${{ matrix.strategy }} run ${{ matrix.run }}
@@ -82,24 +101,12 @@ jobs:
           name: candidate-payloads
           path: ${{ runner.temp }}/candidate
 
-      - name: Download v2.0.15 baseline
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release download v2.0.15 --repo rw0104/DSH-desktop --pattern 'DSH-Desktop-2.0.15-x64-Setup.exe' --dir $env:RUNNER_TEMP\baseline
-
       - name: Measure one clean image
         shell: pwsh
         run: |
-          # v2.0.15's released NSIS process probe treats a restricted child
-          # PowerShell policy as an unavailable probe and exits 2 before it
-          # writes the first file. This only normalizes the disposable CI
-          # benchmark environment; it does not change the released installer.
-          $env:PSExecutionPolicyPreference = 'Bypass'
-          Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass -Force
           $strategy = '${{ matrix.strategy }}'
           $installer = if ($strategy -eq 'base') {
-            Join-Path $env:RUNNER_TEMP 'baseline\DSH-Desktop-2.0.15-x64-Setup.exe'
+            (Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'candidate') -Filter '*-2.0.15-baseline-x64-Setup.exe' -File -Recurse).FullName
           } else {
             (Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'candidate') -Filter "*-Setup-$strategy.exe" -File -Recurse).FullName
           }
@@ -110,7 +117,6 @@ jobs:
             InstallPathLength = 80
             OutputPath = (Join-Path $env:RUNNER_TEMP "benchmark-${{ matrix.strategy }}-${{ matrix.run }}.json")
           }
-          if ($strategy -eq 'base') { $benchmarkParams.SeedExistingExecutable = $true }
           & 'dsh-plugin-desktop/scripts/benchmark-windows-installer.ps1' @benchmarkParams
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -143,19 +149,12 @@ jobs:
         with:
           name: candidate-payloads
           path: ${{ runner.temp }}/candidate
-      - name: Download v2.0.15 baseline
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release download v2.0.15 --repo rw0104/DSH-desktop --pattern 'DSH-Desktop-2.0.15-x64-Setup.exe' --dir $env:RUNNER_TEMP\baseline
       - name: Measure one long-path clean image
         shell: pwsh
         run: |
-          $env:PSExecutionPolicyPreference = 'Bypass'
-          Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass -Force
           $strategy = '${{ matrix.strategy }}'
           $installer = if ($strategy -eq 'base') {
-            Join-Path $env:RUNNER_TEMP 'baseline\DSH-Desktop-2.0.15-x64-Setup.exe'
+            (Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'candidate') -Filter '*-2.0.15-baseline-x64-Setup.exe' -File -Recurse).FullName
           } else {
             (Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'candidate') -Filter '*-Setup-zip-direct.exe' -File -Recurse).FullName
           }
@@ -166,7 +165,6 @@ jobs:
             InstallPathLength = 180
             OutputPath = (Join-Path $env:RUNNER_TEMP "long-${{ matrix.strategy }}-${{ matrix.run }}.json")
           }
-          if ($strategy -eq 'base') { $benchmarkParams.SeedExistingExecutable = $true }
           & 'dsh-plugin-desktop/scripts/benchmark-windows-installer.ps1' @benchmarkParams
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
@@ -241,18 +239,13 @@ jobs:
         with:
           name: installer-performance-summary
           path: ${{ runner.temp }}/summary
-      - name: Download v2.0.15 baseline
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release download v2.0.15 --repo rw0104/DSH-desktop --pattern 'DSH-Desktop-2.0.15-x64-Setup.exe' --dir $env:RUNNER_TEMP\baseline
       - name: Inject termination and lock failures
         shell: pwsh
         run: |
           $summary = Get-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'summary\zip-direct.json') -Raw | ConvertFrom-Json
           $candidate = (Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'candidate') -Filter '*-Setup-zip-direct.exe' -File -Recurse).FullName
           & 'dsh-plugin-desktop/scripts/smoke-windows-installer-failures.ps1' `
-            -BaseInstaller (Join-Path $env:RUNNER_TEMP 'baseline\DSH-Desktop-2.0.15-x64-Setup.exe') `
+            -BaseInstaller (Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'candidate') -Filter '*-2.0.15-baseline-x64-Setup.exe' -File -Recurse | Select-Object -First 1 -ExpandProperty FullName) `
             -CandidateInstaller $candidate `
             -CandidateBaselineMs ([int]$summary.medianMs) `
             -IsolationEvidence "gha-${{ github.run_id }}-failure-recovery" `
