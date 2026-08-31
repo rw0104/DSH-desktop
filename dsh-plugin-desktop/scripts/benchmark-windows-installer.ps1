@@ -22,6 +22,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# A silent NSIS process must either finish or produce a bounded diagnostic.
+# Without a watchdog, a hidden UAC/message-box path can hold a disposable
+# runner forever and prevent the rest of the matrix from producing evidence.
+$taskInstallerTimeoutMs = 15 * 60 * 1000
+
 if ($env:OS -ne 'Windows_NT') { throw 'Windows installer benchmarks require Windows.' }
 if ($IsolationEvidence.Trim().Length -eq 0) { throw 'IsolationEvidence must identify the restored VM snapshot for this one run.' }
 if (($Scenario -eq 'upgrade') -and [string]::IsNullOrWhiteSpace($BaseInstaller)) {
@@ -71,12 +76,26 @@ $taskResult = [ordered]@{
   isolationEvidence = $IsolationEvidence
 }
 
+function Stop-TaskProcessTree([int]$taskParentId) {
+  $taskChildren = @(Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $taskParentId })
+  foreach ($taskChild in $taskChildren) { Stop-TaskProcessTree ([int]$taskChild.ProcessId) }
+  Stop-Process -Id $taskParentId -Force -ErrorAction SilentlyContinue
+}
+
+function Wait-TaskInstaller([Diagnostics.Process]$taskProcess, [string]$taskLabel) {
+  if ($taskProcess.WaitForExit($taskInstallerTimeoutMs)) { return }
+  Stop-TaskProcessTree $taskProcess.Id
+  $taskProcess.WaitForExit(10000)
+  throw "$taskLabel timed out after $taskInstallerTimeoutMs ms; the installer process tree was terminated."
+}
+
 function Invoke-TaskInstaller([string]$taskInstaller) {
   $taskProcess = Start-Process -FilePath $taskInstaller -ArgumentList @(
     '/S'
     '/currentuser'
     "/D=$taskInstallRoot"
-  ) -PassThru -Wait -WindowStyle Hidden
+  ) -PassThru -WindowStyle Hidden
+  Wait-TaskInstaller $taskProcess 'installer'
   if ($taskProcess.ExitCode -ne 0) { throw "Installer exited with $($taskProcess.ExitCode)." }
 }
 
@@ -119,14 +138,15 @@ try {
 
   $taskStopwatch = [Diagnostics.Stopwatch]::StartNew()
   if ($Scenario -eq 'uninstall') {
-    $taskProcess = Start-Process -FilePath $taskUninstallerPath -ArgumentList @('/currentuser', '/S') -Verb RunAs -PassThru -Wait -WindowStyle Hidden
+    $taskProcess = Start-Process -FilePath $taskUninstallerPath -ArgumentList @('/currentuser', '/S') -Verb RunAs -PassThru -WindowStyle Hidden
   } else {
     $taskProcess = Start-Process -FilePath $taskCandidate -ArgumentList @(
       '/S'
       '/currentuser'
       "/D=$taskInstallRoot"
-    ) -PassThru -Wait -WindowStyle Hidden
+    ) -PassThru -WindowStyle Hidden
   }
+  Wait-TaskInstaller $taskProcess 'timed operation'
   $taskStopwatch.Stop()
   $taskResult.elapsedMs = [int64]$taskStopwatch.ElapsedMilliseconds
   $taskResult.exitCode = [int]$taskProcess.ExitCode
@@ -146,7 +166,8 @@ try {
   }
 } finally {
   if (Test-Path -LiteralPath $taskUninstallerPath) {
-    $null = Start-Process -FilePath $taskUninstallerPath -ArgumentList @('/currentuser', '/S') -Verb RunAs -PassThru -Wait -WindowStyle Hidden
+    $taskCleanupProcess = Start-Process -FilePath $taskUninstallerPath -ArgumentList @('/currentuser', '/S') -Verb RunAs -PassThru -WindowStyle Hidden
+    try { Wait-TaskInstaller $taskCleanupProcess 'cleanup uninstaller' } catch { }
   }
   $taskResolvedRoot = [System.IO.Path]::GetFullPath($taskRunRoot)
   $taskSafeName = [System.IO.Path]::GetFileName($taskResolvedRoot).StartsWith('dsh-installer-benchmark-', [StringComparison]::Ordinal)
