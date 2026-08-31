@@ -17,7 +17,10 @@ param(
   [switch]$SeedExistingExecutable,
 
   [ValidateRange(40, 220)]
-  [int]$InstallPathLength = 80
+  [int]$InstallPathLength = 80,
+
+  [ValidateRange(5, 60)]
+  [int]$InstallerTimeoutMinutes = 15
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,7 +28,7 @@ $ErrorActionPreference = 'Stop'
 # A silent NSIS process must either finish or produce a bounded diagnostic.
 # Without a watchdog, a hidden UAC/message-box path can hold a disposable
 # runner forever and prevent the rest of the matrix from producing evidence.
-$taskInstallerTimeoutMs = 15 * 60 * 1000
+$taskInstallerTimeoutMs = $InstallerTimeoutMinutes * 60 * 1000
 
 if ($env:OS -ne 'Windows_NT') { throw 'Windows installer benchmarks require Windows.' }
 if ($IsolationEvidence.Trim().Length -eq 0) { throw 'IsolationEvidence must identify the restored VM snapshot for this one run.' }
@@ -74,6 +77,7 @@ $taskResult = [ordered]@{
   treeDigest = ('0' * 64)
   cleanupSucceeded = $false
   isolationEvidence = $IsolationEvidence
+  installerTimeoutMinutes = $InstallerTimeoutMinutes
 }
 
 function Stop-TaskProcessTree([int]$taskParentId) {
@@ -82,11 +86,38 @@ function Stop-TaskProcessTree([int]$taskParentId) {
   Stop-Process -Id $taskParentId -Force -ErrorAction SilentlyContinue
 }
 
+function Get-TaskInstallerProgress([Diagnostics.Process]$taskProcess) {
+  $taskFiles = if (Test-Path -LiteralPath $taskInstallRoot) {
+    @(Get-ChildItem -LiteralPath $taskInstallRoot -Recurse -File -Force -ErrorAction SilentlyContinue)
+  } else {
+    @()
+  }
+  $taskMeasuredBytes = ($taskFiles | Measure-Object -Property Length -Sum).Sum
+  $taskBytes = if ($null -eq $taskMeasuredBytes) { 0 } else { [int64]$taskMeasuredBytes }
+  $taskProcesses = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+    $_.ProcessId -eq $taskProcess.Id -or $_.ParentProcessId -eq $taskProcess.Id
+  })
+  $taskProcessNames = ($taskProcesses | Select-Object -ExpandProperty Name -Unique) -join ','
+  return "files=$($taskFiles.Count) bytes=$taskBytes processNames=$taskProcessNames"
+}
+
 function Wait-TaskInstaller([Diagnostics.Process]$taskProcess, [string]$taskLabel) {
-  if ($taskProcess.WaitForExit($taskInstallerTimeoutMs)) { return }
-  Stop-TaskProcessTree $taskProcess.Id
-  $taskProcess.WaitForExit(10000)
-  throw "$taskLabel timed out after $taskInstallerTimeoutMs ms; the installer process tree was terminated."
+  $taskWait = [Diagnostics.Stopwatch]::StartNew()
+  $taskNextProgressMs = 30 * 1000
+  while (-not $taskProcess.WaitForExit(1000)) {
+    if ($taskWait.ElapsedMilliseconds -ge $taskNextProgressMs) {
+      $taskProgress = Get-TaskInstallerProgress $taskProcess
+      Write-Output "benchmark progress: label=$taskLabel elapsedMs=$($taskWait.ElapsedMilliseconds) $taskProgress"
+      $taskNextProgressMs += 30 * 1000
+    }
+    if ($taskWait.ElapsedMilliseconds -ge $taskInstallerTimeoutMs) {
+      $taskProgress = Get-TaskInstallerProgress $taskProcess
+      Stop-TaskProcessTree $taskProcess.Id
+      $taskProcess.WaitForExit(10000)
+      throw "$taskLabel timed out after $taskInstallerTimeoutMs ms ($InstallerTimeoutMinutes minutes); $taskProgress; the installer process tree was terminated."
+    }
+  }
+  $taskWait.Stop()
 }
 
 function Invoke-TaskInstaller([string]$taskInstaller) {

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
 
 import {
   percentile,
@@ -54,4 +56,18 @@ test('rejects repeated snapshots and mixed artifacts', () => {
   records[4].isolationEvidence = 'win11-clean-5'
   records[4].artifactSha256 = 'c'.repeat(64)
   assert.throws(() => summarizeInstallerBenchmarks(records), /artifactSha256/u)
+})
+
+test('gives the legacy payload an explicit long-running installer timeout', () => {
+  const benchmarkScript = readFileSync(
+    fileURLToPath(new URL('./benchmark-windows-installer.ps1', import.meta.url)),
+    'utf8',
+  )
+  const workflow = readFileSync(
+    fileURLToPath(new URL('../../.github/workflows/windows-installer-performance.yml', import.meta.url)),
+    'utf8',
+  )
+  assert.match(benchmarkScript, /\$InstallerTimeoutMinutes\s*=\s*15/u)
+  assert.match(workflow, /\$timeoutMinutes\s*=\s*if\s*\(\$strategy\s*-eq\s*'base'\)\s*\{\s*45\s*\}\s*else\s*\{\s*15\s*\}/u)
+  assert.match(workflow, /InstallerTimeoutMinutes\s*=\s*\$timeoutMinutes/u)
 })

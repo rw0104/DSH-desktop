@@ -110,11 +110,13 @@ jobs:
           } else {
             (Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'candidate') -Filter "*-Setup-$strategy.exe" -File -Recurse).FullName
           }
+          $timeoutMinutes = if ($strategy -eq 'base') { 45 } else { 15 }
           $benchmarkParams = @{
             Scenario = 'fresh'
             CandidateInstaller = $installer
             IsolationEvidence = "gha-${{ github.run_id }}-${{ matrix.strategy }}-${{ matrix.run }}"
             InstallPathLength = 80
+            InstallerTimeoutMinutes = $timeoutMinutes
             OutputPath = (Join-Path $env:RUNNER_TEMP "benchmark-${{ matrix.strategy }}-${{ matrix.run }}.json")
           }
           & 'dsh-plugin-desktop/scripts/benchmark-windows-installer.ps1' @benchmarkParams
@@ -158,11 +160,13 @@ jobs:
           } else {
             (Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'candidate') -Filter '*-Setup-zip-direct.exe' -File -Recurse).FullName
           }
+          $timeoutMinutes = if ($strategy -eq 'base') { 45 } else { 15 }
           $benchmarkParams = @{
             Scenario = 'fresh'
             CandidateInstaller = $installer
             IsolationEvidence = "gha-${{ github.run_id }}-long-${{ matrix.strategy }}-${{ matrix.run }}"
             InstallPathLength = 180
+            InstallerTimeoutMinutes = $timeoutMinutes
             OutputPath = (Join-Path $env:RUNNER_TEMP "long-${{ matrix.strategy }}-${{ matrix.run }}.json")
           }
           & 'dsh-plugin-desktop/scripts/benchmark-windows-installer.ps1' @benchmarkParams
