@@ -169,7 +169,7 @@ export function apply(ctx: ClientContext): void {
       order: 40,
       label: () => ctx.locale.bind('desktop.voice')('settings.title'),
       locale: 'desktop.voice',
-      inject: () => ({ controller: voice }),
+      inject: () => ({ controller: voice, openExternal: requestDesktopExternalNavigation }),
     }, VoiceSettingsSection))
     return () => {
       disposeVoiceSlot()

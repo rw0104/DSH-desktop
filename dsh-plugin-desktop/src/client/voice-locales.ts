@@ -8,6 +8,7 @@ export type VoiceKey =
   | 'settings.saveAll' | 'settings.saving' | 'settings.saved'
   | 'settings.ttsEnabled' | 'settings.ttsModel' | 'settings.ttsVoice'
   | 'settings.ttsEndpoint' | 'settings.ttsResource'
+  | 'settings.credentialsGuide'
 
 export const voiceLocales = {
   zh: {
@@ -23,6 +24,7 @@ export const voiceLocales = {
     'settings.ttsVoice': '回复音色',
     'settings.ttsEndpoint': '语音合成端点',
     'settings.ttsResource': '语音合成资源 ID',
+    'settings.credentialsGuide': 'API Key 与 Workspace 配置教程',
     'settings.model': '模型',
     'settings.voice': '声音',
     'settings.workspace': 'Qwen Workspace ID',
@@ -55,6 +57,7 @@ export const voiceLocales = {
     'settings.ttsVoice': 'Reply voice',
     'settings.ttsEndpoint': 'Speech synthesis endpoint',
     'settings.ttsResource': 'Speech synthesis resource ID',
+    'settings.credentialsGuide': 'API key and Workspace setup guide',
     'settings.model': 'Model',
     'settings.voice': 'Voice',
     'settings.workspace': 'Qwen Workspace ID',

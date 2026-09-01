@@ -65,6 +65,8 @@ function controller(snapshot: DesktopVoiceState): DesktopVoiceController {
   } as unknown as DesktopVoiceController
 }
 
+const openExternal = vi.fn().mockResolvedValue(undefined)
+
 describe('desktop voice surfaces', () => {
   it('keeps the composer button hidden while the user disables voice', () => {
     const html = renderToStaticMarkup(createElement(VoiceComposerButton, {
@@ -112,6 +114,7 @@ describe('desktop voice surfaces', () => {
     const html = renderToStaticMarkup(createElement(VoiceSettingsSection, {
       controller: controller(snapshot),
       t,
+      openExternal,
     } as never))
     expect(html).toContain('dshVoiceSettings')
     expect(html).toContain('dsh-doubao-endpoint')
@@ -119,12 +122,14 @@ describe('desktop voice surfaces', () => {
     expect(html).toContain('dsh-voice-tts-enabled')
     expect(html).toContain('settings.doubaoNotice')
     expect(html).toContain('id="dsh-voice-save-all"')
+    expect(html).toContain('data-external-action="realtime-voice-credentials"')
   })
 
   it('renders Qwen provider voice selection', () => {
     const html = renderToStaticMarkup(createElement(VoiceSettingsSection, {
       controller: controller(state()),
       t,
+      openExternal,
     } as never))
     expect(html).toContain('dsh-qwen-tts-voice')
     expect(html).toContain('value="Cherry"')

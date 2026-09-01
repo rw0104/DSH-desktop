@@ -7,8 +7,10 @@ describe('desktop client external navigation bridge', () => {
     const target = { __DSH_DESKTOP_EXTERNAL_NAVIGATION__: { open } }
 
     await requestDesktopExternalNavigation('release-notes', target)
+    await requestDesktopExternalNavigation('realtime-voice-credentials', target)
 
-    expect(open).toHaveBeenCalledOnce()
+    expect(open).toHaveBeenCalledTimes(2)
     expect(open).toHaveBeenCalledWith('release-notes')
+    expect(open).toHaveBeenCalledWith('realtime-voice-credentials')
   })
 })

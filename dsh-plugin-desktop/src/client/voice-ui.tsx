@@ -3,6 +3,7 @@ import type { DesktopVoiceController } from './voice-controller.ts'
 import type { DesktopVoiceState, DesktopVoiceSettings } from './voice-controller.ts'
 import type { VoiceKey } from './voice-locales.ts'
 import { VoiceOrb } from './voice-orb.tsx'
+import type { DesktopExternalNavigationAction } from '../external-navigation-contract.ts'
 
 export interface VoiceInjected {
   controller: DesktopVoiceController
@@ -72,9 +73,13 @@ export function VoiceSidebarTab({ controller, scope }: { controller: DesktopVoic
   )
 }
 
-type VoiceSettingsProps = { controller: DesktopVoiceController; t: (key: VoiceKey) => string }
+type VoiceSettingsProps = {
+  controller: DesktopVoiceController
+  t: (key: VoiceKey) => string
+  openExternal: (action: DesktopExternalNavigationAction) => Promise<void>
+}
 
-export function VoiceSettingsSection({ controller, t }: VoiceSettingsProps) {
+export function VoiceSettingsSection({ controller, t, openExternal }: VoiceSettingsProps) {
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
   const [draft, setDraft] = useState(state.settings)
   const [qwenKey, setQwenKey] = useState('')
@@ -102,6 +107,7 @@ export function VoiceSettingsSection({ controller, t }: VoiceSettingsProps) {
   return (
     <div className="dshVoiceSettings">
       <div className="dshVoiceSettingsIntro"><span className="dshVoiceSettingsEyebrow">Desktop capability</span><h2>{t('settings.title')}</h2><p>{t('settings.intro')}</p></div>
+      <button className="dshVoiceGuideLink" type="button" data-external-action="realtime-voice-credentials" onClick={() => { void openExternal('realtime-voice-credentials').catch(() => {}) }}>{t('settings.credentialsGuide')}<span aria-hidden>↗</span></button>
       <label className="dshVoiceSwitch"><input type="checkbox" checked={draft.enabled} onChange={event => { update('enabled', event.target.checked) }} /><span /><strong>{t('settings.enabled')}</strong></label>
       <div className="dshVoiceField"><label htmlFor="dsh-voice-provider">{t('settings.provider')}</label><select id="dsh-voice-provider" value={draft.provider} onChange={event => { update('provider', event.target.value as DesktopVoiceSettings['provider']) }}><option value="qwen">Qwen 实时语音识别</option><option value="doubao">豆包 Seed-ASR 2</option></select></div>
       <label className="dshVoiceSwitch"><input id="dsh-voice-tts-enabled" type="checkbox" checked={draft.ttsEnabled} onChange={event => { update('ttsEnabled', event.target.checked) }} /><span /><strong>{t('settings.ttsEnabled')}</strong></label>

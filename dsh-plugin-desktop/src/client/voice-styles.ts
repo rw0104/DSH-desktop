@@ -57,6 +57,9 @@ const VOICE_STYLES = `
 .dshVoiceSettingsIntro { display:flex; flex-direction:column; gap:5px; }
 .dshVoiceSettingsIntro h2 { margin:0; font:var(--dsw-font-s-strong-14); font-size:18px; }
 .dshVoiceSettingsIntro p { margin:0; color:var(--dsw-alias-label-secondary); line-height:1.5; }
+.dshVoiceGuideLink { align-self:flex-start; display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:0; border:0; color:var(--dsw-alias-state-business-primary); background:transparent; font:var(--dsw-font-xxs-12); font-weight:650; cursor:pointer; }
+.dshVoiceGuideLink:hover { text-decoration:underline; text-underline-offset:3px; }
+.dshVoiceGuideLink span { font-size:13px; }
 .dshVoiceSwitch { display:flex; align-items:center; gap:9px; min-height:40px; color:var(--dsw-alias-label-primary); font:var(--dsw-font-xxs-12); cursor:pointer; }
 .dshVoiceSwitch input { position:absolute; width:1px; height:1px; opacity:0; }
 .dshVoiceSwitch span { position:relative; width:36px; height:20px; border-radius:999px; background:var(--dsw-alias-bg-layer-2); transition:background 140ms ease; }

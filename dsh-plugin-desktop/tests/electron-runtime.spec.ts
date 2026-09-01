@@ -789,10 +789,15 @@ describe('Electron desktop runtime', () => {
 
     await handler({ sender: electron.webContents }, 'repository')
     await handler({ sender: electron.webContents }, 'release-notes')
+    await handler({ sender: electron.webContents }, 'realtime-voice-credentials')
     expect(electron.shell.openExternal).toHaveBeenNthCalledWith(1, 'https://github.com/rw0104/DSH-desktop')
     expect(electron.shell.openExternal).toHaveBeenNthCalledWith(
       2,
       'https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.16',
+    )
+    expect(electron.shell.openExternal).toHaveBeenNthCalledWith(
+      3,
+      'https://github.com/rw0104/DSH-desktop/blob/main/docs/user-guide-realtime-voice-credentials.md',
     )
     expect(logger.info).toHaveBeenNthCalledWith(
       1,
@@ -802,11 +807,15 @@ describe('Electron desktop runtime', () => {
       2,
       'dsh-plugin-desktop: opened external action release-notes (origin: https://github.com)',
     )
+    expect(logger.info).toHaveBeenNthCalledWith(
+      3,
+      'dsh-plugin-desktop: opened external action realtime-voice-credentials (origin: https://github.com)',
+    )
     await expect(handler({ sender: {} }, 'repository')).rejects.toThrow('external navigation sender is not active')
     await expect(handler({ sender: electron.webContents }, 'https://example.com')).rejects.toThrow(
       'external navigation action is invalid',
     )
-    expect(electron.shell.openExternal).toHaveBeenCalledTimes(2)
+    expect(electron.shell.openExternal).toHaveBeenCalledTimes(3)
 
     await release()
     expect(electron.ipcMain.removeHandler).toHaveBeenCalledWith('dsh-desktop:open-external')

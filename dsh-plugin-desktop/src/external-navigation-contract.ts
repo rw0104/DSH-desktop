@@ -7,10 +7,11 @@ export const DESKTOP_EXTERNAL_NAVIGATION_CHANNEL = 'dsh-desktop:open-external'
 export const DESKTOP_EXTERNAL_NAVIGATION_BRIDGE = '__DSH_DESKTOP_EXTERNAL_NAVIGATION__'
 
 /** Product-owned links the renderer may request without supplying a URL. */
-export type DesktopExternalNavigationAction = 'repository' | 'release-notes'
+export type DesktopExternalNavigationAction = 'repository' | 'release-notes' | 'realtime-voice-credentials'
 
-const ACTIONS = new Set<DesktopExternalNavigationAction>(['repository', 'release-notes'])
+const ACTIONS = new Set<DesktopExternalNavigationAction>(['repository', 'release-notes', 'realtime-voice-credentials'])
 const REPOSITORY_URL = 'https://github.com/rw0104/DSH-desktop'
+const REALTIME_VOICE_CREDENTIALS_URL = `${REPOSITORY_URL}/blob/main/docs/user-guide-realtime-voice-credentials.md`
 
 /** Validate an untrusted IPC action without accepting arbitrary URLs. */
 export function parseDesktopExternalNavigationAction(value: unknown): DesktopExternalNavigationAction {
@@ -25,9 +26,9 @@ export function desktopExternalNavigationUrl(
   action: DesktopExternalNavigationAction,
   productVersion: string,
 ): string {
-  return action === 'repository'
-    ? REPOSITORY_URL
-    : `${REPOSITORY_URL}/releases/tag/v${productVersion}`
+  if (action === 'repository') return REPOSITORY_URL
+  if (action === 'realtime-voice-credentials') return REALTIME_VOICE_CREDENTIALS_URL
+  return `${REPOSITORY_URL}/releases/tag/v${productVersion}`
 }
 
 /** Capability exposed by the context-isolated preload. */
