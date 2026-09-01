@@ -1,0 +1,149 @@
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import type { DesktopVoiceController } from './voice-controller.ts'
+import type { DesktopVoiceState, DesktopVoiceSettings } from './voice-controller.ts'
+import type { VoiceKey } from './voice-locales.ts'
+import { VoiceOrb } from './voice-orb.tsx'
+
+export interface VoiceInjected {
+  controller: DesktopVoiceController
+}
+
+type VoiceButtonProps = { session: { sessionId: string }; controller: DesktopVoiceController; t: (key: VoiceKey) => string }
+
+export function VoiceComposerButton({ session, controller, t }: VoiceButtonProps) {
+  const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
+  const ready = state.settings.provider === 'qwen'
+    ? state.qwenKeyConfigured && (state.settings.qwenEndpointMode === 'shared' || state.settings.qwenWorkspaceId.trim().length > 0)
+    : state.doubaoAppIdConfigured && state.doubaoAccessKeyConfigured && state.settings.doubaoRealtimeUrl.startsWith('wss://')
+  const active = controller.isActive()
+  if (!state.settings.enabled && !active) return null
+  return (
+    <button
+      type="button"
+      className={`dshVoiceComposerButton${active ? ' is-active' : ''}`}
+      aria-label={active ? t('button.stop') : t('button.start')}
+      title={ready ? (active ? t('button.stop') : t('button.start')) : t('button.unavailable')}
+      disabled={!ready && !active}
+      onClick={() => { if (active) void controller.finish(); else void controller.openAndStart(session.sessionId) }}
+    >
+      <span className="dshVoiceWaveIcon" aria-hidden><span /><span /><span /><span /></span>
+    </button>
+  )
+}
+
+export function VoiceSidebarTab({ controller, scope }: { controller: DesktopVoiceController; scope: { sessionId: string; cwd?: string } }) {
+  const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
+  const status = statusText(state)
+  return (
+    <section className="dshVoicePanel" aria-label="Realtime voice">
+      <header className="dshVoicePanelHeader">
+        <div>
+          <span className="dshVoicePanelEyebrow"><span className="dshVoiceGlyph is-wave" aria-hidden /> Realtime voice</span>
+          <h2>{state.settings.provider === 'qwen' ? 'Qwen ASR' : 'Doubao Seed-ASR 2'}</h2>
+        </div>
+        <span className={`dshVoiceStatus is-${state.status}`}>{status}</span>
+      </header>
+      {state.error !== null && <div className="dshVoiceError" role="alert">{state.error}</div>}
+      <div className="dshVoicePresence">
+        <VoiceOrb status={state.status} inputFeatures={state.inputAudio} label={status} />
+      </div>
+      <div className={`dshVoiceTranscript${state.turns.length ? ' has-content' : ''}`} aria-live="polite">
+        {state.turns.length === 0 && state.liveInput === '' && state.liveOutput === '' && (
+          <div className="dshVoiceEmpty">{state.settings.enabled ? 'Speak naturally. Your transcript will appear here.' : 'Enable realtime voice in Settings to begin.'}</div>
+        )}
+        {state.turns.map(turn => <article key={turn.id} className={`dshVoiceTurn is-${turn.role}`}><span>{turn.role === 'user' ? 'You' : 'Agent'}</span><p>{turn.text}</p></article>)}
+        {state.liveInput !== '' && <article className="dshVoiceTurn is-user is-live"><span>You</span><p>{state.liveInput}</p></article>}
+        {state.liveOutput !== '' && <article className="dshVoiceTurn is-assistant is-live"><span>Agent</span><p>{state.liveOutput}</p></article>}
+      </div>
+      <div className="dshVoiceControls">
+        <button type="button" className="dshVoiceControl" disabled={!controller.isActive()} aria-pressed={state.microphoneMuted} onClick={() => { void controller.toggleMicrophone() }}>
+          <span className="dshVoiceGlyph is-mic" aria-hidden /> {state.microphoneMuted ? 'Unmute' : 'Mute'}
+        </button>
+        <button type="button" className="dshVoicePrimary" disabled={state.status === 'finishing'} onClick={() => { if (controller.isActive()) void controller.finish(); else void controller.start(scope.sessionId) }}>
+          <span className={`dshVoiceGlyph is-${state.status === 'finishing' ? 'loading' : controller.isActive() ? 'stop' : 'start'}`} aria-hidden />
+          {controller.isActive() ? 'End' : 'Start voice'}
+        </button>
+        <button type="button" className="dshVoiceControl" disabled={!controller.isActive()} aria-pressed={state.outputMuted} onClick={() => { controller.toggleOutput() }}>
+          <span className="dshVoiceGlyph is-speaker" aria-hidden /> {state.outputMuted ? 'Sound on' : 'Speaker'}
+        </button>
+      </div>
+      <p className="dshVoicePrivacy">Microphone audio is relayed to the selected provider while a session is active.</p>
+    </section>
+  )
+}
+
+type VoiceSettingsProps = { controller: DesktopVoiceController; t: (key: VoiceKey) => string }
+
+export function VoiceSettingsSection({ controller, t }: VoiceSettingsProps) {
+  const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
+  const [draft, setDraft] = useState(state.settings)
+  const [qwenKey, setQwenKey] = useState('')
+  const [doubaoAppId, setDoubaoAppId] = useState('')
+  const [doubaoAccessKey, setDoubaoAccessKey] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  useEffect(() => { setDraft(state.settings) }, [state.settings])
+  const update = <K extends keyof DesktopVoiceSettings>(key: K, value: DesktopVoiceSettings[K]): void => {
+    setDraft(current => ({ ...current, [key]: value }))
+    setSaved(false)
+  }
+  const changed = JSON.stringify(draft) !== JSON.stringify(state.settings) || qwenKey.trim() !== '' || doubaoAppId.trim() !== '' || doubaoAccessKey.trim() !== ''
+  const save = async (): Promise<void> => {
+    setSaving(true)
+    const ok = await controller.saveConfiguration(draft, { qwenKey, doubaoAppId, doubaoAccessKey })
+    if (ok) {
+      setQwenKey('')
+      setDoubaoAppId('')
+      setDoubaoAccessKey('')
+      setSaved(true)
+    }
+    setSaving(false)
+  }
+  return (
+    <div className="dshVoiceSettings">
+      <div className="dshVoiceSettingsIntro"><span className="dshVoiceSettingsEyebrow">Desktop capability</span><h2>{t('settings.title')}</h2><p>{t('settings.intro')}</p></div>
+      <label className="dshVoiceSwitch"><input type="checkbox" checked={draft.enabled} onChange={event => { update('enabled', event.target.checked) }} /><span /><strong>{t('settings.enabled')}</strong></label>
+      <div className="dshVoiceField"><label htmlFor="dsh-voice-provider">{t('settings.provider')}</label><select id="dsh-voice-provider" value={draft.provider} onChange={event => { update('provider', event.target.value as DesktopVoiceSettings['provider']) }}><option value="qwen">Qwen 实时语音识别</option><option value="doubao">豆包 Seed-ASR 2</option></select></div>
+      {draft.provider === 'qwen'
+        ? <QwenSettings state={state} draft={draft} update={update} t={t} qwenKey={qwenKey} setQwenKey={value => { setQwenKey(value); setSaved(false) }} />
+        : <DoubaoSettings state={state} draft={draft} update={update} t={t} doubaoAppId={doubaoAppId} setDoubaoAppId={value => { setDoubaoAppId(value); setSaved(false) }} doubaoAccessKey={doubaoAccessKey} setDoubaoAccessKey={value => { setDoubaoAccessKey(value); setSaved(false) }} />}
+      {state.error !== null && <p className="dshVoiceSettingsError" role="alert">{state.error}</p>}
+      <div className="dshVoiceSettingsActions">
+        <button id="dsh-voice-save-all" type="button" disabled={!changed || saving} onClick={() => { void save() }}>{saving ? t('settings.saving') : t('settings.saveAll')}</button>
+        <span role="status" aria-live="polite">{saved ? t('settings.saved') : ''}</span>
+      </div>
+      <div className="dshVoiceSettingsNote"><span className="dshVoiceGlyph is-settings" aria-hidden /><span>{t('settings.secretNote')}</span></div>
+    </div>
+  )
+}
+
+function QwenSettings({ state, draft, update, t, qwenKey, setQwenKey }: { state: DesktopVoiceState; draft: DesktopVoiceSettings; update: <K extends keyof DesktopVoiceSettings>(key: K, value: DesktopVoiceSettings[K]) => void; t: (key: VoiceKey) => string; qwenKey: string; setQwenKey: (value: string) => void }) {
+  return <>
+    <div className="dshVoiceField"><label htmlFor="dsh-qwen-model">{t('settings.model')}</label><input id="dsh-qwen-model" value={draft.qwenModel} readOnly /></div>
+    <div className="dshVoiceField"><label htmlFor="dsh-qwen-endpoint-mode">{t('settings.endpointMode')}</label><select id="dsh-qwen-endpoint-mode" value={draft.qwenEndpointMode} onChange={event => { update('qwenEndpointMode', event.target.value as DesktopVoiceSettings['qwenEndpointMode']) }}><option value="shared">{t('settings.apiKeyOnly')}</option><option value="workspace">{t('settings.workspaceDedicated')}</option></select></div>
+    {draft.qwenEndpointMode === 'workspace' && <div className="dshVoiceField"><label htmlFor="dsh-qwen-workspace">{t('settings.workspace')}</label><input id="dsh-qwen-workspace" value={draft.qwenWorkspaceId} placeholder="llm-xxxxxxxxxxxx" onChange={event => { update('qwenWorkspaceId', event.target.value) }} /><span className="dshVoiceProviderNotice">{t('settings.workspaceHint')}</span></div>}
+    <div className="dshVoiceField"><label htmlFor="dsh-voice-prompt">{t('settings.prompt')}</label><textarea id="dsh-voice-prompt" rows={3} value={draft.systemPrompt} onChange={event => { update('systemPrompt', event.target.value) }} /></div>
+    <KeyField id="dsh-qwen-key" label={t('settings.apiKey')} configured={state.qwenKeyConfigured} writable={state.qwenKeyWritable} value={qwenKey} onChange={setQwenKey} />
+  </>
+}
+
+function DoubaoSettings({ state, draft, update, t, doubaoAppId, setDoubaoAppId, doubaoAccessKey, setDoubaoAccessKey }: { state: DesktopVoiceState; draft: DesktopVoiceSettings; update: <K extends keyof DesktopVoiceSettings>(key: K, value: DesktopVoiceSettings[K]) => void; t: (key: VoiceKey) => string; doubaoAppId: string; setDoubaoAppId: (value: string) => void; doubaoAccessKey: string; setDoubaoAccessKey: (value: string) => void }) {
+  return <>
+    <div className="dshVoiceField"><label htmlFor="dsh-doubao-model">{t('settings.model')}</label><input id="dsh-doubao-model" value={draft.doubaoModel} readOnly /></div>
+    <div className="dshVoiceField"><label htmlFor="dsh-doubao-endpoint">{t('settings.endpoint')}</label><input id="dsh-doubao-endpoint" value={draft.doubaoRealtimeUrl} placeholder="wss://..." onChange={event => { update('doubaoRealtimeUrl', event.target.value) }} /></div>
+    <div className="dshVoiceField"><label htmlFor="dsh-doubao-resource">{t('settings.resource')}</label><input id="dsh-doubao-resource" value={draft.doubaoResourceId} onChange={event => { update('doubaoResourceId', event.target.value) }} /></div>
+    <div className="dshVoiceField"><label htmlFor="dsh-doubao-app-key">{t('settings.appKey')}</label><input id="dsh-doubao-app-key" value={draft.doubaoAppKey} onChange={event => { update('doubaoAppKey', event.target.value) }} /></div>
+    <KeyField id="dsh-doubao-app-id" label={t('settings.appId')} configured={state.doubaoAppIdConfigured} writable={state.doubaoAppIdWritable} value={doubaoAppId} onChange={setDoubaoAppId} />
+    <KeyField id="dsh-doubao-access-key" label={t('settings.accessKey')} configured={state.doubaoAccessKeyConfigured} writable={state.doubaoAccessKeyWritable} value={doubaoAccessKey} onChange={setDoubaoAccessKey} />
+    <p className="dshVoiceProviderNotice">{t('settings.doubaoNotice')}</p>
+  </>
+}
+
+function KeyField({ id, label, configured, writable, value, onChange }: { id: string; label: string; configured: boolean; writable: boolean; value: string; onChange: (value: string) => void }) {
+  return <div className="dshVoiceKeyField"><div className="dshVoiceKeyLabel"><label htmlFor={id}>{label}</label><span className={configured ? 'is-configured' : ''}>{configured ? 'Configured' : 'Not set'}</span></div><input id={id} type="password" autoComplete="off" value={value} disabled={!writable} placeholder={configured ? 'Stored securely' : 'Paste provider key'} onChange={event => { onChange(event.target.value) }} /></div>
+}
+
+function statusText(state: DesktopVoiceState): string {
+  const labels: Record<DesktopVoiceState['status'], string> = { idle: 'Ready', requesting: 'Requesting mic', connecting: 'Connecting', listening: 'Listening', 'user-speaking': 'Listening to you', thinking: 'Thinking', 'assistant-speaking': 'Speaking', finishing: 'Finishing', ended: 'Ended', error: 'Needs attention' }
+  return labels[state.status]
+}

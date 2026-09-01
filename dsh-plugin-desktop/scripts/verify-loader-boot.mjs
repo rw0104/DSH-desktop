@@ -31,6 +31,10 @@ const EXPECTED_HOST_ROUTES = new Set([
     '/dsh-desktop/api/workspace/worktrees',
   '/dsh-desktop/api/open-directory',
   ...Object.values(marketRoutes),
+  '/dsh-desktop/api/voice/config',
+  '/dsh-desktop/api/voice/settings',
+  '/dsh-desktop/api/voice/credentials',
+  '/dsh-desktop/api/voice/ticket',
 ])
 const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-loader-'))
 let ctx
