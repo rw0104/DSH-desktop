@@ -4,6 +4,7 @@ import type { VoiceAudioFeatures, VoiceStatus } from './voice-controller.ts'
 interface VoiceOrbProps {
   status: VoiceStatus
   inputFeatures: VoiceAudioFeatures
+  outputFeatures: VoiceAudioFeatures
   label: string
 }
 
@@ -93,10 +94,10 @@ function drawOrb(
   context.restore()
 }
 
-export function VoiceOrb({ status, inputFeatures, label }: VoiceOrbProps) {
+export function VoiceOrb({ status, inputFeatures, outputFeatures, label }: VoiceOrbProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const sceneRef = useRef({ status, inputFeatures })
-  sceneRef.current = { status, inputFeatures }
+  const sceneRef = useRef({ status, inputFeatures, outputFeatures })
+  sceneRef.current = { status, inputFeatures, outputFeatures }
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -127,7 +128,7 @@ export function VoiceOrb({ status, inputFeatures, label }: VoiceOrbProps) {
       const delta = Math.min(50, Math.max(0, now - lastFrame))
       lastFrame = now
       elapsed += delta / 1000
-      const features = sceneRef.current.inputFeatures
+      const features = sceneRef.current.status === 'assistant-speaking' ? sceneRef.current.outputFeatures : sceneRef.current.inputFeatures
       const target = Math.max(features.rms, features.low, features.mid, features.high)
       const timeConstant = target > smoothedEnergy ? 45 : 300
       smoothedEnergy += (target - smoothedEnergy) * (1 - Math.exp(-delta / timeConstant))

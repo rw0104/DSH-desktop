@@ -45,7 +45,7 @@ export function VoiceSidebarTab({ controller, scope }: { controller: DesktopVoic
       </header>
       {state.error !== null && <div className="dshVoiceError" role="alert">{state.error}</div>}
       <div className="dshVoicePresence">
-        <VoiceOrb status={state.status} inputFeatures={state.inputAudio} label={status} />
+        <VoiceOrb status={state.status} inputFeatures={state.inputAudio} outputFeatures={state.outputAudio} label={status} />
       </div>
       <div className={`dshVoiceTranscript${state.turns.length ? ' has-content' : ''}`} aria-live="polite">
         {state.turns.length === 0 && state.liveInput === '' && state.liveOutput === '' && (
@@ -104,6 +104,7 @@ export function VoiceSettingsSection({ controller, t }: VoiceSettingsProps) {
       <div className="dshVoiceSettingsIntro"><span className="dshVoiceSettingsEyebrow">Desktop capability</span><h2>{t('settings.title')}</h2><p>{t('settings.intro')}</p></div>
       <label className="dshVoiceSwitch"><input type="checkbox" checked={draft.enabled} onChange={event => { update('enabled', event.target.checked) }} /><span /><strong>{t('settings.enabled')}</strong></label>
       <div className="dshVoiceField"><label htmlFor="dsh-voice-provider">{t('settings.provider')}</label><select id="dsh-voice-provider" value={draft.provider} onChange={event => { update('provider', event.target.value as DesktopVoiceSettings['provider']) }}><option value="qwen">Qwen 实时语音识别</option><option value="doubao">豆包 Seed-ASR 2</option></select></div>
+      <label className="dshVoiceSwitch"><input id="dsh-voice-tts-enabled" type="checkbox" checked={draft.ttsEnabled} onChange={event => { update('ttsEnabled', event.target.checked) }} /><span /><strong>{t('settings.ttsEnabled')}</strong></label>
       {draft.provider === 'qwen'
         ? <QwenSettings state={state} draft={draft} update={update} t={t} qwenKey={qwenKey} setQwenKey={value => { setQwenKey(value); setSaved(false) }} />
         : <DoubaoSettings state={state} draft={draft} update={update} t={t} doubaoAppId={doubaoAppId} setDoubaoAppId={value => { setDoubaoAppId(value); setSaved(false) }} doubaoAccessKey={doubaoAccessKey} setDoubaoAccessKey={value => { setDoubaoAccessKey(value); setSaved(false) }} />}
@@ -122,7 +123,8 @@ function QwenSettings({ state, draft, update, t, qwenKey, setQwenKey }: { state:
     <div className="dshVoiceField"><label htmlFor="dsh-qwen-model">{t('settings.model')}</label><input id="dsh-qwen-model" value={draft.qwenModel} readOnly /></div>
     <div className="dshVoiceField"><label htmlFor="dsh-qwen-endpoint-mode">{t('settings.endpointMode')}</label><select id="dsh-qwen-endpoint-mode" value={draft.qwenEndpointMode} onChange={event => { update('qwenEndpointMode', event.target.value as DesktopVoiceSettings['qwenEndpointMode']) }}><option value="shared">{t('settings.apiKeyOnly')}</option><option value="workspace">{t('settings.workspaceDedicated')}</option></select></div>
     {draft.qwenEndpointMode === 'workspace' && <div className="dshVoiceField"><label htmlFor="dsh-qwen-workspace">{t('settings.workspace')}</label><input id="dsh-qwen-workspace" value={draft.qwenWorkspaceId} placeholder="llm-xxxxxxxxxxxx" onChange={event => { update('qwenWorkspaceId', event.target.value) }} /><span className="dshVoiceProviderNotice">{t('settings.workspaceHint')}</span></div>}
-    <div className="dshVoiceField"><label htmlFor="dsh-voice-prompt">{t('settings.prompt')}</label><textarea id="dsh-voice-prompt" rows={3} value={draft.systemPrompt} onChange={event => { update('systemPrompt', event.target.value) }} /></div>
+    <div className="dshVoiceField"><label htmlFor="dsh-qwen-tts-model">{t('settings.ttsModel')}</label><input id="dsh-qwen-tts-model" value={draft.qwenTtsModel} readOnly /></div>
+    <div className="dshVoiceField"><label htmlFor="dsh-qwen-tts-voice">{t('settings.ttsVoice')}</label><select id="dsh-qwen-tts-voice" value={draft.qwenTtsVoice} disabled={!draft.ttsEnabled} onChange={event => { update('qwenTtsVoice', event.target.value) }}><option value="Cherry">Cherry · 阳光自然女声</option><option value="Serena">Serena · 温柔女声</option><option value="Ethan">Ethan · 温暖活力男声</option><option value="Moon">Moon · 大气男声</option><option value="Maia">Maia · 知性温柔女声</option><option value="Kai">Kai · 舒缓男声</option><option value="Dylan">Dylan · 北京男声</option><option value="Kiki">Kiki · 粤语女声</option></select></div>
     <KeyField id="dsh-qwen-key" label={t('settings.apiKey')} configured={state.qwenKeyConfigured} writable={state.qwenKeyWritable} value={qwenKey} onChange={setQwenKey} />
   </>
 }
@@ -133,6 +135,9 @@ function DoubaoSettings({ state, draft, update, t, doubaoAppId, setDoubaoAppId, 
     <div className="dshVoiceField"><label htmlFor="dsh-doubao-endpoint">{t('settings.endpoint')}</label><input id="dsh-doubao-endpoint" value={draft.doubaoRealtimeUrl} placeholder="wss://..." onChange={event => { update('doubaoRealtimeUrl', event.target.value) }} /></div>
     <div className="dshVoiceField"><label htmlFor="dsh-doubao-resource">{t('settings.resource')}</label><input id="dsh-doubao-resource" value={draft.doubaoResourceId} onChange={event => { update('doubaoResourceId', event.target.value) }} /></div>
     <div className="dshVoiceField"><label htmlFor="dsh-doubao-app-key">{t('settings.appKey')}</label><input id="dsh-doubao-app-key" value={draft.doubaoAppKey} onChange={event => { update('doubaoAppKey', event.target.value) }} /></div>
+    <div className="dshVoiceField"><label htmlFor="dsh-doubao-tts-endpoint">{t('settings.ttsEndpoint')}</label><input id="dsh-doubao-tts-endpoint" value={draft.doubaoTtsEndpoint} readOnly /></div>
+    <div className="dshVoiceField"><label htmlFor="dsh-doubao-tts-resource">{t('settings.ttsResource')}</label><input id="dsh-doubao-tts-resource" value={draft.doubaoTtsResourceId} onChange={event => { update('doubaoTtsResourceId', event.target.value) }} /></div>
+    <div className="dshVoiceField"><label htmlFor="dsh-doubao-tts-voice">{t('settings.ttsVoice')}</label><select id="dsh-doubao-tts-voice" value={draft.doubaoTtsVoice} disabled={!draft.ttsEnabled} onChange={event => { update('doubaoTtsVoice', event.target.value) }}><option value="zh_female_vv_uranus_bigtts">Vivi 2.0 · 活泼自然女声</option><option value="zh_female_xiaohe_uranus_bigtts">小何 2.0 · 甜美女声</option><option value="zh_male_m191_uranus_bigtts">云舟 2.0 · 沉稳男声</option><option value="zh_male_taocheng_uranus_bigtts">小天 2.0 · 磁性男声</option><option value="zh_male_ruyayichen_uranus_bigtts">儒雅逸辰 2.0 · 儒雅男声</option><option value="zh_female_cancan_uranus_bigtts">知性灿灿 2.0 · 知性女声</option></select></div>
     <KeyField id="dsh-doubao-app-id" label={t('settings.appId')} configured={state.doubaoAppIdConfigured} writable={state.doubaoAppIdWritable} value={doubaoAppId} onChange={setDoubaoAppId} />
     <KeyField id="dsh-doubao-access-key" label={t('settings.accessKey')} configured={state.doubaoAccessKeyConfigured} writable={state.doubaoAccessKeyWritable} value={doubaoAccessKey} onChange={setDoubaoAccessKey} />
     <p className="dshVoiceProviderNotice">{t('settings.doubaoNotice')}</p>

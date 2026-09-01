@@ -61,10 +61,16 @@ export interface DesktopVoiceSettings {
   qwenModel: 'qwen3-asr-flash-realtime'
   qwenEndpointMode: 'shared' | 'workspace'
   qwenWorkspaceId: string
+  ttsEnabled: boolean
+  qwenTtsModel: 'qwen3-tts-flash-realtime'
+  qwenTtsVoice: string
   doubaoModel: 'doubao-seed-asr-2'
   doubaoRealtimeUrl: string
   doubaoResourceId: string
   doubaoAppKey: string
+  doubaoTtsEndpoint: 'https://openspeech.bytedance.com/api/v3/tts/unidirectional/sse'
+  doubaoTtsResourceId: string
+  doubaoTtsVoice: string
   systemPrompt: string
 }
 
@@ -101,6 +107,7 @@ export interface DesktopVoiceState {
   microphoneMuted: boolean
   outputMuted: boolean
   inputAudio: VoiceAudioFeatures
+  outputAudio: VoiceAudioFeatures
   error: string | null
 }
 
@@ -114,10 +121,16 @@ const DEFAULT_SETTINGS: DesktopVoiceSettings = {
   qwenModel: 'qwen3-asr-flash-realtime',
   qwenEndpointMode: 'shared',
   qwenWorkspaceId: '',
+  ttsEnabled: true,
+  qwenTtsModel: 'qwen3-tts-flash-realtime',
+  qwenTtsVoice: 'Cherry',
   doubaoModel: 'doubao-seed-asr-2',
   doubaoRealtimeUrl: 'wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async',
   doubaoResourceId: 'volc.seedasr.sauc.duration',
   doubaoAppKey: 'PlgvMymc7f3tQnJ6',
+  doubaoTtsEndpoint: 'https://openspeech.bytedance.com/api/v3/tts/unidirectional/sse',
+  doubaoTtsResourceId: 'seed-tts-2.0',
+  doubaoTtsVoice: 'zh_female_vv_uranus_bigtts',
   systemPrompt: 'You are a concise, friendly realtime voice assistant.',
 }
 
@@ -137,6 +150,7 @@ const INITIAL: DesktopVoiceState = {
   microphoneMuted: false,
   outputMuted: false,
   inputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 },
+  outputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 },
   error: null,
 }
 
@@ -273,6 +287,7 @@ export class DesktopVoiceController {
   private captureWorklet: AudioWorkletNode | null = null
   private captureGain: GainNode | null = null
   private lastAudioFeatureAt = 0
+  private lastOutputFeatureAt = 0
   private playbackAt = 0
   private activeGeneration = 0
   private credentialRefresh: Promise<void> | null = null
@@ -280,6 +295,9 @@ export class DesktopVoiceController {
   private uiFrame: number | null = null
   private pendingInput: string | null = null
   private pendingOutput = ''
+  private readonly playbackSources = new Set<AudioBufferSourceNode>()
+  private playbackDoneTimer: ReturnType<typeof setTimeout> | null = null
+  private ttsExpected = false
 
   constructor(ctx: VoiceContext, private readonly sidebar: VoiceSidebarApi) {
     this.scope = ctx.settingsScope.bind<DesktopVoiceSettings>({ namespace: DESKTOP_VOICE_SETTINGS_NAMESPACE })
@@ -438,6 +456,7 @@ export class DesktopVoiceController {
 
   async finish(): Promise<void> {
     if (!this.isActive()) return
+    this.cancelPlayback(true)
     this.set({ status: 'finishing' })
     const socket = this.socket
     if (socket?.readyState === WebSocket.OPEN) {
@@ -455,7 +474,7 @@ export class DesktopVoiceController {
 
   toggleOutput(): void {
     const muted = !this.store.getSnapshot().outputMuted
-    if (muted) window.speechSynthesis?.cancel()
+    if (muted) this.cancelPlayback(true)
     this.set({ outputMuted: muted })
   }
 
@@ -529,7 +548,10 @@ export class DesktopVoiceController {
     if (type === 'provider.ready') {
       socket.send(JSON.stringify({ type: 'session.start' }))
       this.set({ status: 'listening' })
-    } else if (type === 'speech.started') this.set({ status: 'user-speaking' })
+    } else if (type === 'speech.started') {
+      this.cancelPlayback(true)
+      this.set({ status: 'user-speaking' })
+    }
     else if (type === 'speech.stopped' || type === 'agent.request.accepted') this.set({ status: 'thinking' })
     else if (type === 'transcript.partial') this.queueInput(String(message.text || ''))
     else if (type === 'transcript.final') {
@@ -544,7 +566,21 @@ export class DesktopVoiceController {
       this.flushRealtimeUi()
       const response = this.store.getSnapshot().liveOutput
       this.commitTurn('assistant', response)
-      if (!this.speak(response)) this.set({ status: 'listening' })
+      this.ttsExpected = message.ttsExpected === true
+      if (!this.ttsExpected) this.set({ status: 'listening' })
+    } else if (type === 'tts.started') {
+      this.ttsExpected = true
+      this.set({ status: 'assistant-speaking', error: null })
+    } else if (type === 'tts.done') {
+      this.ttsExpected = false
+      this.schedulePlaybackDone()
+    } else if (type === 'tts.failed') {
+      this.ttsExpected = false
+      this.set({ error: String(message.message || 'Provider speech synthesis failed.') })
+      this.schedulePlaybackDone()
+    } else if (type === 'tts.cancelled') {
+      this.ttsExpected = false
+      this.cancelPlayback(false)
     } else if (type === 'session.finished') await this.completeFinish(socket)
     else if (type === 'session.failed') this.fail(String(message.message || 'The voice provider returned an error.'))
     else if (type === 'provider.closed') {
@@ -587,33 +623,60 @@ export class DesktopVoiceController {
 
   private playPcmBytes(samples: Int16Array): void {
     if (this.store.getSnapshot().outputMuted) return
+    if (samples.length === 0) return
     const context = this.audioContext ?? new AudioContext({ sampleRate: 24000 })
     this.audioContext = context
+    if (context.state === 'suspended') void context.resume()
     const buffer = context.createBuffer(1, samples.length, 24000)
     const output = buffer.getChannelData(0)
     for (let index = 0; index < samples.length; index += 1) output[index] = (samples[index] ?? 0) / 32768
     const source = context.createBufferSource()
     source.buffer = buffer
     source.connect(context.destination)
+    source.onended = () => {
+      this.playbackSources.delete(source)
+      if (!this.ttsExpected && this.playbackSources.size === 0) this.finishPlaybackState()
+    }
+    this.playbackSources.add(source)
     const now = context.currentTime
     this.playbackAt = Math.max(this.playbackAt, now)
     source.start(this.playbackAt)
     this.playbackAt += buffer.duration
+    const nowMs = performance.now()
+    const snapshot = this.store.getSnapshot()
+    if (nowMs - this.lastOutputFeatureAt >= 80) {
+      this.lastOutputFeatureAt = nowMs
+      this.set({ status: 'assistant-speaking', outputAudio: analyzePcm16(samples), error: null })
+    } else if (snapshot.status !== 'assistant-speaking' || snapshot.error !== null) this.set({ status: 'assistant-speaking', error: null })
   }
 
-  private speak(text: string): boolean {
-    if (this.store.getSnapshot().outputMuted || !text.trim() || !window.speechSynthesis) return false
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = /[\u3400-\u9fff]/u.test(text) ? 'zh-CN' : 'en-US'
-    const finish = (): void => {
-      if (this.store.getSnapshot().status === 'assistant-speaking') this.set({ status: 'listening' })
+  private schedulePlaybackDone(): void {
+    if (this.playbackDoneTimer !== null) clearTimeout(this.playbackDoneTimer)
+    const context = this.audioContext
+    const delay = context === null ? 0 : Math.max(0, Math.ceil((this.playbackAt - context.currentTime) * 1000) + 30)
+    this.playbackDoneTimer = setTimeout(() => {
+      this.playbackDoneTimer = null
+      this.finishPlaybackState()
+    }, delay)
+  }
+
+  private finishPlaybackState(): void {
+    if (this.ttsExpected) return
+    this.playbackAt = this.audioContext?.currentTime ?? 0
+    this.set({ status: this.isActive() ? 'listening' : this.store.getSnapshot().status, outputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 } })
+  }
+
+  private cancelPlayback(notifyHost: boolean): void {
+    if (this.playbackDoneTimer !== null) clearTimeout(this.playbackDoneTimer)
+    this.playbackDoneTimer = null
+    for (const source of this.playbackSources) {
+      try { source.stop() } catch { /* already stopped */ }
     }
-    utterance.onend = finish
-    utterance.onerror = finish
-    this.set({ status: 'assistant-speaking' })
-    window.speechSynthesis.speak(utterance)
-    return true
+    this.playbackSources.clear()
+    this.playbackAt = this.audioContext?.currentTime ?? 0
+    this.ttsExpected = false
+    this.set({ outputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 } })
+    if (notifyHost && this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type: 'tts.cancel' }))
   }
 
   private fail(error: string): void {
@@ -642,6 +705,7 @@ export class DesktopVoiceController {
     this.uiFrame = null
     this.pendingInput = null
     this.pendingOutput = ''
+    this.cancelPlayback(false)
     this.stream?.getTracks().forEach(track => track.stop())
     this.stream = null
     this.captureProcessor?.disconnect()
@@ -659,9 +723,9 @@ export class DesktopVoiceController {
     ])
     this.captureContext = null
     this.audioContext = null
-    window.speechSynthesis?.cancel()
     this.playbackAt = 0
     this.lastAudioFeatureAt = 0
-    this.set({ inputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 } })
+    this.lastOutputFeatureAt = 0
+    this.set({ inputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 }, outputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 } })
   }
 }

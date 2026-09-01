@@ -17,10 +17,16 @@ function state(overrides: Partial<DesktopVoiceState> = {}): DesktopVoiceState {
       qwenModel: 'qwen3-asr-flash-realtime',
       qwenEndpointMode: 'shared',
       qwenWorkspaceId: '',
+      ttsEnabled: true,
+      qwenTtsModel: 'qwen3-tts-flash-realtime',
+      qwenTtsVoice: 'Cherry',
       doubaoModel: 'doubao-seed-asr-2',
       doubaoRealtimeUrl: 'wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async',
       doubaoResourceId: 'volc.seedasr.sauc.duration',
       doubaoAppKey: 'PlgvMymc7f3tQnJ6',
+      doubaoTtsEndpoint: 'https://openspeech.bytedance.com/api/v3/tts/unidirectional/sse',
+      doubaoTtsResourceId: 'seed-tts-2.0',
+      doubaoTtsVoice: 'zh_female_vv_uranus_bigtts',
       systemPrompt: 'You are a concise, friendly realtime voice assistant.',
     },
     qwenKeyConfigured: false,
@@ -37,6 +43,7 @@ function state(overrides: Partial<DesktopVoiceState> = {}): DesktopVoiceState {
     microphoneMuted: false,
     outputMuted: false,
     inputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 },
+    outputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 },
     error: null,
     ...overrides,
   }
@@ -108,8 +115,19 @@ describe('desktop voice surfaces', () => {
     } as never))
     expect(html).toContain('dshVoiceSettings')
     expect(html).toContain('dsh-doubao-endpoint')
+    expect(html).toContain('dsh-doubao-tts-voice')
+    expect(html).toContain('dsh-voice-tts-enabled')
     expect(html).toContain('settings.doubaoNotice')
     expect(html).toContain('id="dsh-voice-save-all"')
+  })
+
+  it('renders Qwen provider voice selection', () => {
+    const html = renderToStaticMarkup(createElement(VoiceSettingsSection, {
+      controller: controller(state()),
+      t,
+    } as never))
+    expect(html).toContain('dsh-qwen-tts-voice')
+    expect(html).toContain('value="Cherry"')
   })
 
   it('keeps the sidebar transcript accessible', () => {

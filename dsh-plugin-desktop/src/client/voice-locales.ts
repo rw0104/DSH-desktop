@@ -4,8 +4,10 @@ export type VoiceKey =
   | 'settings.model' | 'settings.voice' | 'settings.workspace' | 'settings.apiKey'
   | 'settings.endpointMode' | 'settings.apiKeyOnly' | 'settings.workspaceDedicated' | 'settings.workspaceHint'
   | 'settings.endpoint' | 'settings.resource' | 'settings.appKey' | 'settings.appId'
-  | 'settings.accessKey' | 'settings.prompt' | 'settings.secretNote' | 'settings.doubaoNotice'
+  | 'settings.accessKey' | 'settings.secretNote' | 'settings.doubaoNotice'
   | 'settings.saveAll' | 'settings.saving' | 'settings.saved'
+  | 'settings.ttsEnabled' | 'settings.ttsModel' | 'settings.ttsVoice'
+  | 'settings.ttsEndpoint' | 'settings.ttsResource'
 
 export const voiceLocales = {
   zh: {
@@ -16,6 +18,11 @@ export const voiceLocales = {
     'settings.intro': '在输入框显示语音按钮。实时字幕只在一句话结束时提交给当前 DSH Agent，工具调用仍走原有权限链路。',
     'settings.enabled': '显示语音按钮',
     'settings.provider': '默认服务商',
+    'settings.ttsEnabled': '使用服务商自然音色朗读 Agent 回复',
+    'settings.ttsModel': '语音合成模型',
+    'settings.ttsVoice': '回复音色',
+    'settings.ttsEndpoint': '语音合成端点',
+    'settings.ttsResource': '语音合成资源 ID',
     'settings.model': '模型',
     'settings.voice': '声音',
     'settings.workspace': 'Qwen Workspace ID',
@@ -29,7 +36,6 @@ export const voiceLocales = {
     'settings.appKey': '应用 Key',
     'settings.appId': '应用 ID',
     'settings.accessKey': '访问 Key',
-    'settings.prompt': 'Agent 系统提示词',
     'settings.secretNote': '密钥只通过 DSH credentials 存储，不会写入前端设置或 URL。',
     'settings.doubaoNotice': '豆包 Seed-ASR 2 负责实时语音识别；最终文本会提交给当前 DSH Agent，工具调用仍由 Agent 执行。',
     'settings.saveAll': '保存实时语音设置',
@@ -44,6 +50,11 @@ export const voiceLocales = {
     'settings.intro': 'Show a voice button in the composer. Partial captions stay local to the voice panel; only final turns enter the current DSH Agent and its tool permission chain.',
     'settings.enabled': 'Show voice button',
     'settings.provider': 'Default provider',
+    'settings.ttsEnabled': 'Read Agent replies with the provider voice',
+    'settings.ttsModel': 'Speech synthesis model',
+    'settings.ttsVoice': 'Reply voice',
+    'settings.ttsEndpoint': 'Speech synthesis endpoint',
+    'settings.ttsResource': 'Speech synthesis resource ID',
     'settings.model': 'Model',
     'settings.voice': 'Voice',
     'settings.workspace': 'Qwen Workspace ID',
@@ -57,7 +68,6 @@ export const voiceLocales = {
     'settings.appKey': 'App key',
     'settings.appId': 'App ID',
     'settings.accessKey': 'Access key',
-    'settings.prompt': 'Agent system prompt',
     'settings.secretNote': 'Keys are stored through DSH credentials and never written to the client settings or URL.',
     'settings.doubaoNotice': 'Doubao Seed-ASR 2 provides realtime speech recognition; final text is submitted to the current DSH Agent for tool execution.',
     'settings.saveAll': 'Save realtime voice settings',

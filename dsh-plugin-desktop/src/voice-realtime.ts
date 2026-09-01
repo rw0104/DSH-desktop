@@ -10,6 +10,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Duplex } from 'node:stream'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { WebSocket, WebSocketServer } from 'ws'
+import { AgentSpeechChunker, createVoiceTtsStream } from './voice-tts.ts'
+import type { VoiceTtsSpec, VoiceTtsStream } from './voice-tts.ts'
 
 export const DESKTOP_VOICE_SETTINGS_NAMESPACE = settingsNamespace('dsh-desktop-voice')
 export const QWEN_API_KEY_REF = 'DASHSCOPE_API_KEY'
@@ -27,10 +29,16 @@ export interface DesktopVoiceSettings {
   qwenModel: 'qwen3-asr-flash-realtime'
   qwenEndpointMode: 'shared' | 'workspace'
   qwenWorkspaceId: string
+  ttsEnabled: boolean
+  qwenTtsModel: 'qwen3-tts-flash-realtime'
+  qwenTtsVoice: string
   doubaoModel: 'doubao-seed-asr-2'
   doubaoRealtimeUrl: string
   doubaoResourceId: string
   doubaoAppKey: string
+  doubaoTtsEndpoint: 'https://openspeech.bytedance.com/api/v3/tts/unidirectional/sse'
+  doubaoTtsResourceId: string
+  doubaoTtsVoice: string
   systemPrompt: string
 }
 
@@ -40,10 +48,16 @@ export const DesktopVoiceSettingsSchema: z<DesktopVoiceSettings> = z.object({
   qwenModel: z.union(['qwen3-asr-flash-realtime'] as const).default('qwen3-asr-flash-realtime'),
   qwenEndpointMode: z.union(['shared', 'workspace'] as const).default('shared'),
   qwenWorkspaceId: z.string().max(120).default(''),
+  ttsEnabled: z.boolean().default(true),
+  qwenTtsModel: z.union(['qwen3-tts-flash-realtime'] as const).default('qwen3-tts-flash-realtime'),
+  qwenTtsVoice: z.string().max(120).default('Cherry'),
   doubaoModel: z.union(['doubao-seed-asr-2'] as const).default('doubao-seed-asr-2'),
   doubaoRealtimeUrl: z.string().max(500).default('wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async'),
   doubaoResourceId: z.string().max(160).default('volc.seedasr.sauc.duration'),
   doubaoAppKey: z.string().max(160).default('PlgvMymc7f3tQnJ6'),
+  doubaoTtsEndpoint: z.union(['https://openspeech.bytedance.com/api/v3/tts/unidirectional/sse'] as const).default('https://openspeech.bytedance.com/api/v3/tts/unidirectional/sse'),
+  doubaoTtsResourceId: z.string().max(160).default('seed-tts-2.0'),
+  doubaoTtsVoice: z.string().max(160).default('zh_female_vv_uranus_bigtts'),
   systemPrompt: z.string().max(10_000).default('你是一个简洁、友好的实时语音助手。需要时使用当前 DSH Agent 提供的工具完成任务。'),
 })
 
@@ -55,6 +69,11 @@ interface VoiceTicket {
   readonly endpoint: string
   readonly resourceId: string
   readonly appKey: string
+  readonly ttsEnabled: boolean
+  readonly ttsModel: string
+  readonly ttsVoice: string
+  readonly ttsEndpoint: string
+  readonly ttsResourceId: string
   readonly systemPrompt: string
   readonly agentSessionId: string
   readonly sessionId: string
@@ -249,6 +268,12 @@ class VoiceAgentBridge {
   private doubaoSequence = 1
   private finishing = false
   private finishTimer: ReturnType<typeof setTimeout> | undefined
+  private readonly speechChunker = new AgentSpeechChunker()
+  private tts: VoiceTtsStream | undefined
+  private ttsGeneration = 0
+  private activeAgentTurn: number | undefined
+  private ttsSuppressed = false
+  private userSpeechActive = false
 
   constructor(
     private readonly client: WebSocket,
@@ -305,6 +330,7 @@ class VoiceAgentBridge {
     }
     if (type === 'turn.commit' && this.ticket.provider === 'qwen' && this.provider?.readyState === WebSocket.OPEN) { this.provider.send(qwenAudioCommit()); return }
     if (type === 'turn.commit' && this.ticket.provider === 'doubao' && this.provider?.readyState === WebSocket.OPEN) { this.provider.send(doubaoAsrAudioRequest(this.doubaoSequence++, Buffer.alloc(0), true)); return }
+    if (type === 'tts.cancel') { this.cancelTts('client_cancelled'); return }
     if (type === 'session.finish') {
       if (this.finishing) return
       this.finishing = true
@@ -318,13 +344,22 @@ class VoiceAgentBridge {
 
   onAgentEvent(event: AgentEvent): void {
     if (this.closed) return
+    if (event.type === 'turn/start') {
+      this.beginAgentTurn(Number(event.data.turn))
+      return
+    }
     if (event.type === 'assistant/chunk') {
       const chunk = event.data.chunk
-      if (chunk.type === 'text-delta' && chunk.text) sendClient(this.client, { type: 'agent.text.delta', text: chunk.text })
+      if (chunk.type === 'text-delta' && chunk.text) {
+        sendClient(this.client, { type: 'agent.text.delta', text: chunk.text })
+        if (!this.ttsSuppressed && this.ticket.ttsEnabled) {
+          for (const text of this.speechChunker.push(chunk.text)) this.appendTts(text)
+        }
+      }
       if (chunk.type === 'tool-call-delta') sendClient(this.client, { type: 'agent.tool.delta', name: chunk.name || '', text: chunk.argumentsDelta })
     } else if (event.type === 'tool/call') sendClient(this.client, { type: 'agent.tool.started', name: event.data.name })
     else if (event.type === 'tool/result') sendClient(this.client, { type: 'agent.tool.finished', name: event.data.message.content[0]?.type || 'tool' })
-    else if (event.type === 'turn/end' && event.data.reason.kind === 'completed') sendClient(this.client, { type: 'agent.response.done' })
+    else if (event.type === 'turn/end') this.endAgentTurn(event.data.reason?.kind === 'completed')
   }
 
   close(reason = 'client_closed'): void {
@@ -332,6 +367,7 @@ class VoiceAgentBridge {
     this.closed = true
     if (this.finishTimer !== undefined) clearTimeout(this.finishTimer)
     this.finishTimer = undefined
+    this.cancelTts(reason)
     const provider = this.provider
     if (provider && provider.readyState < WebSocket.CLOSING) provider.close(1000, reason)
     this.provider = undefined
@@ -351,8 +387,8 @@ class VoiceAgentBridge {
       this.submitToAgent(text)
       return
     }
-    if (type === 'input_audio_buffer.speech_started') sendClient(this.client, { type: 'speech.started' })
-    if (type === 'input_audio_buffer.speech_stopped') sendClient(this.client, { type: 'speech.stopped' })
+    if (type === 'input_audio_buffer.speech_started') { this.userSpeechActive = true; this.cancelTts('user_interrupted'); sendClient(this.client, { type: 'speech.started' }) }
+    if (type === 'input_audio_buffer.speech_stopped') { this.userSpeechActive = false; sendClient(this.client, { type: 'speech.stopped' }) }
     if (type === 'session.finished') this.completeProviderSession()
     if (type === 'error') sendClient(this.client, { type: 'session.failed', code: 'provider_error', message: eventText((event.error as Record<string, unknown> | undefined)?.message) || 'Qwen speech recognition failed.' })
   }
@@ -366,10 +402,14 @@ class VoiceAgentBridge {
       const utterances = Array.isArray(result.utterances) ? result.utterances.filter(isRecord) : []
       const definiteText = utterances.filter(item => item.definite === true).map(item => item.text).filter((text): text is string => typeof text === 'string').join('')
       const partial = result.text || result.transcript || result.delta
-      if (typeof partial === 'string' && partial.trim()) sendClient(this.client, { type: 'transcript.partial', text: partial })
+      if (typeof partial === 'string' && partial.trim()) {
+        if (!this.userSpeechActive) { this.userSpeechActive = true; this.cancelTts('user_interrupted'); sendClient(this.client, { type: 'speech.started' }) }
+        sendClient(this.client, { type: 'transcript.partial', text: partial })
+      }
       const finalText = definiteText || (typeof partial === 'string' ? partial : '')
       const final = event.event === -1 || result.definite === true || event.json.is_finish === true || event.json.finished === true || event.json.event === 'conversation.item.input_audio_transcription.completed'
       if (final && finalText.trim()) {
+        if (this.userSpeechActive) { this.userSpeechActive = false; sendClient(this.client, { type: 'speech.stopped' }) }
         if (finalText === this.finalTranscript && Date.now() - this.finalTranscriptAt < 1_500) return
         this.finalTranscript = finalText
         this.finalTranscriptAt = Date.now()
@@ -386,6 +426,85 @@ class VoiceAgentBridge {
     this.finishTimer = undefined
     sendClient(this.client, { type: 'session.finished' })
     this.close('provider_finished')
+  }
+
+  private beginAgentTurn(turn: number): void {
+    this.ttsGeneration += 1
+    this.tts?.cancel()
+    this.tts = undefined
+    this.speechChunker.clear()
+    this.ttsSuppressed = false
+    this.activeAgentTurn = Number.isFinite(turn) ? turn : undefined
+  }
+
+  private endAgentTurn(completed: boolean): void {
+    if (!completed) {
+      this.cancelTts('agent_turn_incomplete')
+      sendClient(this.client, { type: 'agent.response.done', ttsExpected: false })
+      this.activeAgentTurn = undefined
+      return
+    }
+    if (!this.ttsSuppressed && this.ticket.ttsEnabled) {
+      for (const text of this.speechChunker.finish()) this.appendTts(text)
+    } else this.speechChunker.clear()
+    const ttsExpected = this.tts !== undefined
+    this.tts?.finish()
+    sendClient(this.client, { type: 'agent.response.done', ttsExpected })
+    this.activeAgentTurn = undefined
+  }
+
+  private appendTts(text: string): void {
+    if (this.ttsSuppressed || !this.ticket.ttsEnabled || text === '') return
+    this.ensureTts()?.append(text)
+  }
+
+  private ensureTts(): VoiceTtsStream | undefined {
+    if (this.tts !== undefined) return this.tts
+    const spec = this.ttsSpec()
+    if (spec === undefined) return undefined
+    const generation = this.ttsGeneration
+    this.tts = createVoiceTtsStream(spec, {
+      onStarted: () => { if (this.acceptTts(generation)) sendClient(this.client, { type: 'tts.started', turn: this.activeAgentTurn }) },
+      onAudio: audio => {
+        if (this.acceptTts(generation) && this.client.readyState === WebSocket.OPEN) this.client.send(audio, { binary: true })
+      },
+      onDone: () => {
+        if (!this.acceptTts(generation)) return
+        this.tts = undefined
+        sendClient(this.client, { type: 'tts.done' })
+      },
+      onError: error => {
+        if (!this.acceptTts(generation)) return
+        this.tts = undefined
+        this.ttsSuppressed = true
+        this.ctx.logger.warn(error)
+        sendClient(this.client, { type: 'tts.failed', message: error.message })
+      },
+    })
+    return this.tts
+  }
+
+  private ttsSpec(): VoiceTtsSpec | undefined {
+    if (this.ticket.provider === 'qwen' && this.qwenKey) {
+      return { provider: 'qwen', endpointMode: this.ticket.qwenEndpointMode, workspaceId: this.ticket.workspaceId, model: this.ticket.ttsModel, voice: this.ticket.ttsVoice, apiKey: this.qwenKey }
+    }
+    if (this.ticket.provider === 'doubao' && this.doubaoAppId && this.doubaoAccessKey) {
+      return { provider: 'doubao', endpoint: this.ticket.ttsEndpoint, resourceId: this.ticket.ttsResourceId, voice: this.ticket.ttsVoice, appId: this.doubaoAppId, accessKey: this.doubaoAccessKey }
+    }
+    return undefined
+  }
+
+  private acceptTts(generation: number): boolean {
+    return !this.closed && !this.ttsSuppressed && generation === this.ttsGeneration
+  }
+
+  private cancelTts(reason: string): void {
+    this.ttsGeneration += 1
+    this.tts?.cancel()
+    this.tts = undefined
+    this.speechChunker.clear()
+    if (this.activeAgentTurn !== undefined) this.ttsSuppressed = true
+    sendClient(this.client, { type: 'tts.cancelled', reason })
   }
 
   private submitToAgent(text: string): void {
@@ -431,7 +550,7 @@ export function registerVoiceRealtimeHost(ctx: Context): void {
     const disposeSettings = ctx.webServer.register({ kind: 'exact', path: VOICE_SETTINGS_PATH, handler: async (req, res) => {
       if (!sameOrigin(ctx, req)) return sendJson(res, 403, { message: 'forbidden' })
       if (req.method !== 'POST' || req.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json') return sendJson(res, 405, { message: 'Voice settings require JSON POST.' })
-      try { const value = await readJson(req); if (!isRecord(value)) return sendJson(res, 400, { message: 'Invalid voice settings.' }); const allowed = new Set(['enabled', 'provider', 'qwenModel', 'qwenEndpointMode', 'qwenWorkspaceId', 'doubaoModel', 'doubaoRealtimeUrl', 'doubaoResourceId', 'doubaoAppKey', 'systemPrompt']); await settings.update(Object.fromEntries(Object.entries(value).filter(([key]) => allowed.has(key)))); sendJson(res, 200, { ok: true }) }
+      try { const value = await readJson(req); if (!isRecord(value)) return sendJson(res, 400, { message: 'Invalid voice settings.' }); const allowed = new Set(['enabled', 'provider', 'qwenModel', 'qwenEndpointMode', 'qwenWorkspaceId', 'ttsEnabled', 'qwenTtsModel', 'qwenTtsVoice', 'doubaoModel', 'doubaoRealtimeUrl', 'doubaoResourceId', 'doubaoAppKey', 'doubaoTtsEndpoint', 'doubaoTtsResourceId', 'doubaoTtsVoice', 'systemPrompt']); await settings.update(Object.fromEntries(Object.entries(value).filter(([key]) => allowed.has(key)))); sendJson(res, 200, { ok: true }) }
       catch (cause) { sendJson(res, 400, { message: cause instanceof Error ? cause.message : 'Invalid voice settings.' }) }
     } })
     const disposeCredentials = ctx.webServer.register({ kind: 'exact', path: VOICE_CREDENTIALS_PATH, handler: async (req, res) => {
@@ -449,7 +568,7 @@ export function registerVoiceRealtimeHost(ctx: Context): void {
       const qwenKey = current.provider === 'qwen' ? await resolveCredential(ctx, QWEN_API_KEY_REF) : undefined; const appId = current.provider === 'doubao' ? await resolveCredential(ctx, DOUBAO_APP_ID_REF) : undefined; const accessKey = current.provider === 'doubao' ? await resolveCredential(ctx, DOUBAO_ACCESS_KEY_REF) : undefined
       if (current.provider === 'qwen' && (!qwenKey || (current.qwenEndpointMode === 'workspace' && !safeIdentifier(current.qwenWorkspaceId.trim())))) return sendJson(res, 503, { code: 'qwen_not_ready', message: current.qwenEndpointMode === 'workspace' ? 'Configure the Qwen workspace ID and API key first.' : 'Configure the Qwen API key first.' })
       if (current.provider === 'doubao' && (!appId || !accessKey || !current.doubaoRealtimeUrl.startsWith('wss://'))) return sendJson(res, 503, { code: 'doubao_not_ready', message: 'Configure the Doubao App ID, Access Key, and realtime endpoint first.' })
-      const token = randomBytes(32).toString('base64url'); const bridgeSessionId = randomUUID(); clearExpiredTickets(tickets); tickets.set(token, { provider: current.provider, model: current.provider === 'qwen' ? current.qwenModel : current.doubaoModel, qwenEndpointMode: current.qwenEndpointMode, workspaceId: current.qwenWorkspaceId.trim(), endpoint: current.doubaoRealtimeUrl.trim(), resourceId: current.doubaoResourceId.trim(), appKey: current.doubaoAppKey.trim(), systemPrompt: current.systemPrompt, agentSessionId: sessionId, sessionId: bridgeSessionId, expiresAt: Date.now() + 60_000 }); sendJson(res, 200, { ticket: token, wsPath: VOICE_UPGRADE_PATH, sessionId: bridgeSessionId, agentSessionId: sessionId, provider: current.provider, modelId: current.provider === 'qwen' ? current.qwenModel : current.doubaoModel, expiresAt: new Date(Date.now() + 60_000).toISOString() })
+      const token = randomBytes(32).toString('base64url'); const bridgeSessionId = randomUUID(); clearExpiredTickets(tickets); tickets.set(token, { provider: current.provider, model: current.provider === 'qwen' ? current.qwenModel : current.doubaoModel, qwenEndpointMode: current.qwenEndpointMode, workspaceId: current.qwenWorkspaceId.trim(), endpoint: current.doubaoRealtimeUrl.trim(), resourceId: current.doubaoResourceId.trim(), appKey: current.doubaoAppKey.trim(), ttsEnabled: current.ttsEnabled, ttsModel: current.provider === 'qwen' ? current.qwenTtsModel : current.doubaoTtsResourceId, ttsVoice: current.provider === 'qwen' ? current.qwenTtsVoice.trim() : current.doubaoTtsVoice.trim(), ttsEndpoint: current.provider === 'qwen' ? '' : current.doubaoTtsEndpoint.trim(), ttsResourceId: current.provider === 'qwen' ? '' : current.doubaoTtsResourceId.trim(), systemPrompt: current.systemPrompt, agentSessionId: sessionId, sessionId: bridgeSessionId, expiresAt: Date.now() + 60_000 }); sendJson(res, 200, { ticket: token, wsPath: VOICE_UPGRADE_PATH, sessionId: bridgeSessionId, agentSessionId: sessionId, provider: current.provider, modelId: current.provider === 'qwen' ? current.qwenModel : current.doubaoModel, expiresAt: new Date(Date.now() + 60_000).toISOString() })
     } })
     const registerUpgrade = (ctx.webServer as typeof ctx.webServer & {
       registerUpgrade?: (route: { path: string; handler: (req: IncomingMessage, socket: Duplex, head: Buffer) => void | Promise<void> }) => () => void

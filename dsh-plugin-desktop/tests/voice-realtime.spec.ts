@@ -14,10 +14,16 @@ describe('desktop voice host settings', () => {
       qwenModel: 'qwen3-asr-flash-realtime',
       qwenEndpointMode: 'shared',
       qwenWorkspaceId: '',
+      ttsEnabled: true,
+      qwenTtsModel: 'qwen3-tts-flash-realtime',
+      qwenTtsVoice: 'Cherry',
       doubaoModel: 'doubao-seed-asr-2',
       doubaoRealtimeUrl: 'wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async',
       doubaoResourceId: 'volc.seedasr.sauc.duration',
       doubaoAppKey: 'PlgvMymc7f3tQnJ6',
+      doubaoTtsEndpoint: 'https://openspeech.bytedance.com/api/v3/tts/unidirectional/sse',
+      doubaoTtsResourceId: 'seed-tts-2.0',
+      doubaoTtsVoice: 'zh_female_vv_uranus_bigtts',
       systemPrompt: '你是一个简洁、友好的实时语音助手。需要时使用当前 DSH Agent 提供的工具完成任务。',
     })
   })
