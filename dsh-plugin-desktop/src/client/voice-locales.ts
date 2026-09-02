@@ -9,6 +9,8 @@ export type VoiceKey =
   | 'settings.ttsEnabled' | 'settings.ttsModel' | 'settings.ttsVoice'
   | 'settings.ttsEndpoint' | 'settings.ttsResource'
   | 'settings.credentialsGuide'
+  | 'settings.conversationMode' | 'settings.cascadeMode' | 'settings.qwenE2eMode'
+  | 'settings.e2eModel' | 'settings.e2eVoice' | 'settings.e2eNotice'
 
 export const voiceLocales = {
   zh: {
@@ -25,6 +27,12 @@ export const voiceLocales = {
     'settings.ttsEndpoint': '语音合成端点',
     'settings.ttsResource': '语音合成资源 ID',
     'settings.credentialsGuide': 'API Key 与 Workspace 配置教程',
+    'settings.conversationMode': '对话模式',
+    'settings.cascadeMode': 'Agent 级联（稳定）',
+    'settings.qwenE2eMode': 'Qwen 端到端（实验）',
+    'settings.e2eModel': '端到端模型',
+    'settings.e2eVoice': '端到端音色',
+    'settings.e2eNotice': '实验模式由 Qwen 处理全双工语音，并通过 dsh_agent_turn 委托当前 DSH Agent。可随时切回稳定模式。',
     'settings.model': '模型',
     'settings.voice': '声音',
     'settings.workspace': 'Qwen Workspace ID',
@@ -58,6 +66,12 @@ export const voiceLocales = {
     'settings.ttsEndpoint': 'Speech synthesis endpoint',
     'settings.ttsResource': 'Speech synthesis resource ID',
     'settings.credentialsGuide': 'API key and Workspace setup guide',
+    'settings.conversationMode': 'Conversation mode',
+    'settings.cascadeMode': 'Agent cascade (stable)',
+    'settings.qwenE2eMode': 'Qwen end-to-end (experimental)',
+    'settings.e2eModel': 'End-to-end model',
+    'settings.e2eVoice': 'End-to-end voice',
+    'settings.e2eNotice': 'Experimental mode uses Qwen for full-duplex speech and delegates work to the current DSH Agent through dsh_agent_turn. You can switch back at any time.',
     'settings.model': 'Model',
     'settings.voice': 'Voice',
     'settings.workspace': 'Qwen Workspace ID',

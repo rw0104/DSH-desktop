@@ -61,6 +61,9 @@ export interface DesktopVoiceSettings {
   qwenModel: 'qwen3-asr-flash-realtime'
   qwenEndpointMode: 'shared' | 'workspace'
   qwenWorkspaceId: string
+  conversationMode: 'cascade' | 'qwen-e2e'
+  qwenE2eModel: 'qwen-audio-3.0-realtime-flash'
+  qwenE2eVoice: string
   ttsEnabled: boolean
   qwenTtsModel: 'qwen3-tts-flash-realtime'
   qwenTtsVoice: string
@@ -121,6 +124,9 @@ const DEFAULT_SETTINGS: DesktopVoiceSettings = {
   qwenModel: 'qwen3-asr-flash-realtime',
   qwenEndpointMode: 'shared',
   qwenWorkspaceId: '',
+  conversationMode: 'cascade',
+  qwenE2eModel: 'qwen-audio-3.0-realtime-flash',
+  qwenE2eVoice: 'longanqian',
   ttsEnabled: true,
   qwenTtsModel: 'qwen3-tts-flash-realtime',
   qwenTtsVoice: 'Cherry',
@@ -549,8 +555,8 @@ export class DesktopVoiceController {
       socket.send(JSON.stringify({ type: 'session.start' }))
       this.set({ status: 'listening' })
     } else if (type === 'speech.started') {
-      this.cancelPlayback(true)
-      this.set({ status: 'user-speaking' })
+      this.cancelPlayback(false)
+      this.set({ status: 'user-speaking', liveOutput: '' })
     }
     else if (type === 'speech.stopped' || type === 'agent.request.accepted') this.set({ status: 'thinking' })
     else if (type === 'transcript.partial') this.queueInput(String(message.text || ''))

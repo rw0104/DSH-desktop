@@ -17,6 +17,9 @@ function state(overrides: Partial<DesktopVoiceState> = {}): DesktopVoiceState {
       qwenModel: 'qwen3-asr-flash-realtime',
       qwenEndpointMode: 'shared',
       qwenWorkspaceId: '',
+      conversationMode: 'cascade',
+      qwenE2eModel: 'qwen-audio-3.0-realtime-flash',
+      qwenE2eVoice: 'longanqian',
       ttsEnabled: true,
       qwenTtsModel: 'qwen3-tts-flash-realtime',
       qwenTtsVoice: 'Cherry',
@@ -132,6 +135,8 @@ describe('desktop voice surfaces', () => {
       openExternal,
     } as never))
     expect(html).toContain('dsh-qwen-tts-voice')
+    expect(html).toContain('dsh-voice-conversation-mode')
+    expect(html).toContain('value="qwen-e2e"')
     expect(html).toContain('value="Cherry"')
   })
 

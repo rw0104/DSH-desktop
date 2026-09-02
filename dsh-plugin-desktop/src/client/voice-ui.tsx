@@ -40,7 +40,7 @@ export function VoiceSidebarTab({ controller, scope }: { controller: DesktopVoic
       <header className="dshVoicePanelHeader">
         <div>
           <span className="dshVoicePanelEyebrow"><span className="dshVoiceGlyph is-wave" aria-hidden /> Realtime voice</span>
-          <h2>{state.settings.provider === 'qwen' ? 'Qwen ASR' : 'Doubao Seed-ASR 2'}</h2>
+          <h2>{state.settings.provider === 'qwen' ? state.settings.conversationMode === 'qwen-e2e' ? 'Qwen Audio E2E' : 'Qwen ASR' : 'Doubao Seed-ASR 2'}</h2>
         </div>
         <span className={`dshVoiceStatus is-${state.status}`}>{status}</span>
       </header>
@@ -110,7 +110,7 @@ export function VoiceSettingsSection({ controller, t, openExternal }: VoiceSetti
       <button className="dshVoiceGuideLink" type="button" data-external-action="realtime-voice-credentials" onClick={() => { void openExternal('realtime-voice-credentials').catch(() => {}) }}>{t('settings.credentialsGuide')}<span aria-hidden>↗</span></button>
       <label className="dshVoiceSwitch"><input type="checkbox" checked={draft.enabled} onChange={event => { update('enabled', event.target.checked) }} /><span /><strong>{t('settings.enabled')}</strong></label>
       <div className="dshVoiceField"><label htmlFor="dsh-voice-provider">{t('settings.provider')}</label><select id="dsh-voice-provider" value={draft.provider} onChange={event => { update('provider', event.target.value as DesktopVoiceSettings['provider']) }}><option value="qwen">Qwen 实时语音识别</option><option value="doubao">豆包 Seed-ASR 2</option></select></div>
-      <label className="dshVoiceSwitch"><input id="dsh-voice-tts-enabled" type="checkbox" checked={draft.ttsEnabled} onChange={event => { update('ttsEnabled', event.target.checked) }} /><span /><strong>{t('settings.ttsEnabled')}</strong></label>
+      {(draft.provider !== 'qwen' || draft.conversationMode === 'cascade') && <label className="dshVoiceSwitch"><input id="dsh-voice-tts-enabled" type="checkbox" checked={draft.ttsEnabled} onChange={event => { update('ttsEnabled', event.target.checked) }} /><span /><strong>{t('settings.ttsEnabled')}</strong></label>}
       {draft.provider === 'qwen'
         ? <QwenSettings state={state} draft={draft} update={update} t={t} qwenKey={qwenKey} setQwenKey={value => { setQwenKey(value); setSaved(false) }} />
         : <DoubaoSettings state={state} draft={draft} update={update} t={t} doubaoAppId={doubaoAppId} setDoubaoAppId={value => { setDoubaoAppId(value); setSaved(false) }} doubaoAccessKey={doubaoAccessKey} setDoubaoAccessKey={value => { setDoubaoAccessKey(value); setSaved(false) }} />}
@@ -126,11 +126,18 @@ export function VoiceSettingsSection({ controller, t, openExternal }: VoiceSetti
 
 function QwenSettings({ state, draft, update, t, qwenKey, setQwenKey }: { state: DesktopVoiceState; draft: DesktopVoiceSettings; update: <K extends keyof DesktopVoiceSettings>(key: K, value: DesktopVoiceSettings[K]) => void; t: (key: VoiceKey) => string; qwenKey: string; setQwenKey: (value: string) => void }) {
   return <>
-    <div className="dshVoiceField"><label htmlFor="dsh-qwen-model">{t('settings.model')}</label><input id="dsh-qwen-model" value={draft.qwenModel} readOnly /></div>
+    <div className="dshVoiceField"><label htmlFor="dsh-voice-conversation-mode">{t('settings.conversationMode')}</label><select id="dsh-voice-conversation-mode" value={draft.conversationMode} onChange={event => { update('conversationMode', event.target.value as DesktopVoiceSettings['conversationMode']) }}><option value="cascade">{t('settings.cascadeMode')}</option><option value="qwen-e2e">{t('settings.qwenE2eMode')}</option></select></div>
     <div className="dshVoiceField"><label htmlFor="dsh-qwen-endpoint-mode">{t('settings.endpointMode')}</label><select id="dsh-qwen-endpoint-mode" value={draft.qwenEndpointMode} onChange={event => { update('qwenEndpointMode', event.target.value as DesktopVoiceSettings['qwenEndpointMode']) }}><option value="shared">{t('settings.apiKeyOnly')}</option><option value="workspace">{t('settings.workspaceDedicated')}</option></select></div>
     {draft.qwenEndpointMode === 'workspace' && <div className="dshVoiceField"><label htmlFor="dsh-qwen-workspace">{t('settings.workspace')}</label><input id="dsh-qwen-workspace" value={draft.qwenWorkspaceId} placeholder="llm-xxxxxxxxxxxx" onChange={event => { update('qwenWorkspaceId', event.target.value) }} /><span className="dshVoiceProviderNotice">{t('settings.workspaceHint')}</span></div>}
-    <div className="dshVoiceField"><label htmlFor="dsh-qwen-tts-model">{t('settings.ttsModel')}</label><input id="dsh-qwen-tts-model" value={draft.qwenTtsModel} readOnly /></div>
-    <div className="dshVoiceField"><label htmlFor="dsh-qwen-tts-voice">{t('settings.ttsVoice')}</label><select id="dsh-qwen-tts-voice" value={draft.qwenTtsVoice} disabled={!draft.ttsEnabled} onChange={event => { update('qwenTtsVoice', event.target.value) }}><option value="Cherry">Cherry · 阳光自然女声</option><option value="Serena">Serena · 温柔女声</option><option value="Ethan">Ethan · 温暖活力男声</option><option value="Moon">Moon · 大气男声</option><option value="Maia">Maia · 知性温柔女声</option><option value="Kai">Kai · 舒缓男声</option><option value="Dylan">Dylan · 北京男声</option><option value="Kiki">Kiki · 粤语女声</option></select></div>
+    {draft.conversationMode === 'qwen-e2e' ? <>
+      <div className="dshVoiceField"><label htmlFor="dsh-qwen-e2e-model">{t('settings.e2eModel')}</label><input id="dsh-qwen-e2e-model" value={draft.qwenE2eModel} readOnly /></div>
+      <div className="dshVoiceField"><label htmlFor="dsh-qwen-e2e-voice">{t('settings.e2eVoice')}</label><select id="dsh-qwen-e2e-voice" value={draft.qwenE2eVoice} onChange={event => { update('qwenE2eVoice', event.target.value) }}><option value="longanqian">龙安芊 · 默认女声</option><option value="longanlingxin">龙安灵心 · 温暖女声</option><option value="longanlingxi">龙安灵希 · 甜美女声</option><option value="longanxiaoxin">龙安小新 · 活力童声</option><option value="longanlufeng">龙安鲁风 · 明亮男声</option></select></div>
+      <p className="dshVoiceExperimentalNotice">{t('settings.e2eNotice')}</p>
+    </> : <>
+      <div className="dshVoiceField"><label htmlFor="dsh-qwen-model">{t('settings.model')}</label><input id="dsh-qwen-model" value={draft.qwenModel} readOnly /></div>
+      <div className="dshVoiceField"><label htmlFor="dsh-qwen-tts-model">{t('settings.ttsModel')}</label><input id="dsh-qwen-tts-model" value={draft.qwenTtsModel} readOnly /></div>
+      <div className="dshVoiceField"><label htmlFor="dsh-qwen-tts-voice">{t('settings.ttsVoice')}</label><select id="dsh-qwen-tts-voice" value={draft.qwenTtsVoice} disabled={!draft.ttsEnabled} onChange={event => { update('qwenTtsVoice', event.target.value) }}><option value="Cherry">Cherry · 阳光自然女声</option><option value="Serena">Serena · 温柔女声</option><option value="Ethan">Ethan · 温暖活力男声</option><option value="Moon">Moon · 大气男声</option><option value="Maia">Maia · 知性温柔女声</option><option value="Kai">Kai · 舒缓男声</option><option value="Dylan">Dylan · 北京男声</option><option value="Kiki">Kiki · 粤语女声</option></select></div>
+    </>}
     <KeyField id="dsh-qwen-key" label={t('settings.apiKey')} configured={state.qwenKeyConfigured} writable={state.qwenKeyWritable} value={qwenKey} onChange={setQwenKey} />
   </>
 }
