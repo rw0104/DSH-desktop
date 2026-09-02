@@ -1,6 +1,22 @@
 import { defineConfig } from 'tsdown'
+import { execFileSync } from 'node:child_process'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const PACKAGE_NAME = 'dsh-plugin-desktop'
+const packageRoot = dirname(fileURLToPath(import.meta.url))
+
+function buildCommit(): string {
+  const supplied = process.env.DSH_BUILD_COMMIT?.trim()
+  if (supplied && /^[0-9a-f]{7,40}$/iu.test(supplied)) return supplied
+  try {
+    return execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], { cwd: resolve(packageRoot, '..'), encoding: 'utf8' }).trim()
+  } catch {
+    return 'development'
+  }
+}
+
+const buildDefines = { __DSH_BUILD_COMMIT__: JSON.stringify(buildCommit()) }
 
 export default defineConfig([
   {
@@ -36,6 +52,7 @@ export default defineConfig([
     format: 'esm',
     platform: 'node',
     target: 'es2024',
+    define: buildDefines,
     fixedExtension: false,
     dts: false,
     clean: false,
@@ -48,6 +65,7 @@ export default defineConfig([
     format: 'esm',
     platform: 'node',
     target: 'es2024',
+    define: buildDefines,
     fixedExtension: false,
     dts: false,
     clean: false,
@@ -64,6 +82,7 @@ export default defineConfig([
     format: 'cjs',
     platform: 'browser',
     target: 'es2022',
+    define: buildDefines,
     fixedExtension: false,
     dts: false,
     clean: false,
@@ -94,6 +113,7 @@ export default defineConfig([
     format: 'cjs',
     platform: 'node',
     target: 'es2022',
+    define: buildDefines,
     fixedExtension: false,
     dts: false,
     clean: false,

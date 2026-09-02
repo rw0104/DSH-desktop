@@ -1,9 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   buildQwenAsrUrl,
   buildQwenSessionFinish,
   buildQwenSessionUpdate,
+  buildDshCapabilityResult,
+  desktopBuildCommit,
   DesktopVoiceSettingsSchema,
+  effectiveVoiceAudioSource,
+  normalizeVoiceConversationMode,
+  shouldUseIndependentVoiceTts,
+  VoiceAgentBridge,
+  voiceAgentAuthority,
 } from '../src/voice-realtime.ts'
 
 describe('desktop voice host settings', () => {
@@ -37,6 +44,63 @@ describe('desktop voice host settings', () => {
     expect(value.enabled).toBe(true)
     expect(value).not.toHaveProperty('apiKey')
     expect(value).not.toHaveProperty('qwenApiKey')
+  })
+
+  it('migrates the legacy qwen-e2e value to the accurately named hybrid mode', () => {
+    expect(normalizeVoiceConversationMode('qwen-e2e')).toBe('qwen-hybrid')
+    expect(DesktopVoiceSettingsSchema({ conversationMode: 'qwen-e2e' } as never).conversationMode).toBe('qwen-hybrid')
+    expect(DesktopVoiceSettingsSchema({ conversationMode: 'qwen-native' } as never).conversationMode).toBe('qwen-native')
+  })
+
+  it('reports effective audio source without treating provider-native output as TTS', () => {
+    expect(effectiveVoiceAudioSource({ provider: 'qwen', conversationMode: 'qwen-native', ttsEnabled: true })).toBe('provider-native')
+    expect(effectiveVoiceAudioSource({ provider: 'qwen', conversationMode: 'qwen-hybrid', ttsEnabled: true })).toBe('provider-native')
+    expect(effectiveVoiceAudioSource({ provider: 'qwen', conversationMode: 'cascade', ttsEnabled: true })).toBe('provider-tts')
+    expect(effectiveVoiceAudioSource({ provider: 'qwen', conversationMode: 'cascade', ttsEnabled: false })).toBe('none')
+    expect(shouldUseIndependentVoiceTts({ provider: 'qwen', conversationMode: 'qwen-native', ttsEnabled: true })).toBe(false)
+    expect(shouldUseIndependentVoiceTts({ provider: 'qwen', conversationMode: 'qwen-hybrid', ttsEnabled: true })).toBe(false)
+    expect(shouldUseIndependentVoiceTts({ provider: 'qwen', conversationMode: 'cascade', ttsEnabled: true })).toBe(true)
+    expect(voiceAgentAuthority({ provider: 'qwen', conversationMode: 'qwen-hybrid' })).toBe('dsh-agent+qwen-voice')
+    expect(voiceAgentAuthority({ provider: 'qwen', conversationMode: 'qwen-native' })).toBe('qwen-conversation+dsh-capabilities-and-approvals')
+  })
+
+  it('returns a bounded structured capability result', () => {
+    expect(JSON.parse(buildDshCapabilityResult('completed', '  done  '))).toEqual({
+      status: 'completed',
+      summary: 'done',
+      facts: [],
+      artifacts: [],
+      approvals: [],
+      errors: [],
+    })
+    expect(desktopBuildCommit()).toMatch(/^(development|[0-9a-f]{7,40})$/u)
+  })
+
+  it('never creates an independent TTS stream or cancels a keyboard turn in provider voice mode', () => {
+    const createTtsStream = vi.fn()
+    const cancel = vi.fn()
+    const client = { readyState: 1, send: vi.fn() }
+    const ctx = {
+      agents: { get: vi.fn(() => ({ status: 'running', cancel })) },
+      logger: { info: vi.fn(), warn: vi.fn() },
+    }
+    const bridge = new VoiceAgentBridge(
+      client as never,
+      { provider: 'qwen', conversationMode: 'qwen-native', sessionId: 'voice-1', agentSessionId: 'agent-1' } as never,
+      ctx as never,
+      'sk-test',
+      undefined,
+      undefined,
+      createTtsStream as never,
+    )
+
+    bridge.onAgentEvent({ type: 'turn/start', data: { turn: 1 } })
+    bridge.onAgentEvent({ type: 'assistant/chunk', data: { chunk: { type: 'text-delta', text: 'keyboard output' } } })
+    bridge.onAgentEvent({ type: 'turn/end', data: { reason: { kind: 'completed' } } })
+    ;(bridge as any).onE2eSpeechStarted()
+
+    expect(createTtsStream).not.toHaveBeenCalled()
+    expect(cancel).not.toHaveBeenCalled()
   })
 
   it('connects directly to the Qwen ASR model on shared and workspace endpoints', () => {

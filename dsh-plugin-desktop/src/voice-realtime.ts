@@ -12,8 +12,10 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import { WebSocket, WebSocketServer } from 'ws'
 import { AgentSpeechChunker, createVoiceTtsStream } from './voice-tts.ts'
 import type { VoiceTtsSpec, VoiceTtsStream } from './voice-tts.ts'
-import { QwenE2eSession } from './voice-e2e.ts'
-import type { DshAgentTurnCall } from './voice-e2e.ts'
+import { QwenE2eError, QwenE2eSession } from './voice-e2e.ts'
+import type { DshCapabilityCall, QwenE2eResponseDone, QwenE2eTelemetryEvent, QwenVoiceConversationMode } from './voice-e2e.ts'
+
+declare const __DSH_BUILD_COMMIT__: string
 
 export const DESKTOP_VOICE_SETTINGS_NAMESPACE = settingsNamespace('dsh-desktop-voice')
 export const QWEN_API_KEY_REF = 'DASHSCOPE_API_KEY'
@@ -25,13 +27,16 @@ export const VOICE_SETTINGS_PATH = '/dsh-desktop/api/voice/settings'
 export const VOICE_CREDENTIALS_PATH = '/dsh-desktop/api/voice/credentials'
 export const VOICE_UPGRADE_PATH = '/dsh-desktop/api/voice/realtime'
 
+export type VoiceConversationMode = 'cascade' | QwenVoiceConversationMode
+export type VoiceAudioSource = 'none' | 'provider-native' | 'provider-tts' | 'system-tts'
+
 export interface DesktopVoiceSettings {
   enabled: boolean
   provider: 'qwen' | 'doubao'
   qwenModel: 'qwen3-asr-flash-realtime'
   qwenEndpointMode: 'shared' | 'workspace'
   qwenWorkspaceId: string
-  conversationMode: 'cascade' | 'qwen-e2e'
+  conversationMode: VoiceConversationMode
   qwenE2eModel: 'qwen-audio-3.0-realtime-flash'
   qwenE2eVoice: string
   ttsEnabled: boolean
@@ -47,13 +52,18 @@ export interface DesktopVoiceSettings {
   systemPrompt: string
 }
 
+const VoiceConversationModeSchema: z<VoiceConversationMode> = z.transform(
+  z.union(['cascade', 'qwen-e2e', 'qwen-hybrid', 'qwen-native'] as const),
+  value => value === 'qwen-e2e' ? 'qwen-hybrid' : value,
+)
+
 export const DesktopVoiceSettingsSchema: z<DesktopVoiceSettings> = z.object({
   enabled: z.boolean().default(false),
   provider: z.union(['qwen', 'doubao'] as const).default('qwen'),
   qwenModel: z.union(['qwen3-asr-flash-realtime'] as const).default('qwen3-asr-flash-realtime'),
   qwenEndpointMode: z.union(['shared', 'workspace'] as const).default('shared'),
   qwenWorkspaceId: z.string().max(120).default(''),
-  conversationMode: z.union(['cascade', 'qwen-e2e'] as const).default('cascade'),
+  conversationMode: VoiceConversationModeSchema.default('cascade'),
   qwenE2eModel: z.union(['qwen-audio-3.0-realtime-flash'] as const).default('qwen-audio-3.0-realtime-flash'),
   qwenE2eVoice: z.string().max(160).default('longanqian'),
   ttsEnabled: z.boolean().default(true),
@@ -68,6 +78,52 @@ export const DesktopVoiceSettingsSchema: z<DesktopVoiceSettings> = z.object({
   doubaoTtsVoice: z.string().max(160).default('zh_female_vv_uranus_bigtts'),
   systemPrompt: z.string().max(10_000).default('你是一个简洁、友好的实时语音助手。需要时使用当前 DSH Agent 提供的工具完成任务。'),
 })
+
+export function normalizeVoiceConversationMode(value: unknown): VoiceConversationMode {
+  if (value === 'qwen-e2e') return 'qwen-hybrid'
+  if (value === 'qwen-hybrid' || value === 'qwen-native') return value
+  return 'cascade'
+}
+
+export function effectiveVoiceAudioSource(settings: Pick<DesktopVoiceSettings, 'provider' | 'conversationMode' | 'ttsEnabled'>): VoiceAudioSource {
+  if (settings.provider === 'qwen' && settings.conversationMode !== 'cascade') return 'provider-native'
+  return settings.ttsEnabled ? 'provider-tts' : 'none'
+}
+
+export function shouldUseIndependentVoiceTts(settings: Pick<DesktopVoiceSettings, 'provider' | 'conversationMode' | 'ttsEnabled'>): boolean {
+  return settings.ttsEnabled && !(settings.provider === 'qwen' && settings.conversationMode !== 'cascade')
+}
+
+export function voiceAgentAuthority(settings: Pick<DesktopVoiceSettings, 'provider' | 'conversationMode'>): string {
+  if (settings.provider !== 'qwen' || settings.conversationMode === 'cascade') return 'dsh-agent'
+  if (settings.conversationMode === 'qwen-hybrid') return 'dsh-agent+qwen-voice'
+  return 'qwen-conversation+dsh-capabilities-and-approvals'
+}
+
+export function desktopBuildCommit(): string {
+  return typeof __DSH_BUILD_COMMIT__ === 'string' ? __DSH_BUILD_COMMIT__ : 'development'
+}
+
+export interface DshCapabilityResult {
+  status: 'completed' | 'failed' | 'cancelled'
+  summary: string
+  facts: string[]
+  artifacts: string[]
+  approvals: string[]
+  errors: string[]
+}
+
+export function buildDshCapabilityResult(status: DshCapabilityResult['status'], summary: string, errors: string[] = []): string {
+  const result: DshCapabilityResult = {
+    status,
+    summary: summary.trim().slice(0, 16_000),
+    facts: [],
+    artifacts: [],
+    approvals: [],
+    errors: errors.map(value => value.trim()).filter(Boolean).slice(0, 8),
+  }
+  return JSON.stringify(result)
+}
 
 interface VoiceTicket {
   readonly provider: DesktopVoiceSettings['provider']
@@ -270,7 +326,16 @@ function eventText(value: unknown): string {
 
 type AgentEvent = { type: string; data: any }
 
-class VoiceAgentBridge {
+interface E2eDelegation {
+  readonly callId: string
+  readonly responseId: string
+  readonly transcript: string
+  readonly generation: number
+  output: string
+  state: 'queued' | 'running'
+}
+
+export class VoiceAgentBridge {
   private provider: WebSocket | undefined
   private started = false
   private closed = false
@@ -287,8 +352,10 @@ class VoiceAgentBridge {
   private userSpeechActive = false
   private e2e: QwenE2eSession | undefined
   private e2eGeneration = 0
-  private e2eDelegation: { callId: string; generation: number; output: string } | undefined
-  private e2eAwaitingSpokenResponse = false
+  private readonly e2eDelegations = new Map<string, E2eDelegation>()
+  private readonly e2eQueue: string[] = []
+  private activeE2eCallId: string | undefined
+  private e2eOutputResponseId = ''
   private e2eAudioStarted = false
 
   constructor(
@@ -298,27 +365,57 @@ class VoiceAgentBridge {
     private readonly qwenKey: string | undefined,
     private readonly doubaoAppId: string | undefined,
     private readonly doubaoAccessKey: string | undefined,
+    private readonly createTtsStream: typeof createVoiceTtsStream = createVoiceTtsStream,
   ) {}
 
   open(): void {
-    const e2e = this.isE2e()
-    sendClient(this.client, { type: 'session.connected', sessionId: this.ticket.sessionId, provider: this.ticket.provider, modelId: e2e ? this.ticket.qwenE2eModel : this.ticket.model, conversationMode: this.ticket.conversationMode })
-    if (e2e && this.qwenKey) {
-      this.e2e = new QwenE2eSession({ endpointMode: this.ticket.qwenEndpointMode, workspaceId: this.ticket.workspaceId, model: this.ticket.qwenE2eModel, voice: this.ticket.qwenE2eVoice, apiKey: this.qwenKey }, {
+    const providerVoice = this.isProviderVoice()
+    const audioSource = this.audioSource()
+    sendClient(this.client, {
+      type: 'session.connected',
+      sessionId: this.ticket.sessionId,
+      provider: this.ticket.provider,
+      modelId: providerVoice ? this.ticket.qwenE2eModel : this.ticket.model,
+      conversationMode: this.ticket.conversationMode,
+      audioSource,
+      voice: providerVoice ? this.ticket.qwenE2eVoice : this.ticket.ttsEnabled ? this.ticket.ttsVoice : '',
+      agentAuthority: voiceAgentAuthority(this.ticket),
+      buildCommit: desktopBuildCommit(),
+    })
+    if (providerVoice && this.qwenKey) {
+      this.e2e = new QwenE2eSession({
+        endpointMode: this.ticket.qwenEndpointMode,
+        workspaceId: this.ticket.workspaceId,
+        model: this.ticket.qwenE2eModel,
+        voice: this.ticket.qwenE2eVoice,
+        apiKey: this.qwenKey,
+        conversationMode: this.ticket.conversationMode as QwenVoiceConversationMode,
+        systemPrompt: this.ticket.systemPrompt,
+      }, {
         onReady: () => { sendClient(this.client, { type: 'provider.ready' }) },
         onSpeechStarted: () => { this.onE2eSpeechStarted() },
         onSpeechStopped: reason => { sendClient(this.client, { type: 'speech.stopped', ...(reason === undefined ? {} : { reason }) }) },
         onTranscriptPartial: text => { sendClient(this.client, { type: 'transcript.partial', text }) },
         onTranscriptFinal: text => { this.sendFinalTranscript(text) },
-        onAssistantTextDelta: text => { if (this.e2eAwaitingSpokenResponse) sendClient(this.client, { type: 'agent.text.delta', text }) },
-        onAudio: audio => {
-          if (!this.e2eAwaitingSpokenResponse) return
-          if (!this.e2eAudioStarted) { this.e2eAudioStarted = true; sendClient(this.client, { type: 'tts.started' }) }
+        onAssistantTextDelta: (text, responseId) => { sendClient(this.client, { type: 'agent.text.delta', text, responseId }) },
+        onAudio: (audio, responseId) => {
+          if (this.e2eOutputResponseId !== responseId) {
+            this.e2eOutputResponseId = responseId
+            this.e2eAudioStarted = false
+          }
+          if (!this.e2eAudioStarted) {
+            this.e2eAudioStarted = true
+            sendClient(this.client, { type: 'voice.output.started', responseId, audioSource: 'provider-native' })
+          }
           if (this.client.readyState === WebSocket.OPEN) this.client.send(audio, { binary: true })
         },
         onFunctionCall: call => { this.handleE2eFunctionCall(call) },
-        onResponseDone: () => { this.handleE2eResponseDone() },
-        onError: error => { this.ctx.logger.warn(error); sendClient(this.client, { type: 'session.failed', code: 'qwen_e2e_error', message: error.message }) },
+        onResponseDone: response => { this.handleE2eResponseDone(response) },
+        onTelemetry: event => { this.logE2eTelemetry(event) },
+        onError: error => {
+          this.ctx.logger.warn(error)
+          sendClient(this.client, { type: 'session.failed', code: error instanceof QwenE2eError ? error.code : 'qwen_voice_error', message: error.message })
+        },
       })
       return
     }
@@ -348,7 +445,7 @@ class VoiceAgentBridge {
     const type = String(message.type || '')
     if (type === 'session.start') {
       this.started = true
-      if (this.isE2e()) return
+      if (this.isProviderVoice()) return
       if (this.ticket.provider === 'qwen' && this.provider?.readyState === WebSocket.OPEN) this.provider.send(buildQwenSessionUpdate())
       if (this.ticket.provider === 'doubao' && this.provider?.readyState === WebSocket.OPEN) {
         this.doubaoSequence = 1
@@ -360,7 +457,7 @@ class VoiceAgentBridge {
       }
       return
     }
-    if (type === 'audio.append' && this.started && typeof message.audio === 'string' && this.isE2e()) { this.e2e?.appendAudio(message.audio); return }
+    if (type === 'audio.append' && this.started && typeof message.audio === 'string' && this.isProviderVoice()) { this.e2e?.appendAudio(message.audio); return }
     if (type === 'audio.append' && this.started && typeof message.audio === 'string' && this.provider?.readyState === WebSocket.OPEN) {
       if (this.ticket.provider === 'qwen') this.provider.send(qwenAudioAppend(message.audio))
       else { const audio = decodeBase64(message.audio); if (audio) this.provider.send(doubaoAsrAudioRequest(this.doubaoSequence++, audio)) }
@@ -368,15 +465,15 @@ class VoiceAgentBridge {
     }
     if (type === 'turn.commit' && this.ticket.provider === 'qwen' && this.provider?.readyState === WebSocket.OPEN) { this.provider.send(qwenAudioCommit()); return }
     if (type === 'turn.commit' && this.ticket.provider === 'doubao' && this.provider?.readyState === WebSocket.OPEN) { this.provider.send(doubaoAsrAudioRequest(this.doubaoSequence++, Buffer.alloc(0), true)); return }
-    if (type === 'tts.cancel') {
-      if (this.isE2e()) this.cancelE2eTurn('client_cancelled')
+    if (type === 'output.cancel' || type === 'tts.cancel') {
+      if (this.isProviderVoice()) this.cancelE2eTurn('client_cancelled')
       else this.cancelTts('client_cancelled')
       return
     }
     if (type === 'session.finish') {
       if (this.finishing) return
       this.finishing = true
-      if (this.isE2e()) { this.completeProviderSession(); return }
+      if (this.isProviderVoice()) { this.completeProviderSession(); return }
       if (this.provider?.readyState === WebSocket.OPEN) {
         if (this.ticket.provider === 'qwen') this.provider.send(buildQwenSessionFinish())
         else this.provider.send(doubaoAsrAudioRequest(this.doubaoSequence++, Buffer.alloc(0), true))
@@ -387,7 +484,7 @@ class VoiceAgentBridge {
 
   onAgentEvent(event: AgentEvent): void {
     if (this.closed) return
-    if (this.isE2e()) { this.onE2eAgentEvent(event); return }
+    if (this.isProviderVoice()) { this.onE2eAgentEvent(event); return }
     if (event.type === 'turn/start') {
       this.beginAgentTurn(Number(event.data.turn))
       return
@@ -411,7 +508,7 @@ class VoiceAgentBridge {
     this.closed = true
     if (this.finishTimer !== undefined) clearTimeout(this.finishTimer)
     this.finishTimer = undefined
-    if (this.isE2e()) this.cancelE2eTurn(reason)
+    if (this.isProviderVoice()) this.cancelE2eTurn(reason)
     else this.cancelTts(reason)
     this.e2e?.close(reason)
     this.e2e = undefined
@@ -475,8 +572,16 @@ class VoiceAgentBridge {
     this.close('provider_finished')
   }
 
-  private isE2e(): boolean {
-    return this.ticket.provider === 'qwen' && this.ticket.conversationMode === 'qwen-e2e'
+  private isProviderVoice(): boolean {
+    return this.ticket.provider === 'qwen' && this.ticket.conversationMode !== 'cascade'
+  }
+
+  private audioSource(): VoiceAudioSource {
+    return effectiveVoiceAudioSource(this.ticket)
+  }
+
+  private logE2eTelemetry(event: QwenE2eTelemetryEvent): void {
+    this.ctx.logger.info(JSON.stringify({ scope: 'qwen-voice-lifecycle', bridgeSessionId: this.ticket.sessionId, ...event }))
   }
 
   private sendFinalTranscript(text: string): void {
@@ -486,98 +591,138 @@ class VoiceAgentBridge {
     sendClient(this.client, { type: 'transcript.final', text })
   }
 
-  private handleE2eFunctionCall(call: DshAgentTurnCall): void {
-    if (this.e2eDelegation !== undefined) {
-      this.e2e?.writeFunctionOutput(call.callId, JSON.stringify({ error: 'DSH Agent is already processing another delegated turn.' }))
+  private handleE2eFunctionCall(call: DshCapabilityCall): void {
+    if (this.e2eDelegations.has(call.callId)) return
+    const delegation: E2eDelegation = {
+      callId: call.callId,
+      responseId: call.responseId,
+      transcript: call.transcript,
+      generation: this.e2eGeneration,
+      output: '',
+      state: 'queued',
+    }
+    this.e2eDelegations.set(call.callId, delegation)
+    this.e2eQueue.push(call.callId)
+    this.sendFinalTranscript(call.transcript)
+    this.startNextE2eDelegation()
+  }
+
+  private startNextE2eDelegation(): void {
+    if (this.activeE2eCallId !== undefined || this.closed) return
+    const callId = this.e2eQueue.shift()
+    if (callId === undefined) return
+    const delegation = this.e2eDelegations.get(callId)
+    if (delegation === undefined || delegation.generation !== this.e2eGeneration) {
+      this.startNextE2eDelegation()
       return
     }
     const agent = this.ctx.agents.get(this.ticket.agentSessionId as never)
-    if (agent === undefined) {
-      this.writeE2eSpokenFunctionOutput(call.callId, JSON.stringify({ error: 'The selected DSH Agent is unavailable.' }))
+    if (agent === undefined || agent.status !== 'idle') {
+      const message = agent === undefined
+        ? 'The selected DSH Agent is unavailable.'
+        : 'The DSH Agent is busy with a non-voice task. Retry after that task finishes.'
+      this.e2eDelegations.delete(callId)
+      this.e2e?.writeFunctionOutput(callId, buildDshCapabilityResult('failed', '', [message]))
+      this.startNextE2eDelegation()
       return
     }
-    if (agent.status !== 'idle') {
-      this.writeE2eSpokenFunctionOutput(call.callId, JSON.stringify({ error: 'The DSH Agent is busy. Please wait for the current task to finish and try again.' }))
-      return
-    }
-    const generation = ++this.e2eGeneration
-    this.e2eDelegation = { callId: call.callId, generation, output: '' }
-    this.e2eAwaitingSpokenResponse = false
-    this.e2eAudioStarted = false
-    this.sendFinalTranscript(call.transcript)
-    try { agent.followup(createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: call.transcript }] })); sendClient(this.client, { type: 'agent.request.accepted' }) }
-    catch (cause) {
-      this.e2eDelegation = undefined
-      this.writeE2eSpokenFunctionOutput(call.callId, JSON.stringify({ error: cause instanceof Error ? cause.message : 'The voice turn could not be sent to the DSH Agent.' }))
+    delegation.state = 'running'
+    this.activeE2eCallId = callId
+    this.activeAgentTurn = undefined
+    try {
+      agent.followup(createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: delegation.transcript }] }))
+      sendClient(this.client, { type: 'agent.request.accepted', callId, responseId: delegation.responseId })
+    } catch (cause) {
+      this.activeE2eCallId = undefined
+      this.e2eDelegations.delete(callId)
+      const message = cause instanceof Error ? cause.message : 'The voice capability request could not be sent to the DSH Agent.'
+      this.e2e?.writeFunctionOutput(callId, buildDshCapabilityResult('failed', '', [message]))
+      this.startNextE2eDelegation()
     }
   }
 
   private onE2eAgentEvent(event: AgentEvent): void {
-    const delegation = this.e2eDelegation
-    if (delegation === undefined) return
+    const callId = this.activeE2eCallId
+    const delegation = callId === undefined ? undefined : this.e2eDelegations.get(callId)
+    if (delegation === undefined || delegation.generation !== this.e2eGeneration) return
     if (event.type === 'turn/start') { this.activeAgentTurn = Number(event.data.turn); return }
     if (event.type === 'assistant/chunk') {
       const chunk = event.data.chunk
-      if (chunk.type === 'text-delta' && chunk.text) delegation.output += String(chunk.text)
+      if (chunk.type === 'text-delta' && chunk.text && delegation.output.length < 16_000) {
+        delegation.output = `${delegation.output}${String(chunk.text)}`.slice(0, 16_000)
+      }
       if (chunk.type === 'tool-call-delta') sendClient(this.client, { type: 'agent.tool.delta', name: chunk.name || '', text: chunk.argumentsDelta })
       return
     }
     if (event.type === 'tool/call') { sendClient(this.client, { type: 'agent.tool.started', name: event.data.name }); return }
     if (event.type === 'tool/result') { sendClient(this.client, { type: 'agent.tool.finished', name: event.data.message.content[0]?.type || 'tool' }); return }
     if (event.type !== 'turn/end') return
-    const current = this.e2eDelegation
-    if (current === undefined || current.generation !== delegation.generation) return
-    this.e2eDelegation = undefined
+    const current = this.e2eDelegations.get(delegation.callId)
+    if (current === undefined || current.generation !== this.e2eGeneration) return
+    this.e2eDelegations.delete(current.callId)
+    this.activeE2eCallId = undefined
     this.activeAgentTurn = undefined
     if (event.data.reason?.kind !== 'completed') {
-      this.writeE2eSpokenFunctionOutput(current.callId, JSON.stringify({ error: 'The DSH Agent turn ended before completion.' }))
-      return
+      this.e2e?.writeFunctionOutput(current.callId, buildDshCapabilityResult('failed', '', ['The DSH Agent turn ended before completion.']))
+    } else {
+      const summary = current.output.trim() || 'The DSH Agent completed the task without a textual summary.'
+      this.e2e?.writeFunctionOutput(current.callId, buildDshCapabilityResult('completed', summary))
     }
-    const output = current.output.trim() || 'The DSH Agent completed the task without a textual response.'
-    this.writeE2eSpokenFunctionOutput(current.callId, output)
+    setTimeout(() => { this.startNextE2eDelegation() }, 0)
   }
 
-  private writeE2eSpokenFunctionOutput(callId: string, output: string): void {
-    this.e2eAwaitingSpokenResponse = true
-    this.e2eAudioStarted = false
-    this.e2e?.writeFunctionOutput(callId, output)
-  }
-
-  private handleE2eResponseDone(): void {
-    if (this.e2eDelegation !== undefined) return
-    if (!this.e2eAwaitingSpokenResponse) {
-      sendClient(this.client, { type: 'session.failed', code: 'e2e_delegation_missing', message: 'Qwen E2E responded without delegating to the DSH Agent. Switch to stable cascade mode or retry.' })
+  private handleE2eResponseDone(response: QwenE2eResponseDone): void {
+    if (response.status === 'cancelled') {
+      this.cancelE2eDelegations(response.responseId)
+      if (this.e2eOutputResponseId === response.responseId) {
+        sendClient(this.client, { type: 'voice.output.cancelled', responseId: response.responseId, reason: response.reason ?? 'provider_cancelled' })
+      }
+      if (this.e2eOutputResponseId === response.responseId) {
+        this.e2eOutputResponseId = ''
+        this.e2eAudioStarted = false
+      }
       return
     }
-    sendClient(this.client, { type: 'agent.response.done', ttsExpected: this.e2eAudioStarted })
-    if (this.e2eAudioStarted) sendClient(this.client, { type: 'tts.done' })
-    this.e2eAwaitingSpokenResponse = false
+    sendClient(this.client, { type: 'agent.response.done', audioExpected: response.audioStarted, responseId: response.responseId })
+    if (response.audioStarted) sendClient(this.client, { type: 'voice.output.done', responseId: response.responseId })
+    this.e2eOutputResponseId = ''
     this.e2eAudioStarted = false
   }
 
   private onE2eSpeechStarted(): void {
     this.e2e?.cancelResponse()
-    this.cancelE2eAgent()
-    sendClient(this.client, { type: 'tts.cancelled', reason: 'user_interrupted' })
+    this.cancelE2eDelegations()
+    sendClient(this.client, { type: 'voice.output.cancelled', ...(this.e2eOutputResponseId === '' ? {} : { responseId: this.e2eOutputResponseId }), reason: 'user_interrupted' })
+    this.e2eOutputResponseId = ''
+    this.e2eAudioStarted = false
     sendClient(this.client, { type: 'speech.started' })
   }
 
   private cancelE2eTurn(reason: string): void {
     this.e2e?.cancelResponse()
-    this.cancelE2eAgent()
-    this.e2eAwaitingSpokenResponse = false
+    this.cancelE2eDelegations()
+    sendClient(this.client, { type: 'voice.output.cancelled', ...(this.e2eOutputResponseId === '' ? {} : { responseId: this.e2eOutputResponseId }), reason })
+    this.e2eOutputResponseId = ''
     this.e2eAudioStarted = false
-    sendClient(this.client, { type: 'tts.cancelled', reason })
   }
 
-  private cancelE2eAgent(): void {
-    const ownsAgentTurn = this.e2eDelegation !== undefined
+  private cancelE2eDelegations(responseId?: string): void {
+    const callIds = [...this.e2eDelegations.values()]
+      .filter(delegation => responseId === undefined || delegation.responseId === responseId)
+      .map(delegation => delegation.callId)
+    const ownsAgentTurn = this.activeE2eCallId !== undefined && callIds.includes(this.activeE2eCallId)
+    this.e2e?.abandonFunctionCalls(callIds)
     this.e2eGeneration += 1
-    this.e2eDelegation = undefined
-    this.activeAgentTurn = undefined
-    if (!ownsAgentTurn) return
-    const agent = this.ctx.agents.get(this.ticket.agentSessionId as never)
-    if (agent !== undefined && agent.status !== 'idle') agent.cancel({ kind: 'user' }, { keepInbox: true })
+    for (const callId of callIds) this.e2eDelegations.delete(callId)
+    for (let index = this.e2eQueue.length - 1; index >= 0; index -= 1) {
+      if (callIds.includes(this.e2eQueue[index]!)) this.e2eQueue.splice(index, 1)
+    }
+    if (ownsAgentTurn) {
+      this.activeE2eCallId = undefined
+      this.activeAgentTurn = undefined
+      const agent = this.ctx.agents.get(this.ticket.agentSessionId as never)
+      if (agent !== undefined && agent.status !== 'idle') agent.cancel({ kind: 'user' }, { keepInbox: true })
+    }
   }
 
   private beginAgentTurn(turn: number): void {
@@ -615,7 +760,7 @@ class VoiceAgentBridge {
     const spec = this.ttsSpec()
     if (spec === undefined) return undefined
     const generation = this.ttsGeneration
-    this.tts = createVoiceTtsStream(spec, {
+    this.tts = this.createTtsStream(spec, {
       onStarted: () => { if (this.acceptTts(generation)) sendClient(this.client, { type: 'tts.started', turn: this.activeAgentTurn }) },
       onAudio: audio => {
         if (this.acceptTts(generation) && this.client.readyState === WebSocket.OPEN) this.client.send(audio, { binary: true })
@@ -637,6 +782,7 @@ class VoiceAgentBridge {
   }
 
   private ttsSpec(): VoiceTtsSpec | undefined {
+    if (!shouldUseIndependentVoiceTts(this.ticket)) return undefined
     if (this.ticket.provider === 'qwen' && this.qwenKey) {
       return { provider: 'qwen', endpointMode: this.ticket.qwenEndpointMode, workspaceId: this.ticket.workspaceId, model: this.ticket.ttsModel, voice: this.ticket.ttsVoice, apiKey: this.qwenKey }
     }
@@ -697,7 +843,22 @@ export function registerVoiceRealtimeHost(ctx: Context): void {
       if (!sameOrigin(ctx, req) || req.method !== 'GET') return sendJson(res, 403, { message: 'forbidden' })
       const current = settings.get()
       const [qwen, doubaoAppId, doubaoAccessKey] = await Promise.all([credentialStatus(ctx, QWEN_API_KEY_REF), credentialStatus(ctx, DOUBAO_APP_ID_REF), credentialStatus(ctx, DOUBAO_ACCESS_KEY_REF)])
-      sendJson(res, 200, { enabled: current.enabled, provider: current.provider, systemPrompt: current.systemPrompt, qwen: { model: current.qwenModel, endpointMode: current.qwenEndpointMode, workspaceIdConfigured: safeIdentifier(current.qwenWorkspaceId.trim()), credential: qwen, ready: qwen.configured && (current.qwenEndpointMode === 'shared' || safeIdentifier(current.qwenWorkspaceId.trim())) }, doubao: { model: current.doubaoModel, endpoint: current.doubaoRealtimeUrl, resourceId: current.doubaoResourceId, credentials: { appId: doubaoAppId, accessKey: doubaoAccessKey }, ready: current.doubaoRealtimeUrl.startsWith('wss://') && doubaoAppId.configured && doubaoAccessKey.configured } })
+      const providerVoice = current.provider === 'qwen' && current.conversationMode !== 'cascade'
+      sendJson(res, 200, {
+        enabled: current.enabled,
+        provider: current.provider,
+        systemPrompt: current.systemPrompt,
+        session: {
+          conversationMode: current.provider === 'qwen' ? current.conversationMode : 'cascade',
+          audioSource: effectiveVoiceAudioSource(current),
+          modelId: current.provider === 'qwen' ? providerVoice ? current.qwenE2eModel : current.qwenModel : current.doubaoModel,
+          voice: providerVoice ? current.qwenE2eVoice : current.ttsEnabled ? current.provider === 'qwen' ? current.qwenTtsVoice : current.doubaoTtsVoice : '',
+          agentAuthority: voiceAgentAuthority(current),
+          buildCommit: desktopBuildCommit(),
+        },
+        qwen: { model: current.qwenModel, endpointMode: current.qwenEndpointMode, workspaceIdConfigured: safeIdentifier(current.qwenWorkspaceId.trim()), credential: qwen, ready: qwen.configured && (current.qwenEndpointMode === 'shared' || safeIdentifier(current.qwenWorkspaceId.trim())) },
+        doubao: { model: current.doubaoModel, endpoint: current.doubaoRealtimeUrl, resourceId: current.doubaoResourceId, credentials: { appId: doubaoAppId, accessKey: doubaoAccessKey }, ready: current.doubaoRealtimeUrl.startsWith('wss://') && doubaoAppId.configured && doubaoAccessKey.configured },
+      })
     } })
     const disposeSettings = ctx.webServer.register({ kind: 'exact', path: VOICE_SETTINGS_PATH, handler: async (req, res) => {
       if (!sameOrigin(ctx, req)) return sendJson(res, 403, { message: 'forbidden' })
@@ -720,7 +881,47 @@ export function registerVoiceRealtimeHost(ctx: Context): void {
       const qwenKey = current.provider === 'qwen' ? await resolveCredential(ctx, QWEN_API_KEY_REF) : undefined; const appId = current.provider === 'doubao' ? await resolveCredential(ctx, DOUBAO_APP_ID_REF) : undefined; const accessKey = current.provider === 'doubao' ? await resolveCredential(ctx, DOUBAO_ACCESS_KEY_REF) : undefined
       if (current.provider === 'qwen' && (!qwenKey || (current.qwenEndpointMode === 'workspace' && !safeIdentifier(current.qwenWorkspaceId.trim())))) return sendJson(res, 503, { code: 'qwen_not_ready', message: current.qwenEndpointMode === 'workspace' ? 'Configure the Qwen workspace ID and API key first.' : 'Configure the Qwen API key first.' })
       if (current.provider === 'doubao' && (!appId || !accessKey || !current.doubaoRealtimeUrl.startsWith('wss://'))) return sendJson(res, 503, { code: 'doubao_not_ready', message: 'Configure the Doubao App ID, Access Key, and realtime endpoint first.' })
-      const token = randomBytes(32).toString('base64url'); const bridgeSessionId = randomUUID(); clearExpiredTickets(tickets); tickets.set(token, { provider: current.provider, model: current.provider === 'qwen' ? current.qwenModel : current.doubaoModel, qwenEndpointMode: current.qwenEndpointMode, workspaceId: current.qwenWorkspaceId.trim(), conversationMode: current.provider === 'qwen' ? current.conversationMode : 'cascade', qwenE2eModel: current.qwenE2eModel, qwenE2eVoice: current.qwenE2eVoice.trim(), endpoint: current.doubaoRealtimeUrl.trim(), resourceId: current.doubaoResourceId.trim(), appKey: current.doubaoAppKey.trim(), ttsEnabled: current.ttsEnabled, ttsModel: current.provider === 'qwen' ? current.qwenTtsModel : current.doubaoTtsResourceId, ttsVoice: current.provider === 'qwen' ? current.qwenTtsVoice.trim() : current.doubaoTtsVoice.trim(), ttsEndpoint: current.provider === 'qwen' ? '' : current.doubaoTtsEndpoint.trim(), ttsResourceId: current.provider === 'qwen' ? '' : current.doubaoTtsResourceId.trim(), systemPrompt: current.systemPrompt, agentSessionId: sessionId, sessionId: bridgeSessionId, expiresAt: Date.now() + 60_000 }); sendJson(res, 200, { ticket: token, wsPath: VOICE_UPGRADE_PATH, sessionId: bridgeSessionId, agentSessionId: sessionId, provider: current.provider, modelId: current.provider === 'qwen' && current.conversationMode === 'qwen-e2e' ? current.qwenE2eModel : current.provider === 'qwen' ? current.qwenModel : current.doubaoModel, expiresAt: new Date(Date.now() + 60_000).toISOString() })
+      const conversationMode = current.provider === 'qwen' ? current.conversationMode : 'cascade'
+      const providerVoice = current.provider === 'qwen' && conversationMode !== 'cascade'
+      const audioSource = effectiveVoiceAudioSource({ ...current, conversationMode })
+      const token = randomBytes(32).toString('base64url')
+      const bridgeSessionId = randomUUID()
+      clearExpiredTickets(tickets)
+      tickets.set(token, {
+        provider: current.provider,
+        model: current.provider === 'qwen' ? current.qwenModel : current.doubaoModel,
+        qwenEndpointMode: current.qwenEndpointMode,
+        workspaceId: current.qwenWorkspaceId.trim(),
+        conversationMode,
+        qwenE2eModel: current.qwenE2eModel,
+        qwenE2eVoice: current.qwenE2eVoice.trim(),
+        endpoint: current.doubaoRealtimeUrl.trim(),
+        resourceId: current.doubaoResourceId.trim(),
+        appKey: current.doubaoAppKey.trim(),
+        ttsEnabled: !providerVoice && current.ttsEnabled,
+        ttsModel: current.provider === 'qwen' ? current.qwenTtsModel : current.doubaoTtsResourceId,
+        ttsVoice: current.provider === 'qwen' ? current.qwenTtsVoice.trim() : current.doubaoTtsVoice.trim(),
+        ttsEndpoint: current.provider === 'qwen' ? '' : current.doubaoTtsEndpoint.trim(),
+        ttsResourceId: current.provider === 'qwen' ? '' : current.doubaoTtsResourceId.trim(),
+        systemPrompt: current.systemPrompt,
+        agentSessionId: sessionId,
+        sessionId: bridgeSessionId,
+        expiresAt: Date.now() + 60_000,
+      })
+      sendJson(res, 200, {
+        ticket: token,
+        wsPath: VOICE_UPGRADE_PATH,
+        sessionId: bridgeSessionId,
+        agentSessionId: sessionId,
+        provider: current.provider,
+        modelId: providerVoice ? current.qwenE2eModel : current.provider === 'qwen' ? current.qwenModel : current.doubaoModel,
+        conversationMode,
+        audioSource,
+        voice: providerVoice ? current.qwenE2eVoice : current.ttsEnabled ? current.provider === 'qwen' ? current.qwenTtsVoice : current.doubaoTtsVoice : '',
+        agentAuthority: voiceAgentAuthority({ provider: current.provider, conversationMode }),
+        buildCommit: desktopBuildCommit(),
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      })
     } })
     const registerUpgrade = (ctx.webServer as typeof ctx.webServer & {
       registerUpgrade?: (route: { path: string; handler: (req: IncomingMessage, socket: Duplex, head: Buffer) => void | Promise<void> }) => () => void
