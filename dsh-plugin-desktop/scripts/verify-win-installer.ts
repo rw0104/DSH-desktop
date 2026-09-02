@@ -75,13 +75,16 @@ export function assertPortableExecutable(path: string, label: string): void {
 
 function defaultOptions(): WindowsInstallerVerificationOptions {
   const desktopRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+  const suffix = [
+    process.env.DSH_WINDOWS_PAYLOAD_STRATEGY === '7z-staged' || process.env.DSH_WINDOWS_PAYLOAD_STRATEGY === '7z-in-place'
+      ? process.env.DSH_WINDOWS_PAYLOAD_STRATEGY
+      : '',
+    process.env.DSH_WINDOWS_ARTIFACT_SUFFIX?.trim() ?? '',
+  ].filter(Boolean).join('-')
   return {
     desktopRoot,
     version: readVersion(desktopRoot),
-    ...(process.env.DSH_WINDOWS_PAYLOAD_STRATEGY === '7z-staged'
-      || process.env.DSH_WINDOWS_PAYLOAD_STRATEGY === '7z-in-place'
-      ? { artifactSuffix: process.env.DSH_WINDOWS_PAYLOAD_STRATEGY }
-      : {}),
+    ...(suffix === '' ? {} : { artifactSuffix: suffix }),
   }
 }
 

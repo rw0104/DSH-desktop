@@ -16,6 +16,16 @@ const WINDOWS_SIGNING_KEYS = [
 
 export type WindowsPayloadStrategy = 'zip-direct' | '7z-staged' | '7z-in-place'
 
+/** Optional reviewed suffix for a test artifact, such as the fix commit hash. */
+export function windowsArtifactSuffix(environment: NodeJS.ProcessEnv): string | undefined {
+  const value = environment.DSH_WINDOWS_ARTIFACT_SUFFIX?.trim()
+  if (!value) return undefined
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/u.test(value)) {
+    throw new Error(`unsupported Windows artifact suffix ${JSON.stringify(value)}`)
+  }
+  return value
+}
+
 /** Parse one explicit experiment strategy without changing the ZIP default. */
 export function windowsPayloadStrategy(environment: NodeJS.ProcessEnv): WindowsPayloadStrategy {
   const value = environment.DSH_WINDOWS_PAYLOAD_STRATEGY ?? 'zip-direct'
@@ -24,11 +34,12 @@ export function windowsPayloadStrategy(environment: NodeJS.ProcessEnv): WindowsP
 }
 
 /** Electron Builder overrides that keep payload experiments distinct. */
-export function windowsPayloadBuilderArgs(strategy: WindowsPayloadStrategy): readonly string[] {
-  if (strategy === 'zip-direct') return []
-  const artifactName = `DSH-Desktop-\${version}-\${arch}-Setup-${strategy}.\${ext}`
+export function windowsPayloadBuilderArgs(strategy: WindowsPayloadStrategy, suffix?: string): readonly string[] {
+  if (strategy === 'zip-direct' && suffix === undefined) return []
+  const artifactSuffix = [strategy === 'zip-direct' ? '' : strategy, suffix ?? ''].filter(Boolean).join('-')
+  const artifactName = `DSH-Desktop-\${version}-\${arch}-Setup-${artifactSuffix}.\${ext}`
   return [
-    '--config.nsis.useZip=false',
+    ...(strategy === 'zip-direct' ? [] : ['--config.nsis.useZip=false']),
     `--config.nsis.artifactName=${artifactName}`,
     ...(strategy === '7z-in-place'
       ? ['--config.nsis.include=installer-7z-in-place.nsh']
@@ -157,8 +168,12 @@ export function packageWindowsArtifact(
   strategy: WindowsPayloadStrategy = windowsPayloadStrategy(options.env),
 ): void {
   assertWindowsPackageHost(options, artifact)
+  const artifactSuffix = windowsArtifactSuffix(options.env)
   if (target === 'zip' && strategy !== 'zip-direct') {
     throw new Error('portable ZIP packaging does not accept an NSIS payload strategy')
+  }
+  if (target === 'zip' && artifactSuffix !== undefined) {
+    throw new Error('portable ZIP packaging does not accept an installer artifact suffix')
   }
 
   const cleanEnvironment = withoutWindowsSigningSecrets(options.env)
@@ -196,7 +211,7 @@ export function packageWindowsArtifact(
       'never',
       '--config.win.signExecutable=false',
       '--config.npmRebuild=false',
-      ...windowsPayloadBuilderArgs(strategy),
+      ...windowsPayloadBuilderArgs(strategy, artifactSuffix),
     ],
     options.desktopRoot,
     {

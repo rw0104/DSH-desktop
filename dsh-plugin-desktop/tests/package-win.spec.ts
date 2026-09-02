@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   packageWindowsArtifact,
   packageWindowsInstaller,
+  windowsArtifactSuffix,
   type WindowsPackageOptions,
 } from '../scripts/package-win.ts'
 
@@ -164,6 +165,31 @@ describe('Windows x64 installer packaging', () => {
       'Building an unsigned Windows x64 installer (zip-direct); Authenticode is a separate release step.',
       'Skipping the Windows package preflight; the CI shared gate already passed.',
     ])
+  })
+
+  it('names a test installer with a validated fix commit suffix', () => {
+    const calls: CommandCall[] = []
+    const value = {
+      ...options(calls),
+      env: { ...options([]).env, DSH_WINDOWS_ARTIFACT_SUFFIX: 'abc123def456' },
+    }
+
+    packageWindowsInstaller(value)
+
+    expect(calls[1]?.args).toContain('--config.nsis.artifactName=DSH-Desktop-${version}-${arch}-Setup-abc123def456.${ext}')
+    expect(calls[4]?.env.DSH_WINDOWS_ARTIFACT_SUFFIX).toBe('abc123def456')
+    expect(windowsArtifactSuffix(value.env)).toBe('abc123def456')
+  })
+
+  it('rejects an unsafe test artifact suffix', () => {
+    const calls: CommandCall[] = []
+    const value = {
+      ...options(calls),
+      env: { ...options([]).env, DSH_WINDOWS_ARTIFACT_SUFFIX: '..\\outside' },
+    }
+
+    expect(() => packageWindowsInstaller(value)).toThrow('unsupported Windows artifact suffix')
+    expect(calls).toEqual([])
   })
 
   it.each([
