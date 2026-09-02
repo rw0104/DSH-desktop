@@ -9,8 +9,8 @@ export type VoiceKey =
   | 'settings.ttsEnabled' | 'settings.ttsModel' | 'settings.ttsVoice'
   | 'settings.ttsEndpoint' | 'settings.ttsResource'
   | 'settings.credentialsGuide'
-  | 'settings.conversationMode' | 'settings.cascadeMode' | 'settings.qwenE2eMode'
-  | 'settings.e2eModel' | 'settings.e2eVoice' | 'settings.e2eNotice'
+  | 'settings.conversationMode' | 'settings.cascadeMode' | 'settings.qwenHybridMode' | 'settings.qwenNativeMode'
+  | 'settings.providerVoiceModel' | 'settings.providerVoice' | 'settings.hybridNotice' | 'settings.nativeNotice'
 
 export const voiceLocales = {
   zh: {
@@ -18,7 +18,7 @@ export const voiceLocales = {
     'button.stop': '结束语音对话',
     'button.unavailable': '语音对话尚未配置',
     'settings.title': '实时语音',
-    'settings.intro': '在输入框显示语音按钮。实时字幕只在一句话结束时提交给当前 DSH Agent，工具调用仍走原有权限链路。',
+    'settings.intro': '在输入框显示语音按钮。稳定级联、Qwen Agent 桥接和 Qwen 原生语音模式都保留 DSH 的工具、审批与审计边界。',
     'settings.enabled': '显示语音按钮',
     'settings.provider': '默认服务商',
     'settings.ttsEnabled': '使用服务商自然音色朗读 Agent 回复',
@@ -29,10 +29,12 @@ export const voiceLocales = {
     'settings.credentialsGuide': 'API Key 与 Workspace 配置教程',
     'settings.conversationMode': '对话模式',
     'settings.cascadeMode': 'Agent 级联（稳定）',
-    'settings.qwenE2eMode': 'Qwen 端到端（实验）',
-    'settings.e2eModel': '端到端模型',
-    'settings.e2eVoice': '端到端音色',
-    'settings.e2eNotice': '实验模式由 Qwen 处理全双工语音，并通过 dsh_agent_turn 委托当前 DSH Agent。可随时切回稳定模式。',
+    'settings.qwenHybridMode': 'Qwen Agent 桥接（实验）',
+    'settings.qwenNativeMode': 'Qwen 原生语音 Agent（实验）',
+    'settings.providerVoiceModel': '实时语音模型',
+    'settings.providerVoice': '实时语音音色',
+    'settings.hybridNotice': 'Qwen 负责实时音频；每个实质请求仍委托当前 DSH Agent，再由 Qwen 根据结构化结果组织语音。',
+    'settings.nativeNotice': '普通对话由 Qwen 直接回答；需要文件、终端、审批或项目上下文时，才通过 DSH capability gateway 执行。',
     'settings.model': '模型',
     'settings.voice': '声音',
     'settings.workspace': 'Qwen Workspace ID',
@@ -57,7 +59,7 @@ export const voiceLocales = {
     'button.stop': 'End voice conversation',
     'button.unavailable': 'Voice conversation is not configured',
     'settings.title': 'Realtime voice',
-    'settings.intro': 'Show a voice button in the composer. Partial captions stay local to the voice panel; only final turns enter the current DSH Agent and its tool permission chain.',
+    'settings.intro': 'Show a voice button in the composer. Stable cascade, Qwen Agent bridge, and Qwen native voice modes all preserve DSH tool, approval, and audit boundaries.',
     'settings.enabled': 'Show voice button',
     'settings.provider': 'Default provider',
     'settings.ttsEnabled': 'Read Agent replies with the provider voice',
@@ -68,10 +70,12 @@ export const voiceLocales = {
     'settings.credentialsGuide': 'API key and Workspace setup guide',
     'settings.conversationMode': 'Conversation mode',
     'settings.cascadeMode': 'Agent cascade (stable)',
-    'settings.qwenE2eMode': 'Qwen end-to-end (experimental)',
-    'settings.e2eModel': 'End-to-end model',
-    'settings.e2eVoice': 'End-to-end voice',
-    'settings.e2eNotice': 'Experimental mode uses Qwen for full-duplex speech and delegates work to the current DSH Agent through dsh_agent_turn. You can switch back at any time.',
+    'settings.qwenHybridMode': 'Qwen Agent bridge (experimental)',
+    'settings.qwenNativeMode': 'Qwen native voice Agent (experimental)',
+    'settings.providerVoiceModel': 'Realtime voice model',
+    'settings.providerVoice': 'Realtime voice',
+    'settings.hybridNotice': 'Qwen handles realtime audio while every substantive request is delegated to the current DSH Agent; Qwen speaks from the structured result.',
+    'settings.nativeNotice': 'Qwen answers ordinary conversation directly and uses the DSH capability gateway only for files, terminals, approvals, or project context.',
     'settings.model': 'Model',
     'settings.voice': 'Voice',
     'settings.workspace': 'Qwen Workspace ID',

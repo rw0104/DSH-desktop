@@ -55,13 +55,16 @@ export const DOUBAO_ACCESS_KEY_REF = 'DOUBAO_ACCESS_KEY'
 export const VOICE_TICKET_PATH = '/dsh-desktop/api/voice/ticket'
 export const VOICE_SETTINGS_PATH = '/dsh-desktop/api/voice/settings'
 
+export type VoiceConversationMode = 'cascade' | 'qwen-hybrid' | 'qwen-native'
+export type VoiceAudioSource = 'none' | 'provider-native' | 'provider-tts' | 'system-tts'
+
 export interface DesktopVoiceSettings {
   enabled: boolean
   provider: 'qwen' | 'doubao'
   qwenModel: 'qwen3-asr-flash-realtime'
   qwenEndpointMode: 'shared' | 'workspace'
   qwenWorkspaceId: string
-  conversationMode: 'cascade' | 'qwen-e2e'
+  conversationMode: VoiceConversationMode
   qwenE2eModel: 'qwen-audio-3.0-realtime-flash'
   qwenE2eVoice: string
   ttsEnabled: boolean
@@ -94,6 +97,15 @@ export interface VoiceAudioFeatures {
   high: number
 }
 
+export interface VoiceSessionInfo {
+  conversationMode: VoiceConversationMode
+  audioSource: VoiceAudioSource
+  modelId: string
+  voice: string
+  agentAuthority: string
+  buildCommit: string
+}
+
 export interface DesktopVoiceState {
   settings: DesktopVoiceSettings
   qwenKeyConfigured: boolean
@@ -104,6 +116,7 @@ export interface DesktopVoiceState {
   doubaoAccessKeyWritable: boolean
   status: VoiceStatus
   sessionId: string
+  sessionInfo: VoiceSessionInfo
   turns: readonly VoiceTurn[]
   liveInput: string
   liveOutput: string
@@ -150,6 +163,7 @@ const INITIAL: DesktopVoiceState = {
   doubaoAccessKeyWritable: true,
   status: 'idle',
   sessionId: '',
+  sessionInfo: { conversationMode: 'cascade', audioSource: 'none', modelId: '', voice: '', agentAuthority: 'dsh-agent', buildCommit: 'development' },
   turns: [],
   liveInput: '',
   liveOutput: '',
@@ -304,6 +318,7 @@ export class DesktopVoiceController {
   private readonly playbackSources = new Set<AudioBufferSourceNode>()
   private playbackDoneTimer: ReturnType<typeof setTimeout> | null = null
   private ttsExpected = false
+  private providerOutputExpected = false
 
   constructor(ctx: VoiceContext, private readonly sidebar: VoiceSidebarApi) {
     this.scope = ctx.settingsScope.bind<DesktopVoiceSettings>({ namespace: DESKTOP_VOICE_SETTINGS_NAMESPACE })
@@ -325,7 +340,25 @@ export class DesktopVoiceController {
 
   private syncSettings(): void {
     const value = this.scope.getSnapshot().value
-    if (value !== undefined) this.set({ settings: value, error: null })
+    if (value === undefined) return
+    const conversationMode = value.provider === 'qwen' ? value.conversationMode : 'cascade'
+    const providerVoice = value.provider === 'qwen' && conversationMode !== 'cascade'
+    const audioSource: VoiceAudioSource = providerVoice ? 'provider-native' : value.ttsEnabled ? 'provider-tts' : 'none'
+    const current = this.store.getSnapshot().sessionInfo
+    this.set({
+      settings: value,
+      error: null,
+      sessionInfo: {
+        conversationMode,
+        audioSource,
+        modelId: value.provider === 'qwen' ? providerVoice ? value.qwenE2eModel : value.qwenModel : value.doubaoModel,
+        voice: providerVoice ? value.qwenE2eVoice : value.ttsEnabled ? value.provider === 'qwen' ? value.qwenTtsVoice : value.doubaoTtsVoice : '',
+        agentAuthority: value.provider !== 'qwen' || conversationMode === 'cascade'
+          ? 'dsh-agent'
+          : conversationMode === 'qwen-hybrid' ? 'dsh-agent+qwen-voice' : 'qwen-conversation+dsh-capabilities-and-approvals',
+        buildCommit: current.buildCommit,
+      },
+    })
   }
 
   async refreshCredentials(): Promise<void> {
@@ -435,8 +468,19 @@ export class DesktopVoiceController {
       const ticketResponse = await fetch(VOICE_TICKET_PATH, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionId }) })
       const ticketPayload: unknown = await ticketResponse.json().catch(() => ({}))
       if (!ticketResponse.ok) throw new Error(messageOf(ticketPayload))
-      const ticket = ticketPayload as { ticket?: string; wsPath?: string; sessionId?: string }
+      const ticket = ticketPayload as {
+        ticket?: string
+        wsPath?: string
+        sessionId?: string
+        conversationMode?: VoiceConversationMode
+        audioSource?: VoiceAudioSource
+        modelId?: string
+        voice?: string
+        agentAuthority?: string
+        buildCommit?: string
+      }
       if (!ticket.ticket || !ticket.wsPath || !ticket.sessionId) throw new Error('The realtime voice ticket response is incomplete.')
+      this.set({ sessionInfo: this.sessionInfo(ticket) })
       await this.openMicrophone(generation)
       if (generation !== this.activeGeneration) return
       this.set({ status: 'connecting', sessionId: ticket.sessionId })
@@ -545,13 +589,15 @@ export class DesktopVoiceController {
     if (socket !== this.socket) return
     if (typeof event.data !== 'string') {
       const buffer = event.data instanceof Blob ? await event.data.arrayBuffer() : event.data
-      if (buffer instanceof ArrayBuffer) this.playPcmBytes(new Int16Array(buffer))
+      if (buffer instanceof ArrayBuffer && buffer.byteLength > 0 && buffer.byteLength % 2 === 0) this.playPcmBytes(new Int16Array(buffer))
       return
     }
     let message: Record<string, unknown>
     try { message = JSON.parse(event.data) as Record<string, unknown> } catch { return }
     const type = String(message.type || '')
-    if (type === 'provider.ready') {
+    if (type === 'session.connected') {
+      this.set({ sessionInfo: this.sessionInfo(message) })
+    } else if (type === 'provider.ready') {
       socket.send(JSON.stringify({ type: 'session.start' }))
       this.set({ status: 'listening' })
     } else if (type === 'speech.started') {
@@ -573,7 +619,17 @@ export class DesktopVoiceController {
       const response = this.store.getSnapshot().liveOutput
       this.commitTurn('assistant', response)
       this.ttsExpected = message.ttsExpected === true
-      if (!this.ttsExpected) this.set({ status: 'listening' })
+      this.providerOutputExpected = message.audioExpected === true
+      if (!this.ttsExpected && !this.providerOutputExpected) this.set({ status: 'listening' })
+    } else if (type === 'voice.output.started') {
+      this.providerOutputExpected = true
+      this.set({ status: 'assistant-speaking', error: null })
+    } else if (type === 'voice.output.done') {
+      this.providerOutputExpected = false
+      this.schedulePlaybackDone()
+    } else if (type === 'voice.output.cancelled') {
+      this.providerOutputExpected = false
+      this.cancelPlayback(false)
     } else if (type === 'tts.started') {
       this.ttsExpected = true
       this.set({ status: 'assistant-speaking', error: null })
@@ -641,7 +697,7 @@ export class DesktopVoiceController {
     source.connect(context.destination)
     source.onended = () => {
       this.playbackSources.delete(source)
-      if (!this.ttsExpected && this.playbackSources.size === 0) this.finishPlaybackState()
+      if (!this.ttsExpected && !this.providerOutputExpected && this.playbackSources.size === 0) this.finishPlaybackState()
     }
     this.playbackSources.add(source)
     const now = context.currentTime
@@ -667,7 +723,7 @@ export class DesktopVoiceController {
   }
 
   private finishPlaybackState(): void {
-    if (this.ttsExpected) return
+    if (this.ttsExpected || this.providerOutputExpected) return
     this.playbackAt = this.audioContext?.currentTime ?? 0
     this.set({ status: this.isActive() ? 'listening' : this.store.getSnapshot().status, outputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 } })
   }
@@ -681,8 +737,27 @@ export class DesktopVoiceController {
     this.playbackSources.clear()
     this.playbackAt = this.audioContext?.currentTime ?? 0
     this.ttsExpected = false
+    this.providerOutputExpected = false
     this.set({ outputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 } })
-    if (notifyHost && this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type: 'tts.cancel' }))
+    if (notifyHost && this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type: 'output.cancel' }))
+  }
+
+  private sessionInfo(value: Record<string, unknown>): VoiceSessionInfo {
+    const current = this.store.getSnapshot().sessionInfo
+    const conversationMode = value.conversationMode === 'qwen-hybrid' || value.conversationMode === 'qwen-native' || value.conversationMode === 'cascade'
+      ? value.conversationMode
+      : current.conversationMode
+    const audioSource = value.audioSource === 'provider-native' || value.audioSource === 'provider-tts' || value.audioSource === 'system-tts' || value.audioSource === 'none'
+      ? value.audioSource
+      : current.audioSource
+    return {
+      conversationMode,
+      audioSource,
+      modelId: typeof value.modelId === 'string' ? value.modelId : current.modelId,
+      voice: typeof value.voice === 'string' ? value.voice : current.voice,
+      agentAuthority: typeof value.agentAuthority === 'string' ? value.agentAuthority : current.agentAuthority,
+      buildCommit: typeof value.buildCommit === 'string' ? value.buildCommit : current.buildCommit,
+    }
   }
 
   private fail(error: string): void {

@@ -40,6 +40,7 @@ function state(overrides: Partial<DesktopVoiceState> = {}): DesktopVoiceState {
     doubaoAccessKeyWritable: true,
     status: 'idle',
     sessionId: '',
+    sessionInfo: { conversationMode: 'cascade', audioSource: 'none', modelId: '', voice: '', agentAuthority: 'dsh-agent', buildCommit: 'development' },
     turns: [],
     liveInput: '',
     liveOutput: '',
@@ -136,8 +137,41 @@ describe('desktop voice surfaces', () => {
     } as never))
     expect(html).toContain('dsh-qwen-tts-voice')
     expect(html).toContain('dsh-voice-conversation-mode')
-    expect(html).toContain('value="qwen-e2e"')
+    expect(html).toContain('value="qwen-hybrid"')
+    expect(html).toContain('value="qwen-native"')
+    expect(html).not.toContain('value="qwen-e2e"')
     expect(html).toContain('value="Cherry"')
+  })
+
+  it('hides independent TTS controls and identifies provider-native audio', () => {
+    const snapshot = state({
+      settings: { ...state().settings, conversationMode: 'qwen-native' },
+      sessionInfo: {
+        conversationMode: 'qwen-native',
+        audioSource: 'provider-native',
+        modelId: 'qwen-audio-3.0-realtime-flash',
+        voice: 'longanqian',
+        agentAuthority: 'qwen-conversation+dsh-capabilities-and-approvals',
+        buildCommit: 'abc123456789',
+      },
+    })
+    const settingsHtml = renderToStaticMarkup(createElement(VoiceSettingsSection, {
+      controller: controller(snapshot),
+      t,
+      openExternal,
+    } as never))
+    const sidebarHtml = renderToStaticMarkup(createElement(VoiceSidebarTab, {
+      controller: controller(snapshot),
+      scope: { sessionId: 'session-1' },
+    }))
+
+    expect(settingsHtml).not.toContain('dsh-voice-tts-enabled')
+    expect(settingsHtml).not.toContain('dsh-qwen-tts-model')
+    expect(settingsHtml).not.toContain('dsh-qwen-tts-voice')
+    expect(settingsHtml).toContain('settings.nativeNotice')
+    expect(sidebarHtml).toContain('Qwen native voice Agent')
+    expect(sidebarHtml).toContain('provider-native')
+    expect(sidebarHtml).toContain('abc123456789')
   })
 
   it('keeps the sidebar transcript accessible', () => {

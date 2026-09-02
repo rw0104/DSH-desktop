@@ -26,6 +26,10 @@ const VOICE_STYLES = `
 @keyframes dshVoiceBars { from { transform:scaleY(.55); opacity:.7; } to { transform:scaleY(1.05); opacity:1; } }
 .dshVoicePanel { display:flex; flex-direction:column; min-height:100%; color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-base); }
 .dshVoicePanelHeader { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:16px 14px 13px; border-bottom:1px solid var(--dsw-alias-border-l2); }
+.dshVoiceSessionInfo { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 14px; margin:0; padding:10px 14px; border-bottom:1px solid var(--dsw-alias-border-l2); background:var(--dsw-alias-bg-layer-1); }
+.dshVoiceSessionInfo div { min-width:0; }
+.dshVoiceSessionInfo dt { color:var(--dsw-alias-label-tertiary); font:var(--dsw-font-xxs-12); }
+.dshVoiceSessionInfo dd { overflow:hidden; margin:2px 0 0; color:var(--dsw-alias-label-secondary); font:var(--dsw-font-xxs-12); text-overflow:ellipsis; white-space:nowrap; }
 .dshVoicePanelEyebrow, .dshVoiceSettingsEyebrow { display:flex; align-items:center; gap:5px; color:var(--dsw-alias-label-tertiary); font:var(--dsw-font-xxxs-11); letter-spacing:.06em; text-transform:uppercase; }
 .dshVoicePanel h2 { margin:4px 0 0; font:var(--dsw-font-s-strong-14); }
 .dshVoiceStatus { flex:none; padding:4px 7px; border-radius:5px; color:var(--dsw-alias-label-tertiary); background:var(--dsw-alias-bg-layer-1); font:var(--dsw-font-xxxs-11); }

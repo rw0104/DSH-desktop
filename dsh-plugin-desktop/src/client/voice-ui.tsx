@@ -40,10 +40,18 @@ export function VoiceSidebarTab({ controller, scope }: { controller: DesktopVoic
       <header className="dshVoicePanelHeader">
         <div>
           <span className="dshVoicePanelEyebrow"><span className="dshVoiceGlyph is-wave" aria-hidden /> Realtime voice</span>
-          <h2>{state.settings.provider === 'qwen' ? state.settings.conversationMode === 'qwen-e2e' ? 'Qwen Audio E2E' : 'Qwen ASR' : 'Doubao Seed-ASR 2'}</h2>
+          <h2>{voiceModeTitle(state)}</h2>
         </div>
         <span className={`dshVoiceStatus is-${state.status}`}>{status}</span>
       </header>
+      <dl className="dshVoiceSessionInfo">
+        <div><dt>Mode</dt><dd>{state.sessionInfo.conversationMode}</dd></div>
+        <div><dt>Audio</dt><dd>{state.sessionInfo.audioSource}</dd></div>
+        <div><dt>Model</dt><dd>{state.sessionInfo.modelId || 'Not connected'}</dd></div>
+        <div><dt>Voice</dt><dd>{state.sessionInfo.voice || 'Off'}</dd></div>
+        <div><dt>Authority</dt><dd>{state.sessionInfo.agentAuthority}</dd></div>
+        <div><dt>Build</dt><dd>{state.sessionInfo.buildCommit}</dd></div>
+      </dl>
       {state.error !== null && <div className="dshVoiceError" role="alert">{state.error}</div>}
       <div className="dshVoicePresence">
         <VoiceOrb status={state.status} inputFeatures={state.inputAudio} outputFeatures={state.outputAudio} label={status} />
@@ -126,13 +134,13 @@ export function VoiceSettingsSection({ controller, t, openExternal }: VoiceSetti
 
 function QwenSettings({ state, draft, update, t, qwenKey, setQwenKey }: { state: DesktopVoiceState; draft: DesktopVoiceSettings; update: <K extends keyof DesktopVoiceSettings>(key: K, value: DesktopVoiceSettings[K]) => void; t: (key: VoiceKey) => string; qwenKey: string; setQwenKey: (value: string) => void }) {
   return <>
-    <div className="dshVoiceField"><label htmlFor="dsh-voice-conversation-mode">{t('settings.conversationMode')}</label><select id="dsh-voice-conversation-mode" value={draft.conversationMode} onChange={event => { update('conversationMode', event.target.value as DesktopVoiceSettings['conversationMode']) }}><option value="cascade">{t('settings.cascadeMode')}</option><option value="qwen-e2e">{t('settings.qwenE2eMode')}</option></select></div>
+    <div className="dshVoiceField"><label htmlFor="dsh-voice-conversation-mode">{t('settings.conversationMode')}</label><select id="dsh-voice-conversation-mode" value={draft.conversationMode} onChange={event => { update('conversationMode', event.target.value as DesktopVoiceSettings['conversationMode']) }}><option value="cascade">{t('settings.cascadeMode')}</option><option value="qwen-hybrid">{t('settings.qwenHybridMode')}</option><option value="qwen-native">{t('settings.qwenNativeMode')}</option></select></div>
     <div className="dshVoiceField"><label htmlFor="dsh-qwen-endpoint-mode">{t('settings.endpointMode')}</label><select id="dsh-qwen-endpoint-mode" value={draft.qwenEndpointMode} onChange={event => { update('qwenEndpointMode', event.target.value as DesktopVoiceSettings['qwenEndpointMode']) }}><option value="shared">{t('settings.apiKeyOnly')}</option><option value="workspace">{t('settings.workspaceDedicated')}</option></select></div>
     {draft.qwenEndpointMode === 'workspace' && <div className="dshVoiceField"><label htmlFor="dsh-qwen-workspace">{t('settings.workspace')}</label><input id="dsh-qwen-workspace" value={draft.qwenWorkspaceId} placeholder="llm-xxxxxxxxxxxx" onChange={event => { update('qwenWorkspaceId', event.target.value) }} /><span className="dshVoiceProviderNotice">{t('settings.workspaceHint')}</span></div>}
-    {draft.conversationMode === 'qwen-e2e' ? <>
-      <div className="dshVoiceField"><label htmlFor="dsh-qwen-e2e-model">{t('settings.e2eModel')}</label><input id="dsh-qwen-e2e-model" value={draft.qwenE2eModel} readOnly /></div>
-      <div className="dshVoiceField"><label htmlFor="dsh-qwen-e2e-voice">{t('settings.e2eVoice')}</label><select id="dsh-qwen-e2e-voice" value={draft.qwenE2eVoice} onChange={event => { update('qwenE2eVoice', event.target.value) }}><option value="longanqian">龙安芊 · 默认女声</option><option value="longanlingxin">龙安灵心 · 温暖女声</option><option value="longanlingxi">龙安灵希 · 甜美女声</option><option value="longanxiaoxin">龙安小新 · 活力童声</option><option value="longanlufeng">龙安鲁风 · 明亮男声</option></select></div>
-      <p className="dshVoiceExperimentalNotice">{t('settings.e2eNotice')}</p>
+    {draft.conversationMode !== 'cascade' ? <>
+      <div className="dshVoiceField"><label htmlFor="dsh-qwen-e2e-model">{t('settings.providerVoiceModel')}</label><input id="dsh-qwen-e2e-model" value={draft.qwenE2eModel} readOnly /></div>
+      <div className="dshVoiceField"><label htmlFor="dsh-qwen-e2e-voice">{t('settings.providerVoice')}</label><select id="dsh-qwen-e2e-voice" value={draft.qwenE2eVoice} onChange={event => { update('qwenE2eVoice', event.target.value) }}><option value="longanqian">龙安芊 · 默认女声</option><option value="longanlingxin">龙安灵心 · 温暖女声</option><option value="longanlingxi">龙安灵希 · 甜美女声</option><option value="longanxiaoxin">龙安小新 · 活力童声</option><option value="longanlufeng">龙安鲁风 · 明亮男声</option></select></div>
+      <p className="dshVoiceExperimentalNotice">{t(draft.conversationMode === 'qwen-native' ? 'settings.nativeNotice' : 'settings.hybridNotice')}</p>
     </> : <>
       <div className="dshVoiceField"><label htmlFor="dsh-qwen-model">{t('settings.model')}</label><input id="dsh-qwen-model" value={draft.qwenModel} readOnly /></div>
       <div className="dshVoiceField"><label htmlFor="dsh-qwen-tts-model">{t('settings.ttsModel')}</label><input id="dsh-qwen-tts-model" value={draft.qwenTtsModel} readOnly /></div>
@@ -164,4 +172,11 @@ function KeyField({ id, label, configured, writable, value, onChange }: { id: st
 function statusText(state: DesktopVoiceState): string {
   const labels: Record<DesktopVoiceState['status'], string> = { idle: 'Ready', requesting: 'Requesting mic', connecting: 'Connecting', listening: 'Listening', 'user-speaking': 'Listening to you', thinking: 'Thinking', 'assistant-speaking': 'Speaking', finishing: 'Finishing', ended: 'Ended', error: 'Needs attention' }
   return labels[state.status]
+}
+
+function voiceModeTitle(state: DesktopVoiceState): string {
+  if (state.settings.provider === 'doubao') return 'Doubao Seed-ASR 2'
+  if (state.sessionInfo.conversationMode === 'qwen-native') return 'Qwen native voice Agent'
+  if (state.sessionInfo.conversationMode === 'qwen-hybrid') return 'Qwen Agent bridge'
+  return 'Qwen Agent cascade'
 }
