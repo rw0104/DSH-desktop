@@ -51,7 +51,7 @@ npm view dsh-better-sidebar@0.17.1 version dist.tarball --json
 
 ## 2026-09-03 v2.1.0 prerelease publication
 
-- `main` 与 `v2.1.0` annotated tag 已推送到 `525351f75e`；tag 未改写。
+- `v2.1.0` annotated tag 解引用到发布提交 `525351f75e`；发布回读记录随后追加到 `main` 提交 `26715cff10`，tag 未改写。
 - GitHub Release [v2.1.0 (Prerelease)](https://github.com/rw0104/DSH-desktop/releases/tag/v2.1.0) 于 `2026-09-03T07:27:50Z` 发布，`draft=false`、`prerelease=true`。
 - Release 仅包含 `DSH-Desktop-2.1.0-x64-Setup.exe`（`220,889,266` bytes，SHA-256 `11F9AAC795033DA393157F7F723E7AA74EDCF8ACC632ABB3FC9055D09ED412B1`）和 `latest.yml`（`339` bytes，SHA-256 `300BF724A21F300197FD60FD2E1BBA21E03F05FE1D16EDD017717CC306DA6F53`）。
 - 安装器为 `NotSigned (test artifact)`，因此本次是 prerelease，不宣称可信稳定发布；未上传 `win-unpacked`、缓存、诊断 Profile 或 `docs/local/`。
