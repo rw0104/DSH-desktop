@@ -76,6 +76,15 @@ Community Market compiled-in reviewed sources 的 live replay 已完成；用户
 - 修复后本地 Setup：`DSH-Desktop-2.1.0-x64-Setup-typert-fix.exe`，`224,089,509` bytes，SHA-256 `5C8A5520C2AA7EA9E63C9F7339D4A7BC28B1038DD730C6307A97FECDB1EBDDD9`；Portable：`DSH-Desktop-2.1.0-x64-Portable-typert-fix.zip`，`223,574,056` bytes，SHA-256 `B97B012C9C42B16A5B5688FDDEEEF59997F4B8270310772D145B1EBAEA4C43E1`；`latest.yml` SHA-256 `E98F09F3AD9CA6A6289BD14C6CFF029EF6C275BC64AE993BBBB95C15CB741BB6`。
 - 以上仍是 unsigned 本地修复候选；没有覆盖用户现有安装、Profile 或稳定 Release 资产。安装前必须重新执行真实安装后 Host smoke。
 
+## 2026-09-03 RC1 packaged Renderer authentication 回归修复
+
+- 安装 Typert 修复候选后，Renderer 能进入 Web root，但因 Desktop shell 仍加载未认证的 clean URL，页面只显示 `dsh web authentication required; reopen the URL printed by dsh web.`，随后 Renderer health 失败并自动退出。
+- 根因是 RC1 `@deepseek-ai/dsh-client-connection` 已提供 `connection.authenticatedUrl(baseUrl)` 的 process-token exchange，但 Desktop shell 只调用 `desktopRendererUrl(...)`，没有把 token URL 交给 BrowserWindow。
+- 修复 commit：`208d885d0c`。Desktop shell 将 `connection` 加入 required injection，启动前强制校验 `authenticatedUrl`，并把认证 URL 写入 `DesktopShellSpec.url`；插件测试覆盖 clean URL 输入与 tokenized URL 输出。
+- 修复后 `package:dir`：`861` 个物理文件、`680,389,942` bytes、`18,012` ASAR entries；打包 bundle 包含 `authenticatedUrl`，required Typert exports、Profile/Loader、footprint 和 PE verifier 通过。
+- 修复后本地 Setup：`DSH-Desktop-2.1.0-x64-Setup-auth-fix.exe`，`224,089,530` bytes，SHA-256 `E873F70D8C1DCC44E9EE3728373AC3DFA71D715179E497C0C4B2CAA51C1B2181`；Portable：`DSH-Desktop-2.1.0-x64-Portable-auth-fix.zip`，`223,574,143` bytes，SHA-256 `654F93158301D52EF400DC6C79456D7283A278D7EA8394E833ED7C129CAD0DDC`；`latest.yml` SHA-256 `32DF26E530BC096DB19271B02BEE2A6B04B5FFD3DC181D82E2818E94D092D678`。
+- 以上仍是 unsigned 本地修复候选；没有覆盖用户现有安装、Profile 或稳定 Release 资产。必须使用 `auth-fix` 包重新安装，旧安装不会自动获得认证修复。
+
 ## 2026-09-02 v2.1.0 release-prep audit
 
 本批次在升级产品版本和安装器合同前重新核对权威远端与 registry。没有更新上游 gitlink、官方 npm family 或 Better Sidebar 依赖；本批次只修改 Desktop-owned 语音、安装器和产品版本。
