@@ -1,0 +1,37 @@
+diff --git a/cordis.patch.yml b/cordis.patch.yml
+index 2c9bd259903d4ac7af6321c6c51f58ba0049edc6..d5872d3c1ef9c5c290d80bf97acf63adceeb0b82 100644
+--- a/cordis.patch.yml
++++ b/cordis.patch.yml
+@@ -136,7 +136,7 @@
+       name: '@deepseek-ai/dsh-web-app'
+       inject: [webStartup]
+       config:
+-        openBrowser: !!js ctx.webStartup.openBrowser
++        openBrowser: false
+         printUrl: true
+         surfaceContext: true
+         trustedHosts: !!js ctx.webStartup.trustedHosts
+diff --git a/lib/index.js b/lib/index.js
+index a9f2837415307c3065872fc4aae744641544dba9..566594bf7ec8841d2316916a793a18dd860772c6 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -51,6 +51,7 @@ function launchedThroughSsh(ctx) {
+ }
+ const BROWSER_OPENER_MODULE = import.meta.resolve("open");
+ const BROWSER_OPENER_PROGRAM = `
++for (const name of Object.keys(process.env)) if (name.toUpperCase() === 'ELECTRON_RUN_AS_NODE') delete process.env[name]
+ try {
+   const { default: open } = await import(${JSON.stringify(BROWSER_OPENER_MODULE)})
+   const launcher = await open(process.argv[1])
+@@ -130,7 +131,10 @@ function spawnBrowserLauncher(url) {
+ 		"--",
+ 		url
+ 	], {
+-		env: scrubbedParentEnv(),
++		env: {
++			...scrubbedParentEnv(),
++			ELECTRON_RUN_AS_NODE: "1"
++		},
+ 		stdio: [
+ 			"ignore",
+ 			"inherit",

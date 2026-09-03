@@ -1,9 +1,10 @@
 /** Cordis Host bridge for authorized conversation-deliverable clipboard actions. */
 
-import { randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
-import { RpcId } from '@deepseek-ai/dsh-host-apiproxy'
+import type {
+  SessionHistoryRecord,
+} from '@deepseek-ai/dsh-api-session-controller'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import type {} from '@deepseek-ai/dsh-host-webserver'
@@ -55,26 +56,27 @@ export function apply(ctx: Context): void {
 }
 
 function service(ctx: Context): DesktopDeliverableCopyService {
-  const apiProxy = ctx.get('apiProxy') as Context['apiProxy']
+  const sessionController = ctx.get('sessionController') as Context['sessionController'] | undefined
   const desktopRuntime = ctx.get('desktopRuntime') as Context['desktopRuntime']
   const sessions = ctx.get('sessions') as Context['sessions']
   const sessionPersistence = ctx.get('sessionPersistence') as Context['sessionPersistence']
   return new DesktopDeliverableCopyService({
     history: async (sessionId, beforeSeq) => {
-      const response = await apiProxy.sessions.history({
-        rpcId: RpcId(`deliverable-copy-${randomUUID()}`),
-        payload: {
-          sessionId: SessionId(sessionId),
-          maxMessages: 100,
-          ...(beforeSeq === undefined ? {} : { beforeSeq }),
-        },
-      })
-      if (!response.result.ok) {
+      if (sessionController === undefined) {
         throw new DesktopDeliverableCopyError('unavailable', 'The produced-file history is unavailable.')
       }
+      const id = SessionId(sessionId)
+      const inspection = await sessionController.inspect(id)
+      const throughSeq = inspection.events.at(-1)?.seq ?? -1
+      const page = await sessionController.page({
+        address: { kind: 'session', sessionId: id },
+        throughSeq,
+        maxMessages: 100,
+        ...(beforeSeq === undefined ? {} : { beforeSeq }),
+      }, new AbortController().signal)
       return {
-        entries: response.result.value.events as DesktopDeliverableHistoryEntry[],
-        hasMore: response.result.value.hasMore,
+        entries: page.records.flatMap(record),
+        hasMore: page.hasMore,
       }
     },
     sessionRoot: async (sessionId) => {
@@ -85,6 +87,11 @@ function service(ctx: Context): DesktopDeliverableCopyService {
     },
     writeClipboard: text => { desktopRuntime.writeClipboardText(text) },
   })
+}
+
+function record(value: SessionHistoryRecord): DesktopDeliverableHistoryEntry[] {
+  if (value.type !== 'event') return []
+  return [{ event: value.event }]
 }
 
 function sameOrigin(ctx: Context, req: IncomingMessage): boolean {

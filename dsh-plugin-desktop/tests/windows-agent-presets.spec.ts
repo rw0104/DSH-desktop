@@ -1,10 +1,12 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
-import { PresetExistsError, UnknownPresetError } from '@deepseek-ai/dsh-agent-presets'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+  PresetExistsError,
+  UnknownPresetError,
   WindowsAgentPresets,
   WINDOWS_SAFE_PRESET,
   WINDOWS_UNSUPPORTED_PRESET,
@@ -30,10 +32,13 @@ function createRoster(defaultId: string): WindowsAgentPresets {
   writePreset(root, WINDOWS_UNSUPPORTED_PRESET)
   writePreset(root, 'code')
   const ctx = new Context()
+  ctx.baseUrl = pathToFileURL(join(root, 'package.json')).href
+  ctx.provide('sessionProjections', { register: () => () => {} } as never)
   contexts.push(ctx)
   return new WindowsAgentPresets(ctx, {
     default: defaultId,
     roots: [{ path: root, trust: 'system' }],
+    includeShippedRoot: false,
     includeUserRoot: false,
   })
 }

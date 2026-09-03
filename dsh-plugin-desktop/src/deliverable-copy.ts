@@ -78,7 +78,58 @@ function resultSucceeded(entry: DesktopDeliverableHistoryEntry): boolean {
 
 function callView(entry: DesktopDeliverableHistoryEntry): Record<string, unknown> | undefined {
   const envelope = record(entry.view)
-  return envelope?.for === 'call' ? record(envelope.view) : undefined
+  if (envelope?.for === 'call') return record(envelope.view)
+  const data = record(entry.event.data)
+  const path = mutationPath(data?.name, data?.arguments)
+  return path === undefined
+    ? undefined
+    : { card: 'diff', locations: [{ path }] }
+}
+
+function pathValue(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined
+}
+
+function validEditArgs(args: Record<string, unknown>): boolean {
+  return typeof args.old_string === 'string'
+    && args.old_string.length > 0
+    && typeof args.new_string === 'string'
+    && args.old_string !== args.new_string
+    && (args.replace_all === undefined || typeof args.replace_all === 'boolean')
+}
+
+function editorMutationPath(args: Record<string, unknown>): string | undefined {
+  const path = pathValue(args.path)
+  if (path === undefined) return undefined
+  if (args.command === 'create') return typeof args.file_text === 'string' ? path : undefined
+  if (args.command === 'str_replace') {
+    return typeof args.old_str === 'string' && args.old_str.length > 0
+      && (args.new_str === undefined || typeof args.new_str === 'string')
+      ? path
+      : undefined
+  }
+  if (args.command === 'insert') {
+    return typeof args.insert_line === 'number'
+      && Number.isInteger(args.insert_line)
+      && args.insert_line >= 0
+      && typeof args.new_str === 'string'
+      ? path
+      : undefined
+  }
+  return undefined
+}
+
+/** Match the RC1 first-party mutating tools without trusting presentation metadata. */
+function mutationPath(name: unknown, argsRaw: unknown): string | undefined {
+  if (typeof name !== 'string' || typeof argsRaw !== 'string') return undefined
+  let parsed: unknown
+  try { parsed = JSON.parse(argsRaw) } catch { return undefined }
+  const args = record(parsed)
+  if (args === undefined) return undefined
+  if (name === 'write') return typeof args.content === 'string' ? pathValue(args.file_path) : undefined
+  if (name === 'edit') return validEditArgs(args) ? pathValue(args.file_path) : undefined
+  if (name === 'str_replace_editor') return editorMutationPath(args)
+  return undefined
 }
 
 function producedPaths(view: Record<string, unknown> | undefined): readonly string[] {

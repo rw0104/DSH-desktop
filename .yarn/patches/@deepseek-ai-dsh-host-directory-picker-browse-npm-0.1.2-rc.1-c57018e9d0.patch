@@ -1,0 +1,15 @@
+diff --git a/lib/index.js b/lib/index.js
+index 2b8c76e26a05022d8f24fcfff651bc8c1ee83dec..5ba1ea29b5884cb38b5d8d2eda904d1dd3f58284 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -120,8 +120,8 @@ function messageOf(error) {
+ */
+ async function directoryRow(parent, name, isDirectory, isSymbolicLink, signal) {
+ 	const path = join(parent, name);
+-	let enterable = isDirectory;
+-	if (!enterable && isSymbolicLink) try {
++	let enterable = false;
++	if (isDirectory || isSymbolicLink) try {
+ 		enterable = (await raceAbort(stat(path), signal)).isDirectory();
+ 	} catch {
+ 		/* v8 ignore next 2 -- an abort landing mid-probe needs a stalled stat; the per-candidate check in list covers the settled path. */

@@ -16,7 +16,6 @@ import {
   THEME_SETTINGS_NAMESPACE,
   type ThemeSettings,
 } from '@deepseek-ai/dsh-client-ui-theme'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import {
   handleRendererBootRequest,
   RENDERER_BOOT_REPORT_PATH,
@@ -29,7 +28,7 @@ import {
   handleDesktopDirectoryPickerRequest,
   handleDesktopDirectoryValidationRequest,
 } from './directory-picker-route.ts'
-import type { DesktopPlatform, DesktopShellMode } from './runtime.ts'
+import type { DesktopLocale, DesktopPlatform, DesktopShellMode } from './runtime.ts'
 import type {} from './runtime.ts'
 import { installWorkspaceWorkbench } from './workspace-workbench.ts'
 
@@ -41,7 +40,7 @@ export const name = 'desktop-shell'
 export const inject = ['webServer', 'webRuntime', 'appExit', 'settings', 'agents']
 
 /** Standard settings namespace shared by tray and configuration surfaces. */
-export const DESKTOP_SETTINGS_NAMESPACE = settingsNamespace('dsh-desktop')
+export const DESKTOP_SETTINGS_NAMESPACE = 'dsh-desktop'
 
 /** Probe one filesystem path when resolving the Windows drive list. */
 export type WindowsDriveProbe = (path: string) => boolean
@@ -62,8 +61,12 @@ export function detectWindowsDriveLetters(
     })
 }
 
-const UI_THEME_SETTINGS_NAMESPACE = settingsNamespace(THEME_SETTINGS_NAMESPACE)
-const UI_LOCALE_SETTINGS_NAMESPACE = settingsNamespace(LOCALE_SETTINGS_NAMESPACE)
+const UI_THEME_SETTINGS_NAMESPACE = THEME_SETTINGS_NAMESPACE
+const UI_LOCALE_SETTINGS_NAMESPACE = LOCALE_SETTINGS_NAMESPACE
+
+function desktopLocale(value: string | undefined): DesktopLocale | undefined {
+  return value === 'zh' || value === 'en' ? value : undefined
+}
 
 /** Desktop settings presented by the standard settings service. */
 export interface DesktopSettings {
@@ -251,7 +254,7 @@ export function apply(ctx: Context, config: Config): void {
   }
   ctx.on('settings/updated', (namespace, next) => {
     if (namespace !== UI_LOCALE_SETTINGS_NAMESPACE) return
-    runtime.setLocalePreference((next as LocaleSettings).preference)
+    runtime.setLocalePreference(desktopLocale((next as LocaleSettings).preference))
   })
   ctx.effect(
     () => runtime.schedule({
@@ -262,7 +265,7 @@ export function apply(ctx: Context, config: Config): void {
       iconPath,
       trayIcons,
       readLocalePreference: () => {
-        return (ctx.settings.get(UI_LOCALE_SETTINGS_NAMESPACE) as LocaleSettings | undefined)?.preference
+        return desktopLocale((ctx.settings.get(UI_LOCALE_SETTINGS_NAMESPACE) as LocaleSettings | undefined)?.preference)
       },
       readThemeSource: () => {
         const theme = ctx.settings.get(UI_THEME_SETTINGS_NAMESPACE) as ThemeSettings | undefined

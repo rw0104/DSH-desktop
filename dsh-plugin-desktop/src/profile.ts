@@ -1,7 +1,7 @@
 /** Compatibility profile composition over the official Web bundle and user plugins. */
 
 import { createRequire, findPackageJSON } from 'node:module'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { evaluate, isJsExpr, type EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
@@ -177,11 +177,11 @@ export function readDesktopShellMode(config: SettingsFileConfig): DesktopShellMo
 
 /** Resolve the public Web template once and reject an incompatible DSH release. */
 function requiredWebBundles(): string[] {
-  const bundles = PROFILE_TEMPLATES.web
-  if (bundles === undefined) {
+  const template = PROFILE_TEMPLATES.web
+  if (template === undefined) {
     throw new Error(`${BIN_NAME}: installed dsh-app-boot has no web profile template`)
   }
-  return [...bundles]
+  return [...template.bundles]
 }
 
 /** Prepared profile inputs consumed by app-boot. */
@@ -300,7 +300,7 @@ function loadRecoveryFilteredProfile(
     if (template === undefined) {
       throw new Error(`${BIN_NAME}: profile ${JSON.stringify(profileName)} does not exist`)
     }
-    initProfile(profileDir, template)
+    initProfile(profileDir, template.bundles, template.patchReload)
   }
   const manifest = readProfileManifest(BIN_NAME, profileDir)
   const rawBundles = (manifest.dsh?.profile as { bundles?: unknown } | undefined)?.bundles
@@ -329,12 +329,15 @@ function loadRecoveryFilteredProfile(
     })
   }
   const patchPath = join(profileDir, PROFILE_PATCH_FILENAME)
+  const template = PROFILE_TEMPLATES[profileName]
+  const patchReload = template?.patchReload ?? 'live'
   return {
     name: profileName,
     dir: profileDir,
     layers,
     patchPath,
     patches: existsSync(patchPath) ? loadOverlayPatches(BIN_NAME, patchPath) : [],
+    patchReload,
   }
 }
 
@@ -459,6 +462,7 @@ export function prepareDesktopProfile(
   pluginStatePath?: string,
   startupSettingsOverride?: DesktopStartupSettingsOverride,
 ): PreparedDesktopProfile {
+  mkdirSync(join(home, 'profiles'), { recursive: true })
   const profileDir = profileName === DESKTOP_PROFILE_NAME
     ? ensureDesktopProfile(home)
     : resolveProfileDir(profileName, home)
@@ -468,7 +472,7 @@ export function prepareDesktopProfile(
   if (/[\\/]app\.asar[\\/]/u.test(INSTALL_ANCHOR)) {
     ensurePackagedClientModuleFallback(INSTALL_ANCHOR, home)
   } else {
-    healProfilesModuleFallback(INSTALL_ANCHOR, home)
+    void healProfilesModuleFallback({ installAnchor: INSTALL_ANCHOR, home }).catch(() => {})
   }
   const disabledBundles = pluginStatePath === undefined
     ? new Set<string>()
@@ -496,7 +500,18 @@ export function prepareDesktopProfile(
     throw new Error(`${BIN_NAME}: desktop profile is missing @deepseek-ai/dsh-web-app`)
   }
 
-  const loadedHomePatches = loadOptionalPatches(BIN_NAME, join(home, PROFILE_PATCH_FILENAME)) ?? []
+  const homePatchPath = join(home, PROFILE_PATCH_FILENAME)
+  let loadedHomePatches: PatchOptions[] = []
+  if (existsSync(homePatchPath)) {
+    const homePatchText = readFileSync(homePatchPath, 'utf8')
+    const parsedHomePatch = parseDocument(homePatchText, { prettyErrors: true })
+    if (parsedHomePatch.errors.length > 0) {
+      throw new Error(`${BIN_NAME}: invalid machine-wide patch ${homePatchPath}: ${parsedHomePatch.errors.map(error => error.message).join('; ')}`)
+    }
+    if (parsedHomePatch.toJS() !== null && parsedHomePatch.toJS() !== undefined) {
+      loadedHomePatches = loadOptionalPatches(BIN_NAME, homePatchPath) ?? []
+    }
+  }
   const { patches: homePatches, skipped: skippedOptionalEntries } = omitUnresolvedOptionalEntries(
     loadedHomePatches,
     bareModuleBaseUrl,

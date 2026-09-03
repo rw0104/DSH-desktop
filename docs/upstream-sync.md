@@ -1,6 +1,6 @@
 # Upstream synchronization ledger
 
-更新时间：2026-08-30
+更新时间：2026-09-03 07:14 -07:00
 
 本文件是 DSH Desktop 每次依赖、侧栏或发布变更前的上游审计入口。它区分“上游源码最新”“npm 最新发布”和“本产品当前经过验证的 pin”，不把未经回归的上游 HEAD 直接塞进安装包。
 
@@ -8,9 +8,9 @@
 
 | 角色 | 上游 | 当前上游信号 | 本产品当前 pin | 状态 |
 | --- | --- | --- | --- | --- |
-| 官方 Harness | [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) | `master` / `dsh-v0.1.2-alpha.1` 为 `cd5ef8148158c3a752a658978873241fdf8e2bbc`；npm `latest`/`next` 仍为 `0.1.1-rc.2` | 子模块 `dsh-v0.1.1-rc.2`，commit `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；桌面依赖为 `0.1.1-rc.2` | v2.0.15 不把未正式发布的 alpha 混入市场修复 |
-| 官方侧栏 | [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | `main` 为 `3aab7ca3a53357f9237a91978d57df4cf84c9c45`，比 `v0.17.1` 超前 32 个未发布提交；最新 tag/npm 仍为 `v0.17.1` / `0.17.1`，tag commit `3b1898f9cb74edf4ca542ff84430eaf346dd05f4` | `dsh-better-sidebar@0.17.1` | 正式 pin 仍最新；等待新 tag/npm 后独立审计 `workspaceFence`、文件树和 Market 共存，不使用 `main` 快照 |
-| 桌面参考 | [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop)（重定向到 `anywhere-labs/dsh-desktop`） | `master` 为 `b9758b4346f6a806e4407873c5269b9989a39fbe`；最新 tag `v2.0.4` 为 `d29bf7a965fc68bf09750bc329905ecb17afe48b` | 本 fork `rw0104/DSH-desktop` 的 `v2.0.15` 候选 | 只作只读对照，不整体合并或作为依赖 |
+| 官方 Harness | [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) | `master` 为 `76fda729799fe9b3848dbe2c211d4b231032b81e`；固定 tag `dsh-v0.1.2-rc.1` 为 `a66e4702047846cdaa10c66c9d3df3951f5ea70d`；npm `@deepseek-ai/dsh@0.1.2-rc.1` 已发布（`latest` 仍为 `0.1.1-rc.2`，`next` 为 RC1） | 子模块与 Desktop/Market 运行时均为 `0.1.2-rc.1`，gitlink `a66e4702047846cdaa10c66c9d3df3951f5ea70d` | RC1 依赖闭包和 Host/Client 合同已完成迁移，保持 prerelease 候选，不创建稳定 tag |
+| 官方侧栏 | [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | `main` 为 `f59ffd07417036baf3953310d42c7b40b280db78`；正式 tag/npm `v0.18.0` / `0.18.0`，tag commit `9e1a03452794532cda1f6ac677b72579dff48dfc`；`v0.18.0-alpha.0` 为 `9494774c...` | `dsh-better-sidebar@0.18.0` | 正式 0.18.0 peer 明确支持 RC1，已纳入本候选；不使用 main/alpha 快照 |
+| 桌面参考 | [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop)（重定向到 `anywhere-labs/dsh-desktop`） | `master` 为 `423406fe225442995902015cb6f10eed670ff115`；最新 tag `v2.0.4` 为 `d29bf7a965fc68bf09750bc329905ecb17afe48b` | 本 fork 当前 RC1 迁移候选 | 只作只读对照，不整体合并或作为依赖 |
 
 补充：2026-08-29 通过代理复核三条 Git remote 与 npm registry。官方 Harness Git 已出现 `0.1.2-alpha.1`，但 npm 正式 `latest`/`next` 仍为 `0.1.1-rc.2`，因此本产品继续使用已验证 pin；Better Sidebar 正式版本与本地 pin 均为 `0.17.1`。仍然必须同时记录 Git tag、commit 和 registry 版本，不能只看任一信号。
 
@@ -24,6 +24,48 @@ npm view @deepseek-ai/dsh version
 npm view dsh-better-sidebar version
 git submodule status -- deepseek-harness
 ```
+
+## 2026-09-03 07:14 三个上游再次复核
+
+本次通过 `http://127.0.0.1:10808` 代理重新读取三个权威 Git remote 和 npm registry。查询时间为 `2026-09-03T07:13:52-07:00`。源码开发分支的前进只记录为上游信号，不自动更新产品 pin。
+
+| 上游 | 本次查询结果 | 相对当前 pin 的结论 |
+| --- | --- | --- |
+| Official Harness | `master` `76fda729799fe9b3848dbe2c211d4b231032b81e`；`dsh-v0.1.2-rc.1` `a66e4702047846cdaa10c66c9d3df3951f5ea70d`；npm `latest` `0.1.1-rc.2`、`next` `0.1.2-rc.1`、`alpha` `0.1.2-alpha.5`；RC1 tarball integrity `sha512-RPq48TzxvwpdT9/7W1tbhZDBMmeK+bxDrX9cqQC27Wx/LqtgJF8PSa3b3xriU8oxtvhwYmk21w2cej3uMQrnVA==` | `master` 已领先固定 RC1 tag；当前仍固定已验证 RC1，不追 master/alpha |
+| Better Sidebar | `main` `f59ffd07417036baf3953310d42c7b40b280db78`；`v0.18.0` `9e1a03452794532cda1f6ac677b72579dff48dfc`；npm `latest` `0.18.0`；peer 包含 `@deepseek-ai/dsh-agent ^0.1.2-rc.1`、`@deepseek-ai/dsh-host-webserver ^0.1.2-rc.1`、`@deepseek-ai/dsh-session ^0.1.2-rc.1`；tarball integrity `sha512-6sGUIpgrFLXikACKBXLSiyngULceZCIr5M4bLw2IdCJ3KWHcbNsJJl+TLHJw0lM9voRw0etbr5fC16VQ9YvshQ==` | 稳定 `0.18.0` 已是当前正式 pin；不使用 main/alpha |
+| Desktop reference | `master` `423406fe225442995902015cb6f10eed670ff115`；`v2.0.4` `d29bf7a965fc68bf09750bc329905ecb17afe48b` | reference master 有新提交，但只读比较，不作为 runtime dependency |
+
+复核命令：
+
+```powershell
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/deepseek-ai/deepseek-harness.git HEAD refs/heads/master refs/tags/dsh-v0.1.2-rc.1 'refs/tags/dsh-v0.1.2-rc.1^{}'
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/omdsh-dev/DSH-better-sidebar.git HEAD refs/heads/main refs/tags/v0.18.0 'refs/tags/v0.18.0^{}'
+git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/anywhere-labs/deepseek-harness-desktop.git HEAD refs/heads/master refs/tags/v2.0.4 'refs/tags/v2.0.4^{}'
+npm view @deepseek-ai/dsh version dist-tags time.modified --json
+npm view @deepseek-ai/dsh@0.1.2-rc.1 version dist.tarball dist.integrity --json
+npm view dsh-better-sidebar@0.18.0 peerDependencies version dist.tarball dist.integrity --json
+```
+
+## 2026-09-03 Harness 0.1.2-rc.1 完整接入审计
+
+本批次完成官方 Harness `dsh-v0.1.2-rc.1` 的 Desktop Host、Client、Profile/Loader、Community Market 和发布闭环迁移。RC1 tag 与当前子模块一致；三条权威远端和 registry 已通过代理复核，Better Sidebar 使用正式稳定 `0.18.0`，桌面参考仓库仍只作只读对照。
+
+RC1 package 发布距当前时间短于仓库默认 npm 最小年龄门槛。所有迁移安装与验证重放均使用 `$env:YARN_NPM_MINIMAL_AGE_GATE='0'`；该临时候选覆盖不会改变提交中的 Yarn policy。
+
+| 项目 | 证据 | 结果 |
+| --- | --- | --- |
+| Harness pin | `a66e4702047846cdaa10c66c9d3df3951f5ea70d` / `dsh-v0.1.2-rc.1`；`git submodule status` clean | 通过，子模块未修改源码 |
+| npm runtime | `@deepseek-ai/dsh@0.1.2-rc.1`，integrity `sha512-RPq48TzxvwpdT9/7W1tbhZDBMmeK+bxDrX9cqQC27Wx/LqtgJF8PSa3b3xriU8oxtvhwYmk21w2cej3uMQrnVA==`；Sidebar `0.18.0` integrity `sha512-6sGUIpgrFLXikACKBXLSiyngULceZCIr5M4bLw2IdCJ3KWHcbNsJJl+TLHJw0lM9voRw0etbr5fC16VQ9YvshQ==` | 通过；Session Controller、Deliverables、Win32 Process 和 Sidebar 0.18.0 均已按 RC1 验证 |
+| 依赖锁定 | `package.json` SHA-256 `5DE36782781239EB96F8ECF52AFE87D3434F26A40E7F4AA8FC574222B6F881DF`；Desktop manifest `63AC54EBFAE355D4A007A8174235862F4536150A447727280540EECCF8EEA45F`；Market manifest `41D363437470685BC1AF36E588FAA827D576D37E6553F6AFA1F0BCF0C9DFBE4D`；`yarn.lock` `7B2F666E57B12E9021B47F3C67166754C28A740E056E7AA66EEE8814A11B209E` | 通过，`corepack yarn install --immutable` 通过，runtime closure 228 节点闭合 |
+| Desktop/Market gate | `corepack yarn typecheck`；Desktop 90 文件/780 通过/11 跳过；Market 19 文件/275 通过 | 通过 |
+| 完整 check | `corepack yarn check` 已完成构建、类型、单测、Market/桌面 Loader、Profile、closure 和许可门禁；期间仅保留既有 peer warning | 通过 |
+| Windows packaged smoke | Sidebar 0.18.0 组合的 `DSH-Desktop-2.1.0-x64-Setup.exe`，`222,841,605` bytes，SHA-256 `A4E2A4ABF73A6FFC12DD8F25CB7F80C3734E8645CC59305301B60A5D9293CBC3`；portable ZIP `222,326,218` bytes，SHA-256 `FAEDD20202D05BDD74B17839186AD704EC8177630F7FAAD9630546E78342EC0F`；`latest.yml` SHA-256 `88AF0EE803EF3964D3CB7818B3E6DE16AE73000B140ADAE8BFAF8C603853FE70`；physical manifest `419` files / `675,533,931` bytes / `18,012` ASAR entries | 通过，Installer/portable/Profile/footprint verifier 通过，Authenticode 为 `NotSigned (test artifact)` |
+| Reviewed source live replay | 1024Store `https://deepseek1024.com/api/v1/plugins`：HTTP 200、gzip、provider `500`、normalized `500`、耗时 `3921.45 ms`、compressed `375384` bytes、decoded `2469986` bytes、16 MiB headroom `14307230` bytes、item headroom `24500`；dshfind `https://api.dshfind.com/v1/catalog`：HTTP 200、gzip、provider `13073`、normalized `13072`、耗时 `8352.8 ms`、compressed `1833674` bytes、decoded `12999076` bytes、32 MiB headroom `20555356` bytes、item headroom `11928` | 通过；两条均由 RC1 生产 restricted client 使用精确 reviewed hostname policy 完成 |
+| RC1 下游补丁 | app boot、directory picker、workspace、attachment/conversation、settings/model capability、deliverables、DeepSeek stream、Win32 hidden-console 均以 RC1 tarball 重新生成并由 root `resolutions` 固定 | 通过；旧 APIProxy 和 RC2-only patch 已移除 |
+
+Community Market compiled-in reviewed sources 的 live replay 已完成；用户添加来源仍保持 identity-only、2 MiB 默认响应上限和无 synthetic-proxy hostname 例外。上述证据满足 RC1 候选的 Market release-record 要求。
+
+回滚点：恢复 outer 行为提交前的工作树并将 `deepseek-harness` gitlink 回退到 `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`，同时恢复 RC2 lockfile、manifest 和 RC2 patch 集。RC1 仍是 prerelease 候选，完成 packaged Loader/Profile、Windows installer 和 Community Market live-source replay 后才允许生成新的 prerelease release record；本批次不创建稳定 tag。
 
 ## 2026-09-02 v2.1.0 release-prep audit
 

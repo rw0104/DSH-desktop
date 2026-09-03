@@ -1,0 +1,65 @@
+diff --git a/lib/client.js b/lib/client.js
+index 61aa9865fd42af82bf6e18e97b6264b8a22eefe2..82aa89d8a6f37321b37d76b5cdd014abb25e9753 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -225,8 +225,11 @@ window.__ModuleLoader__.load({
+ 		* @returns the overlay layer.
+ 		*/
+ 		function DropOverlay({ disabled, labels }) {
++			const target = document.querySelector("[data-dsh-conversation-drop-target]") ?? document.body;
+ 			return (0, react_dom.createPortal)((0, react_jsx_runtime.jsx)("div", {
+ 				className: DropOverlay_module_css_default.mask,
++				"data-dsh-chat-drop-overlay": "",
++				style: { position: target === document.body ? "fixed" : "absolute" },
+ 				role: "status",
+ 				children: (0, react_jsx_runtime.jsxs)("div", {
+ 					className: DropOverlay_module_css_default.wrap,
+@@ -246,7 +249,7 @@ window.__ModuleLoader__.load({
+ 						})
+ 					]
+ 				})
+-			}), document.body);
++			}), target);
+ 		}
+ 		/** Tilted photo-and-note cards (DeepSeek Chat upload illustration). */
+ 		const UploadIllustration = () => (0, react_jsx_runtime.jsxs)("svg", {
+@@ -537,12 +540,18 @@ window.__ModuleLoader__.load({
+ 					if (dataTransfer === null || !dataTransfer.types.includes("Files")) return null;
+ 					return dataTransfer;
+ 				};
++				const workspaceDropTarget = (event) => event.target instanceof Element && event.target.closest("[data-dsh-workspace-drop-target]") !== null;
+ 				const reset = () => {
+ 					dragDepth.current = 0;
+ 					setDragActive(false);
+ 				};
+ 				const onDragEnter = (event) => {
+ 					if (fileTransfer(event) === null) return;
++					if (workspaceDropTarget(event)) {
++						event.preventDefault();
++						reset();
++						return;
++					}
+ 					event.preventDefault();
+ 					dragDepth.current += 1;
+ 					setDragActive(true);
+@@ -551,10 +560,12 @@ window.__ModuleLoader__.load({
+ 					const dataTransfer = fileTransfer(event);
+ 					if (dataTransfer === null) return;
+ 					event.preventDefault();
++					if (workspaceDropTarget(event)) return reset();
+ 					dataTransfer.dropEffect = canAcceptDrop ? "copy" : "none";
+ 				};
+ 				const onDragLeave = (event) => {
+ 					if (fileTransfer(event) === null) return;
++					if (workspaceDropTarget(event)) return;
+ 					dragDepth.current = Math.max(0, dragDepth.current - 1);
+ 					if (dragDepth.current === 0) setDragActive(false);
+ 					const leftViewport = event.clientX <= 0 || event.clientY <= 0 || event.clientX >= window.innerWidth || event.clientY >= window.innerHeight;
+@@ -565,6 +576,7 @@ window.__ModuleLoader__.load({
+ 					if (dataTransfer === null) return;
+ 					event.preventDefault();
+ 					reset();
++					if (workspaceDropTarget(event)) return;
+ 					if (canAcceptDrop) onAddImages([...dataTransfer.files]);
+ 				};
+ 				document.addEventListener("dragenter", onDragEnter);

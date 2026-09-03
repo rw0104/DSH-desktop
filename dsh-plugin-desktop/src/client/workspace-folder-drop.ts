@@ -1,4 +1,4 @@
-import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
+import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { DesktopFilePathBridge, DesktopFilePathBridgeWindow } from '../file-path-bridge-contract.ts'
 
 export const WORKSPACE_DROP_TARGET = '[data-dsh-workspace-drop-target]'
@@ -6,7 +6,7 @@ export const WORKSPACE_DROP_TARGET = '[data-dsh-workspace-drop-target]'
 /** Workspace operations used after a desktop folder is resolved. */
 export interface WorkspaceFolderDropActions {
   create(input: { path: string }): Promise<WorkspaceView>
-  startSession(workspaceId: WorkspaceId): void
+  startSession(workspaceId: WorkspaceId): void | Promise<void>
   validateDirectory?(path: string): Promise<boolean>
 }
 
@@ -79,7 +79,7 @@ export async function adoptWorkspaceFolder(
     throw new Error('DSH Desktop rejected this workspace location')
   }
   const workspace = await actions.create({ path })
-  actions.startSession(workspace.workspaceId)
+  await actions.startSession(workspace.workspaceId)
 }
 
 function workspaceTarget(target: EventTarget | null): HTMLElement | undefined {

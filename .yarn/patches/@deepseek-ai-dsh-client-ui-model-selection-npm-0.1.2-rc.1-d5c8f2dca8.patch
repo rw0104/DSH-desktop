@@ -1,0 +1,57 @@
+diff --git a/lib/client.js b/lib/client.js
+index 5233c42277fc9898fd090f9ea67dbaa7ddca0a75..3279299ce254b32a98f91cc8b85132583b23dfc9 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -519,7 +519,8 @@ window.__ModuleLoader__.load({
+ 			};
+ 			const waiting = state.current === null && state.status === "loading";
+ 			const modelLabel = waiting ? t("trigger.loading") : currentChoice?.model.name ?? (state.current === null ? t("trigger.fallback") : `${state.current.provider}/${state.current.model}`);
+-			const triggerLabel = effortLabel === void 0 ? modelLabel : `${modelLabel} · ${effortLabel}`;
++			const imageLabel = currentChoice?.model.inputModalities?.includes("image") === true ? t("modelAcceptsImages") : void 0;
++			const triggerLabel = [modelLabel, imageLabel, effortLabel].filter((value) => value !== void 0).join(" · ");
+ 			const triggerAria = waiting ? t("trigger.loading") : state.current === null ? t("trigger.selectAria") : effortLabel === void 0 ? t("trigger.aria", { model: modelLabel }) : t("trigger.ariaEffort", {
+ 				model: modelLabel,
+ 				effort: effortLabel
+@@ -666,10 +667,13 @@ window.__ModuleLoader__.load({
+ 													},
+ 													children: [(0, react_jsx_runtime.jsx)("span", {
+ 														className: ModelSelect_module_css_default.optionCopy,
+-														children: (0, react_jsx_runtime.jsx)("span", {
+-															className: ModelSelect_module_css_default.modelName,
+-															children: model.name
+-														})
++										children: (0, react_jsx_runtime.jsx)("span", {
++											className: ModelSelect_module_css_default.modelName,
++											children: model.name
++										}), model.inputModalities?.includes("image") === true && (0, react_jsx_runtime.jsx)("span", {
++											className: ModelSelect_module_css_default.description,
++											children: t("modelAcceptsImages")
++										})
+ 													}), (0, react_jsx_runtime.jsx)("span", {
+ 														className: ModelSelect_module_css_default.check,
+ 														children: selected ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCheckOutline16, {}) : null
+@@ -752,6 +756,7 @@ window.__ModuleLoader__.load({
+ 			"menu.aria": "模型与推理等级",
+ 			"menu.model": "模型",
+ 			"menu.effort": "推理等级",
++			modelAcceptsImages: "支持图片",
+ 			"effort.providerDefault": "Default",
+ 			"status.loading": "正在刷新模型列表…",
+ 			"error.action": "模型操作失败：{message}",
+@@ -773,6 +778,7 @@ window.__ModuleLoader__.load({
+ 			"menu.aria": "Model and reasoning effort",
+ 			"menu.model": "Model",
+ 			"menu.effort": "Effort",
++			modelAcceptsImages: "Vision",
+ 			"effort.providerDefault": "Default",
+ 			"status.loading": "Refreshing model list…",
+ 			"error.action": "Model operation failed: {message}",
+@@ -794,7 +800,7 @@ window.__ModuleLoader__.load({
+ 			for (const group of directory.groups) for (const model of group.models) rows.push({
+ 				id: rowId(group.id, model.id),
+ 				label: model.name,
+-				detail: model.description !== void 0 ? `${group.name} · ${model.description}` : group.name,
++				detail: [group.name, model.inputModalities?.includes("image") === true ? t("modelAcceptsImages") : void 0, model.description].filter((value) => value !== void 0).join(" · "),
+ 				...directory.current !== null && directory.current.provider === group.id && directory.current.model === model.id ? { active: true } : {}
+ 			});
+ 			for (const failure of directory.failures) rows.push({

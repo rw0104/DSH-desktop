@@ -1,11 +1,22 @@
 /** Windows guard for upstream agent presets that require unsupported PTY inspection. */
 
 import type { Context } from '@deepseek-ai/cordis'
-import AgentPresets, {
-  PresetExistsError,
-  UnknownPresetError,
-  type AgentPreset,
-} from '@deepseek-ai/dsh-agent-presets'
+import AgentPresets, { type AgentPreset } from '@deepseek-ai/dsh-agent-presets'
+
+/** Local errors preserve the Desktop policy's stable test and diagnostic face. */
+export class UnknownPresetError extends Error {
+  constructor(readonly id: string, readonly available: readonly string[]) {
+    super(`unknown agent preset ${JSON.stringify(id)} (available: ${available.join(', ') || 'none'})`)
+    this.name = 'UnknownPresetError'
+  }
+}
+
+export class PresetExistsError extends Error {
+  constructor(readonly id: string) {
+    super(`agent preset already exists: ${JSON.stringify(id)}`)
+    this.name = 'PresetExistsError'
+  }
+}
 
 /** Upstream preset whose persistent Bash terminal cannot run on win32. */
 export const WINDOWS_UNSUPPORTED_PRESET = 'minimal'

@@ -1,8 +1,8 @@
 diff --git a/lib/client.js b/lib/client.js
-index c2fdca23e20d642c53cc0611bfa410c5282c1d15..115c332a09eeea5a136ee03bc95033fbea5d6ef5 100644
+index 3ca6fbff1402ad55bad60f6bf1b7f19f3fefdb1b..3cb0916a7ecb08f7ecdbc2c5dcec28bb675387ae 100644
 --- a/lib/client.js
 +++ b/lib/client.js
-@@ -207,12 +207,27 @@ window.__ModuleLoader__.load({
+@@ -251,18 +251,42 @@ window.__ModuleLoader__.load({
  		function moreLabel(t, count) {
  			return count === 1 ? t("produced.moreOne") : t("produced.more", { count: String(count) });
  		}
@@ -26,15 +26,14 @@ index c2fdca23e20d642c53cc0611bfa410c5282c1d15..115c332a09eeea5a136ee03bc95033fb
  		* @param props - selector-matched paths, the chat view's file opener, and the locale seat.
  		* @returns The produced-files row.
  		*/
--		function ProducedFiles({ matched: paths, openFile, isLoopback, useHostDescription, t }) {
-+		function ProducedFiles({ matched: paths, openFile, sessionId, isLoopback, useHostDescription, t }) {
- 			const hostCanOpenPath = useHostDescription((description) => description?.canOpenPath === true);
+-		function ProducedFiles({ matched: paths, openFile, isLoopback, ensureWorkspacePathOpen, useWorkspacePathOpen, t }) {
++		function ProducedFiles({ matched: paths, openFile, sessionId, isLoopback, ensureWorkspacePathOpen, useWorkspacePathOpen, t }) {
+ 			(0, react.useEffect)(() => {
+ 				ensureWorkspacePathOpen();
+ 			}, [ensureWorkspacePathOpen]);
+ 			const hostCanOpenPath = useWorkspacePathOpen((available) => available === true);
  			const canOpenPath = isLoopback && hostCanOpenPath;
- 			const limit = Math.min(paths.length, SHOWN_LIMIT);
-@@ -220,6 +235,15 @@ window.__ModuleLoader__.load({
- 			const rowRef = (0, react.useRef)(null);
- 			const chipProbes = (0, react.useRef)([]);
- 			const moreProbe = (0, react.useRef)(null);
+ 			const shown = paths.slice(0, SHOWN_LIMIT);
 +			const [copyFeedback, setCopyFeedback] = (0, react.useState)(void 0);
 +			const copy = (path, kind) => {
 +				setCopyFeedback(void 0);
@@ -44,48 +43,55 @@ index c2fdca23e20d642c53cc0611bfa410c5282c1d15..115c332a09eeea5a136ee03bc95033fb
 +					setCopyFeedback(t("produced.copyFailed"));
 +				});
 +			};
- 			(0, react.useLayoutEffect)(() => {
- 				const row = rowRef.current;
- 				const remainderProbe = moreProbe.current;
-@@ -263,7 +287,7 @@ window.__ModuleLoader__.load({
- 						ref: rowRef,
+ 			return (0, react_jsx_runtime.jsxs)("div", {
+ 				className: ProducedFiles_module_css_default.root,
+ 				children: [(0, react_jsx_runtime.jsx)("span", {
+@@ -273,16 +297,30 @@ window.__ModuleLoader__.load({
+ 					children: [(0, react_jsx_runtime.jsxs)("div", {
  						className: ProducedFiles_module_css_default.row,
  						"data-produced-files-row": true,
 -						children: [shown.map((path) => (0, react_jsx_runtime.jsx)("button", {
 +						children: [shown.map((path) => (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("button", {
  							type: "button",
- 							className: ProducedFiles_module_css_default.file,
+-							className: ProducedFiles_module_css_default.file,
++								className: ProducedFiles_module_css_default.file,
  							title: path,
-@@ -272,9 +296,27 @@ window.__ModuleLoader__.load({
+ 							"aria-label": t("produced.open", { name: path }),
+ 							onClick: () => {
  								openFile(path);
  							},
  							children: basename(path)
--						}, path)), hidden > 0 && (0, react_jsx_runtime.jsx)("span", {
+-						}, path)), shown.map((_, index) => {
 +						}), (0, react_jsx_runtime.jsx)("button", {
 +							type: "button",
-+							className: ProducedFiles_module_css_default.showFolder,
++							className: ProducedFiles_module_css_default.file,
 +							title: t("produced.copyAbsolutePath", { name: path }),
 +							"aria-label": t("produced.copyAbsolutePath", { name: path }),
 +							onClick: () => { copy(path, "absolute-path"); },
 +							children: t("produced.copyPathShort")
 +						}), (0, react_jsx_runtime.jsx)("button", {
 +							type: "button",
-+							className: ProducedFiles_module_css_default.showFolder,
++							className: ProducedFiles_module_css_default.file,
 +							title: t("produced.copyTextContent", { name: path }),
 +							"aria-label": t("produced.copyTextContent", { name: path }),
 +							onClick: () => { copy(path, "text-content"); },
 +							children: t("produced.copyContentShort")
-+						})] }, path)), hidden > 0 && (0, react_jsx_runtime.jsx)("span", {
- 							className: ProducedFiles_module_css_default.more,
- 							children: moreLabel(t, hidden)
++						})] }, path)), shown.map((_, index) => {
+ 							const shownCount = index + 1;
+ 							const remainder = paths.length - shownCount;
+ 							if (remainder <= 0) return null;
+@@ -291,6 +329,10 @@ window.__ModuleLoader__.load({
+ 								"data-shown": shownCount,
+ 								children: moreLabel(t, remainder)
+ 							}, shownCount);
 +						}), copyFeedback !== void 0 && (0, react_jsx_runtime.jsx)("span", {
 +							role: "status",
 +							className: ProducedFiles_module_css_default.more,
 +							children: copyFeedback
  						})]
- 					}),
- 					hidden > 0 && canOpenPath && (0, react_jsx_runtime.jsx)("button", {
-@@ -315,7 +357,14 @@ window.__ModuleLoader__.load({
+ 					}), paths.length > 1 && canOpenPath && (0, react_jsx_runtime.jsx)("button", {
+ 						type: "button",
+@@ -314,7 +356,14 @@ window.__ModuleLoader__.load({
  			"produced.moreOne": "+ 1 个文件",
  			"produced.more": "+ {count} 个文件",
  			"produced.open": "打开 {name}",
@@ -101,7 +107,7 @@ index c2fdca23e20d642c53cc0611bfa410c5282c1d15..115c332a09eeea5a136ee03bc95033fb
  		};
  		/** English dictionary (same key set). */
  		const en = {
-@@ -323,7 +372,14 @@ window.__ModuleLoader__.load({
+@@ -322,7 +371,14 @@ window.__ModuleLoader__.load({
  			"produced.moreOne": "+ 1 file",
  			"produced.more": "+ {count} files",
  			"produced.open": "Open {name}",
@@ -117,33 +123,26 @@ index c2fdca23e20d642c53cc0611bfa410c5282c1d15..115c332a09eeea5a136ee03bc95033fb
  		};
  		//#endregion
  		//#region lib/types/client/index.js
-@@ -349,7 +405,8 @@ window.__ModuleLoader__.load({
+@@ -372,7 +428,8 @@ window.__ModuleLoader__.load({
  				name: "conversation.chat.turnTail",
  				select: selectProducedFiles,
  				locale: NS,
 -				inject: () => ({
 +				inject: (sessionId) => ({
 +					sessionId: String(sessionId),
- 					isLoopback: connection.isLoopback,
- 					hooks: { hostDescription: connection.hostDescription }
- 				})
+ 					isLoopback: ctx.remote.$host.isLoopback,
+ 					ensureWorkspacePathOpen,
+ 					hooks: { workspacePathOpen }
 diff --git a/lib/types/client/ProducedFiles.d.ts b/lib/types/client/ProducedFiles.d.ts
-index 707831e0f78ce4d44ff429521c75b5bb846ea629..bcdf423cb8bb12955434f63e84d5caeb8eb2bd40 100644
+index cd530724b14ac9844cddee4f790185b54a96a384..0ff626091595fa7393463081d33fd23dd25da85b 100644
 --- a/lib/types/client/ProducedFiles.d.ts
 +++ b/lib/types/client/ProducedFiles.d.ts
-@@ -13,6 +13,8 @@ import type { NS } from './locales.ts';
- export declare function fitProducedFiles(available: number, gap: number, chipWidths: readonly number[], moreWidthsByShown: readonly (number | undefined)[]): number;
+@@ -3,6 +3,8 @@ import type { TurnTailOwnerProps } from '@deepseek-ai/dsh-client-ui-chat/client'
+ import type { NS } from './locales.ts';
  /** Registration-side Host capability facts. */
  export interface ProducedFilesInjected {
 +    /** Session whose history authorizes the displayed produced paths. */
 +    sessionId: string;
      /** Whether the browser itself is connected over loopback. */
      isLoopback: boolean;
-     hooks: {
-@@ -29,5 +31,5 @@ export type ProducedFilesProps = Pick<TurnTailOwnerProps, 'openFile'> & {
-  * @param props - selector-matched paths, the chat view's file opener, and the locale seat.
-  * @returns The produced-files row.
-  */
--export declare function ProducedFiles({ matched: paths, openFile, isLoopback, useHostDescription, t, }: ProducedFilesProps): import("react").JSX.Element;
-+export declare function ProducedFiles({ matched: paths, openFile, sessionId, isLoopback, useHostDescription, t, }: ProducedFilesProps): import("react").JSX.Element;
- //# sourceMappingURL=ProducedFiles.d.ts.map
+     /** Load the opener capability when this row first reaches the page. */

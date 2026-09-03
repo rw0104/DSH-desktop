@@ -249,7 +249,25 @@ try {
   if (profileMenu?.submenu?.()[0]?.label() !== 'desktop') {
     throw new Error('assembled desktop profile is missing the active profile tray submenu')
   }
-  const response = await fetch(expectedUrl)
+  // RC1 protects the index route with the Host browser-auth token. Keep the
+  // product URL assertions above token-free, then authenticate only this
+  // headless probe through the mounted Connection service.
+  const connection = ctx.get('connection')
+  const fetchUrl = typeof connection?.authenticatedUrl === 'function'
+    ? (() => {
+      const authenticated = new URL(connection.authenticatedUrl(expectedUrl))
+      for (const [key, value] of new URL(expectedUrl).searchParams) authenticated.searchParams.set(key, value)
+      return authenticated.href
+    })()
+    : expectedUrl
+  let response = await fetch(fetchUrl, { redirect: 'manual' })
+  if (response.status >= 300 && response.status < 400) {
+    const setCookie = response.headers.get('set-cookie')
+    if (setCookie !== null) {
+      const cookie = setCookie.split(';', 1)[0]
+      response = await fetch(expectedUrl, { headers: { cookie } })
+    }
+  }
   const html = await response.text()
   if (response.status !== 200) {
     throw new Error(`assembled Web root returned HTTP ${String(response.status)}`)

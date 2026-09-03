@@ -1,0 +1,84 @@
+diff --git a/lib/client.js b/lib/client.js
+index 09aa4675cfdcc4eb078684931c705758e828b0a4..70a52312686f9da61c07039458cf1228da0d0e3b 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -655,7 +655,25 @@ window.__ModuleLoader__.load({
+ 			const label = row.workspaceId === void 0 ? t("group.ungrouped") : row.label;
+ 			const active = group.expanded && group.containsCurrent;
+ 			const [menuOpen, setMenuOpen] = (0, react.useState)(false);
++			const openDirectory = () => {
++				if (typeof row.cwd !== "string" || row.cwd.trim() === "") return;
++				void fetch("/dsh-desktop/api/open-directory", {
++					method: "POST",
++					headers: { "content-type": "application/json", "x-dsh-workbench-action": "open-directory" },
++					body: JSON.stringify({ path: row.cwd })
++				}).then(async (response) => {
++					if (response.ok) return;
++					const value = await response.json().catch(() => null);
++					console.error("dsh-plugin-desktop: failed to open workspace directory", value);
++				}).catch((cause) => {
++					console.error("dsh-plugin-desktop: failed to open workspace directory", cause);
++				});
++			};
+ 			const workspaceMenuItems = [{
++				id: "open-directory",
++				label: document.documentElement.lang?.toLowerCase().startsWith("zh") ? "在资源管理器中打开" : "Open in File Explorer",
++				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpen16, {})
++			}, {
+ 				id: "rename",
+ 				label: t("rename"),
+ 				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutline16, {})
+@@ -668,8 +686,16 @@ window.__ModuleLoader__.load({
+ 			const ownRow = (0, react_jsx_runtime.jsxs)("div", {
+ 				className: clsx(Rows_module_css_default.projectRow, menuOpen && Rows_module_css_default.menuOpen),
+ 				role: "treeitem",
++				"data-dsh-workspace-id": row.workspaceId,
++				"data-dsh-workspace-path": row.cwd,
+ 				"aria-expanded": row.expanded,
+ 				onClick: onToggle,
++				onContextMenu: (event) => {
++					if (actions === void 0) return;
++					event.preventDefault();
++					event.stopPropagation();
++					setMenuOpen(true);
++				},
+ 				draggable: drag !== void 0,
+ 				onDragStart: drag === void 0 ? void 0 : (e) => {
+ 					e.dataTransfer.effectAllowed = "move";
+@@ -703,6 +729,10 @@ window.__ModuleLoader__.load({
+ 							items: workspaceMenuItems,
+ 							onSelect: (id) => {
+ 								setMenuOpen(false);
++								if (id === "open-directory") {
++									openDirectory();
++									return;
++								}
+ 								/* v8 ignore next -- Menu can emit only the rename and delete rows supplied above. */
+ 								if (id !== "rename" && id !== "delete") return;
+ 								if (id === "rename") actions.rename();
+@@ -718,9 +748,9 @@ window.__ModuleLoader__.load({
+ 									e.stopPropagation();
+ 									setMenuOpen((v) => !v);
+ 								},
+-								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEllipsisOutline16, {})
+-							})
+-						}), (0, react_jsx_runtime.jsx)("button", {
++									children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEllipsisOutline16, {})
++								})
++							}), (0, react_jsx_runtime.jsx)("button", {
+ 							type: "button",
+ 							className: Rows_module_css_default.iconButton,
+ 							"aria-label": t("actions.newSession.aria", { name: label }),
+@@ -939,6 +969,12 @@ window.__ModuleLoader__.load({
+ 					onClick: () => {
+ 						onOpen(node.id);
+ 					},
++					onContextMenu: (event) => {
++						if (row.blank) return;
++						event.preventDefault();
++						event.stopPropagation();
++						setMenuOpen(true);
++					},
+ 					draggable: drag !== void 0,
+ 					onDragStart: drag === void 0 ? void 0 : (e) => {
+ 						e.dataTransfer.effectAllowed = "move";

@@ -20,7 +20,7 @@ export default defineConfig({
       'react-dom',
       'react-dom/client',
       '@deepseek-ai/cordis',
-      '@deepseek-ai/dsh-client-runtime/client',
+      '@deepseek-ai/dsh-client-store',
       '@deepseek-ai/dsh-client-locale/client',
       '@deepseek-ai/dsh-client-ui-layout/client',
       '@deepseek-ai/dsh-client-ui-primitives',

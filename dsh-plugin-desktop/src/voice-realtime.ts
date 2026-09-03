@@ -3,7 +3,6 @@
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type { Context } from '@deepseek-ai/cordis'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import { gzipSync, gunzipSync } from 'node:zlib'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -17,7 +16,7 @@ import type { DshCapabilityCall, QwenE2eResponseDone, QwenE2eTelemetryEvent, Qwe
 
 declare const __DSH_BUILD_COMMIT__: string
 
-export const DESKTOP_VOICE_SETTINGS_NAMESPACE = settingsNamespace('dsh-desktop-voice')
+export const DESKTOP_VOICE_SETTINGS_NAMESPACE = 'dsh-desktop-voice'
 export const QWEN_API_KEY_REF = 'DASHSCOPE_API_KEY'
 export const DOUBAO_APP_ID_REF = 'DOUBAO_APP_ID'
 export const DOUBAO_ACCESS_KEY_REF = 'DOUBAO_ACCESS_KEY'

@@ -1,7 +1,11 @@
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
 import { createElement } from 'react'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 // Type convergence: locale/theme/settings/conversation declarations expose the
 // shared client services and slots used by desktop-owned contributions.
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -92,7 +96,10 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(
     () => installWorkspaceFolderDrop({
       create: input => ctx.workspaces.create(input),
-      startSession: workspaceId => { ctx.workspaces.startSession(workspaceId) },
+      startSession: async workspaceId => {
+        const sessionId = await ctx.sessions.create({ workspaceId })
+        ctx.sessions.open(sessionId)
+      },
       ...(environment.platform === 'win32'
         ? { validateDirectory: (path: string) => requestDesktopDirectoryValidation(path) }
         : {}),

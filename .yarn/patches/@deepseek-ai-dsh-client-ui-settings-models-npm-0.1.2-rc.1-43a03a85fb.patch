@@ -1,0 +1,94 @@
+diff --git a/lib/client.js b/lib/client.js
+index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..24a8db869bd4f9fea7719e896bb9cbe1b67aaba7 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -248,6 +248,13 @@ window.__ModuleLoader__.load({
+ 					index,
+ 					key: "modelMaxTokensInvalid"
+ 				};
++				for (const field of ["inputModalities", "input"]) {
++					const modalities = model[field];
++					if (modalities !== void 0 && (!Array.isArray(modalities) || !modalities.includes("text") || modalities.some((modality) => modality !== "text" && modality !== "image") || new Set(modalities).size !== modalities.length)) return {
++						index,
++						key: "modelInputInvalid"
++					};
++				}
+ 			}
+ 		}
+ 		/**
+@@ -428,7 +435,21 @@ window.__ModuleLoader__.load({
+ 								]
+ 							}), expanded.has(index) ? (0, react_jsx_runtime.jsxs)("div", {
+ 								className: ModelsSection_module_css_default["modelAdvanced"],
+-								children: [capacityField(model, index, "contextWindow", props.defaultContextWindow), capacityField(model, index, "maxTokens", props.defaultMaxTokens)]
++				children: [capacityField(model, index, "contextWindow", props.defaultContextWindow), capacityField(model, index, "maxTokens", props.defaultMaxTokens), (0, react_jsx_runtime.jsxs)("label", {
++					className: ModelsSection_module_css_default["modelField"],
++					children: [(0, react_jsx_runtime.jsx)("span", {
++						className: ModelsSection_module_css_default["modelFieldLabel"],
++						children: props.t("modelImageInput")
++					}), (0, react_jsx_runtime.jsx)("input", {
++						type: "checkbox",
++						checked: Array.isArray(model.inputModalities) && model.inputModalities.includes("image"),
++						"aria-label": `${props.t("modelImageInput")} ${String(index + 1)}`,
++						disabled: props.disabled,
++						onChange: (event) => {
++							update(index, "inputModalities", event.target.checked ? ["text", "image"] : ["text"]);
++						}
++					})]
++				})]
+ 							}) : null]
+ 						}, index))
+ 					}),
+@@ -788,6 +809,20 @@ window.__ModuleLoader__.load({
+ 										editCapacity(index, "maxTokens", event.target.value);
+ 									}
+ 								})]
++							}), (0, react_jsx_runtime.jsxs)("label", {
++								className: ModelsSection_module_css_default["modelField"],
++								children: [(0, react_jsx_runtime.jsx)("span", {
++									className: ModelsSection_module_css_default["modelFieldLabel"],
++									children: t("modelImageInput")
++								}), (0, react_jsx_runtime.jsx)("input", {
++									type: "checkbox",
++									checked: Array.isArray(model.input) && model.input.includes("image"),
++									"aria-label": `${t("modelImageInput")} ${index + 1}`,
++									disabled,
++									onChange: (event) => {
++										patch(index, { input: event.target.checked ? ["text", "image"] : ["text"] });
++									}
++								})]
+ 							})]
+ 						}) : null]
+ 					}, index)),
+@@ -2659,6 +2694,7 @@ window.__ModuleLoader__.load({
+ 			model: "Model",
+ 			modelId: "Model ID",
+ 			modelName: "Display name",
++			modelImageInput: "Accepts image input",
+ 			modelNamePlaceholder: "Uses the model ID when empty",
+ 			contextWindow: "Context window",
+ 			contextWindowPlaceholder: "Uses the provider default",
+@@ -2676,6 +2712,7 @@ window.__ModuleLoader__.load({
+ 			modelNameInvalid: "Display name cannot be empty.",
+ 			modelContextInvalid: "Context window must be a positive count, like 131072, 256K, or 1M.",
+ 			modelMaxTokensInvalid: "Max output tokens must be a positive count, like 8192, 64K, or 1M.",
++			modelInputInvalid: "Image input must be declared together with text and contain no duplicate modalities.",
+ 			advancedHint: "Other fields live in settings.yaml; edit that section directly.",
+ 			modelCapacityInvalid: "A capacity must be a number, optionally suffixed K or M.",
+ 			modelDuplicate: "Each model ID may appear once.",
+@@ -2761,6 +2798,7 @@ window.__ModuleLoader__.load({
+ 			model: "模型",
+ 			modelId: "模型 ID",
+ 			modelName: "显示名称",
++			modelImageInput: "支持图片输入",
+ 			modelNamePlaceholder: "留空时使用模型 ID",
+ 			contextWindow: "上下文窗口",
+ 			contextWindowPlaceholder: "使用提供方默认值",
+@@ -2778,6 +2816,7 @@ window.__ModuleLoader__.load({
+ 			modelNameInvalid: "显示名称不能为空。",
+ 			modelContextInvalid: "上下文窗口必须是正数，例如 131072、256K 或 1M。",
+ 			modelMaxTokensInvalid: "最大输出 token 数必须是正数，例如 8192、64K 或 1M。",
++			modelInputInvalid: "图片输入必须与文本一起声明，且不能包含重复的模态。",
+ 			advancedHint: "其余字段在 settings.yaml 中，请直接编辑对应段。",
+ 			modelCapacityInvalid: "容量需为数字，可加 K 或 M 后缀。",
+ 			modelDuplicate: "每个模型 ID 只能出现一次。",

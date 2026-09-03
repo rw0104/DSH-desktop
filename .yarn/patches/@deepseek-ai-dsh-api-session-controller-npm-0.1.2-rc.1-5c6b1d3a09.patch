@@ -1,0 +1,33 @@
+diff --git a/lib/index.js b/lib/index.js
+index 9f8e63c093ebdf1505c79f3614280df794d77c04..00e388ab8ab8b617fb06fb8eee92549a70f09597 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -1949,6 +1949,7 @@ async function buildModelCatalog(ctx, defaultSelection = ctx.agentDefaultModel.c
+ 					id: model.id,
+ 					name: model.name,
+ 					...model.description === void 0 ? {} : { description: model.description },
++					...resolved.inputModalities === void 0 ? {} : { inputModalities: resolved.inputModalities },
+ 					...reasoning === void 0 ? {} : { reasoning }
+ 				};
+ 			}));
+diff --git a/lib/types/types.d.ts b/lib/types/types.d.ts
+index bc420a9d4c816d9142e10f4ca5305f5aa7236935..0275f9315bf77b9222ee99b4f90dfbb2b701513f 100644
+--- a/lib/types/types.d.ts
++++ b/lib/types/types.d.ts
+@@ -2,7 +2,7 @@
+ import type { AttachmentIdType, ImageAttachmentLimits, ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment';
+ import type { Branded } from '@deepseek-ai/dsh-brand';
+ import type { MessageId } from '@deepseek-ai/dsh-llm/brand';
+-import type { ContentBlock } from '@deepseek-ai/dsh-llm/types';
++import type { ContentBlock, ModelModality } from '@deepseek-ai/dsh-llm/types';
+ import type { ChunkRow } from '@deepseek-ai/dsh-session/chunk-rows';
+ import type { SessionId } from '@deepseek-ai/dsh-session/types';
+ import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/types';
+@@ -103,6 +103,7 @@ export interface ModelCatalogModel {
+     readonly id: string;
+     readonly name: string;
+     readonly description?: string;
++    readonly inputModalities?: readonly ModelModality[];
+     readonly reasoning?: ModelReasoning;
+ }
+ /** One provider and its successfully loaded model catalog. */

@@ -1,0 +1,13 @@
+diff --git a/lib/client.js b/lib/client.js
+index cf573281c9248bd21fcdbd81e0b91ba922980578..3562a46cbc0d71a07e661cd907fd9c665ce3aef7 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -14479,6 +14479,8 @@ window.__ModuleLoader__.load({
+ 			return (0, react_jsx_runtime.jsxs)("div", {
+ 				ref: rootResizeRef,
+ 				className: ConversationRoot_module_css_default.root,
++				"data-dsh-conversation-drop-target": "",
++				style: { position: "relative" },
+ 				"data-phase": phase,
+ 				children: [sessionId === void 0 ? null : renderSlot("conversation.session.header", {}), (0, react_jsx_runtime.jsxs)("div", {
+ 					className: ConversationRoot_module_css_default.body,

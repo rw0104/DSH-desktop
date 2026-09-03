@@ -28,6 +28,12 @@ export function installProfilePackageResolver(
       if (fromLoader && specifier === DESKTOP_PACKAGE_NAME) {
         return { shortCircuit: true, url: DESKTOP_ENTRY_URL }
       }
+      if (specifier === `${DESKTOP_PACKAGE_NAME}/package.json`) {
+        return {
+          shortCircuit: true,
+          url: new URL('../package.json', import.meta.url).href,
+        }
+      }
       if (!isBareSpecifier(specifier)) {
         return nextResolve(specifier, context)
       }
