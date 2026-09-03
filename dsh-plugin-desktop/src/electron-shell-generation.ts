@@ -28,6 +28,14 @@ function clampedZoomLevel(level: number): number {
   return Math.min(MAX_ZOOM_LEVEL, Math.max(MIN_ZOOM_LEVEL, level))
 }
 
+/** Remove only the one-shot process token after the initial auth exchange. */
+function cleanAuthenticatedRendererUrl(url: string): string | undefined {
+  const parsed = new URL(url)
+  if (!parsed.searchParams.has('token')) return undefined
+  parsed.searchParams.delete('token')
+  return parsed.href
+}
+
 function isZoomShortcut(input: Electron.Input): 'in' | 'out' | 'reset' | undefined {
   if (input.type !== 'keyDown' || input.alt || (!input.control && !input.meta)) return undefined
   if (input.key === '+' || input.key === '=') return 'in'
@@ -192,6 +200,8 @@ export class ElectronShellGeneration {
 
     try {
       await window.loadURL(spec.url)
+      const cleanUrl = cleanAuthenticatedRendererUrl(spec.url)
+      if (cleanUrl !== undefined) await window.loadURL(cleanUrl)
       tray = new Tray(prepareTrayIcon(spec.trayIcons, platform.platform))
       this.tray = tray
       tray.setToolTip(spec.productName)

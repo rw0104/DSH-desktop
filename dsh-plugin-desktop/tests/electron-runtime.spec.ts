@@ -877,6 +877,27 @@ describe('Electron desktop runtime', () => {
     await release()
   })
 
+  it('exchanges the Renderer launch token before loading the clean Desktop URL', async () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin')
+    const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
+    const authenticatedSpec: DesktopShellSpec = {
+      ...spec,
+      url: 'http://127.0.0.1:43120/?dsh-desktop-mode=advanced&dsh-desktop-platform=darwin&token=launch-token',
+    }
+    const runtime = new ElectronDesktopRuntime(async () => {})
+    const release = runtime.schedule(authenticatedSpec)
+
+    await runtime.mountScheduled()
+
+    expect(electron.loadURL).toHaveBeenNthCalledWith(1, authenticatedSpec.url)
+    expect(electron.loadURL).toHaveBeenNthCalledWith(
+      2,
+      'http://127.0.0.1:43120/?dsh-desktop-mode=advanced&dsh-desktop-platform=darwin',
+    )
+
+    await release()
+  })
+
   it('shows and hides one native window through ready, activation, tray, and close events', async () => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')

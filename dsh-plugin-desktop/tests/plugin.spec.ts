@@ -61,6 +61,7 @@ function createHarness(platform: DesktopRuntime['platform'] = 'darwin'): PluginH
   const setThemeSource = vi.fn<(source: ThemePreference) => void>()
   const authenticatedUrl = vi.fn((url: string) => {
     const authenticated = new URL(url)
+    authenticated.search = ''
     authenticated.searchParams.set('token', 'test-launch-token')
     return authenticated.href
   })

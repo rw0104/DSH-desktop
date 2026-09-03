@@ -134,6 +134,22 @@ export function desktopRendererUrl(
   return url.href
 }
 
+/** Keep Desktop's validated markers when the Host Connection performs its token exchange. */
+function authenticatedDesktopRendererUrl(
+  connection: Context['connection'],
+  baseUrl: string,
+): string {
+  const clean = new URL(baseUrl)
+  const authenticated = new URL(connection.authenticatedUrl(baseUrl))
+  if (authenticated.origin !== clean.origin || authenticated.pathname !== '/') {
+    throw new Error('dsh-plugin-desktop: Web Connection returned an invalid authenticated Renderer URL')
+  }
+  const token = authenticated.searchParams.get('token')
+  authenticated.search = clean.search
+  if (token !== null) authenticated.searchParams.set('token', token)
+  return authenticated.href
+}
+
 /**
  * Register the Electron shell from active Web carrier values.
  * @param ctx - Host context carrying the Electron adapter and Web carrier.
@@ -264,7 +280,8 @@ export function apply(ctx: Context, config: Config): void {
   ctx.effect(
     () => runtime.schedule({
       ...config,
-      url: connection.authenticatedUrl(
+      url: authenticatedDesktopRendererUrl(
+        connection,
         desktopRendererUrl(ctx.webServer.port, config.mode, runtime.platform, runtime.updates.currentVersion),
       ),
       productName: 'DSH Desktop',

@@ -24,6 +24,7 @@ const RUNNER_ENVIRONMENT_NAMES = new Set([
   'NPM_CONFIG_TARGET',
   'NPM_CONFIG_DISTURL',
 ])
+const LOADER_SMOKE_AUTH_TOKEN = 'loader-smoke-token'
 const EXPECTED_HOST_ROUTES = new Set([
   RENDERER_BOOT_REPORT_PATH,
     '/dsh-desktop/api/workspace/changes',
@@ -143,6 +144,14 @@ try {
         },
       })
       host.provide('webRuntime', {})
+      host.provide('connection', {
+        authenticatedUrl(url) {
+          const authenticated = new URL(url)
+          authenticated.search = ''
+          authenticated.searchParams.set('token', LOADER_SMOKE_AUTH_TOKEN)
+          return authenticated.href
+        },
+      })
       host.provide('agents', { get: () => undefined })
       host.provide('appExit', () => {})
       host.provide('settings', {
@@ -179,7 +188,7 @@ try {
   if (mountedSpec?.mode !== 'compatibility') {
     throw new Error(`desktop plugin produced an unexpected shell mode: ${String(mountedSpec?.mode)}`)
   }
-  if (mountedSpec?.url !== `http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin&dsh-desktop-version=${desktopPackageVersion}`) {
+  if (mountedSpec?.url !== `http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin&dsh-desktop-version=${desktopPackageVersion}&token=${LOADER_SMOKE_AUTH_TOKEN}`) {
     throw new Error(`desktop plugin produced an unexpected renderer URL: ${String(mountedSpec?.url)}`)
   }
 } finally {
