@@ -67,6 +67,15 @@ Community Market compiled-in reviewed sources 的 live replay 已完成；用户
 
 回滚点：恢复 outer 行为提交前的工作树并将 `deepseek-harness` gitlink 回退到 `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`，同时恢复 RC2 lockfile、manifest 和 RC2 patch 集。RC1 仍是 prerelease 候选，完成 packaged Loader/Profile、Windows installer 和 Community Market live-source replay 后才允许生成新的 prerelease release record；本批次不创建稳定 tag。
 
+## 2026-09-03 RC1 packaged Host Typert 回归修复
+
+- 用户安装的 v2.1.0 候选在 Host 启动阶段报告 `@deepseek-ai/dsh-api-session-controller/typert` 与 `@deepseek-ai/dsh-api-workspace-controller/typert` 的 `lib/typert.host.js` 缺失。
+- 根因是 `client-bundles` 物理投影只保留 `package.json` 与 `./client`，而 RC1 这两个 dual-face 包同时被 Host 的 `typert-loader` 通过 `./typert` 解析；npm tarball 和 app.asar 内文件本身完整，错误发生在 afterPack 的物理裁剪阶段。
+- 修复 commit：`2a732c2f18`。新增 `host-typert` consumer，按 `exports["./typert"]` 选择 Host artifact 和 `dependencies/optionalDependencies` 的运行时文件；required packaged export 列表同步加入两个 Typert specifier。
+- 修复后 `package:dir`：`861` 个物理文件、`680,389,660` bytes、`18,012` ASAR entries；physical manifest 含两个 `lib/typert.host.js` 与 `zod` runtime，`verify-package-footprint`、`verify-packaged-profile`、Loader/Profile tests 通过。
+- 修复后本地 Setup：`DSH-Desktop-2.1.0-x64-Setup-typert-fix.exe`，`224,089,509` bytes，SHA-256 `5C8A5520C2AA7EA9E63C9F7339D4A7BC28B1038DD730C6307A97FECDB1EBDDD9`；Portable：`DSH-Desktop-2.1.0-x64-Portable-typert-fix.zip`，`223,574,056` bytes，SHA-256 `B97B012C9C42B16A5B5688FDDEEEF59997F4B8270310772D145B1EBAEA4C43E1`；`latest.yml` SHA-256 `E98F09F3AD9CA6A6289BD14C6CFF029EF6C275BC64AE993BBBB95C15CB741BB6`。
+- 以上仍是 unsigned 本地修复候选；没有覆盖用户现有安装、Profile 或稳定 Release 资产。安装前必须重新执行真实安装后 Host smoke。
+
 ## 2026-09-02 v2.1.0 release-prep audit
 
 本批次在升级产品版本和安装器合同前重新核对权威远端与 registry。没有更新上游 gitlink、官方 npm family 或 Better Sidebar 依赖；本批次只修改 Desktop-owned 语音、安装器和产品版本。
