@@ -13,6 +13,7 @@ Ordinary users can start with the [user guide](user-guide.en.md) and never need 
 | Document | Covers |
 | --- | --- |
 | [User guide](user-guide.en.md) | Installation, profiles, modes, terminal, plugins, and updates |
+| [Realtime voice credentials](user-guide-realtime-voice-credentials.md) | Request Qwen/Doubao credentials, choose a voice mode, and configure keys safely |
 | [FAQ](faq.en.md) | Direct answers about platforms, bundled runtime, project status, data, plugins, and updates |
 | [Why Desktop](why-desktop.en.md) | The boundary with upstream Harness and the case for plugins |
 

@@ -1,16 +1,16 @@
 # 实时语音凭据申请与配置
 
-> 文档核对日期：2026-09-01。依据截至 2026-08 后仍在线的阿里云百炼与火山引擎官方文档编写。云厂商控制台名称可能调整，请以链接页面的当前字段为准。
+> 适用于 DSH Desktop `2.1.0`。文档核对日期：2026-09-02。云厂商控制台名称可能调整，请以链接页面的当前字段为准。
 
-DSH Desktop 实时语音支持 Qwen 和豆包。两者的凭据体系不同：Qwen 通常只需一个 Model Studio API Key；豆包当前稳定模式使用语音应用的 App ID 与 Access Token/Access Key，只有单独一个新版 API Key 还不能直接完成配置。
+DSH Desktop 的实时语音侧栏支持 Qwen 和豆包。Qwen 提供稳定的 Agent 级联和实验性的原生语音 Agent；豆包当前接入实时 ASR，再由 DSH Agent 负责文本回复和工具执行。普通设置页只展示这两种用户模式，Qwen Agent 桥接是开发诊断路径，不是第三个日常选项。
 
 ## 配置前先确认
 
 | Provider | DSH Desktop 当前需要 | 还需开通 | 可选信息 |
 | --- | --- | --- | --- |
-| Qwen | DashScope/Model Studio 按量付费 API Key | `qwen3-asr-flash-realtime`、`qwen3-tts-flash-realtime` 调用权限 | Workspace ID |
-| 豆包稳定模式 | 语音应用 App ID、Access Token/Access Key | 流式 ASR 2.0、TTS 2.0、目标音色 | 自定义 TTS Resource ID/音色 |
-| 豆包端到端实验模式 | RTC App、RTC Room Token、服务端签名及语音资源 | RTC 实时对话、ASR、TTS、LLM/Function Calling | 声纹、视觉等 RTC 能力 |
+| Qwen 级联模式 | DashScope/Model Studio 按量付费 API Key | `qwen3-asr-flash-realtime`、`qwen3-tts-flash-realtime` 调用权限 | Workspace ID |
+| Qwen 原生语音 Agent | DashScope/Model Studio 按量付费 API Key | `qwen3-asr-flash-realtime`、`qwen-audio-3.0-realtime-flash` 调用权限 | Workspace ID |
+| 豆包 | 语音应用 App ID、Access Token/Access Key | 流式 ASR 2.0、TTS 2.0、目标音色 | 自定义 TTS Resource ID/音色 |
 
 安全要求：
 
@@ -30,8 +30,8 @@ DSH Desktop 实时语音支持 Qwen 和豆包。两者的凭据体系不同：Qw
 5. 权限建议先选“全部”。若选择“自定义”，至少允许以下模型：
 
    - `qwen3-asr-flash-realtime`
-   - `qwen3-tts-flash-realtime`
-   - 启用端到端实验模式时还需 `qwen-audio-3.0-realtime-flash` 或实际选用的 Realtime 型号
+   - 级联模式需要 `qwen3-tts-flash-realtime`
+   - 原生语音 Agent 需要 `qwen-audio-3.0-realtime-flash`
 
 6. 若配置 IP 白名单，确认当前电脑出口公网 IP 在白名单中。排查阶段可先使用控制台默认的 IPv4 全放通策略，验证成功后再收紧。
 7. 创建后立即复制完整 API Key。关闭弹窗后通常不能再次查看完整明文；丢失时应重置或重新创建。
@@ -50,14 +50,26 @@ Workspace ID 不是音色，也不是 API Key。它是业务空间标识，用�
 
 官方参考：[获取 APP ID 和 Workspace ID](https://help.aliyun.com/zh/model-studio/obtain-the-app-id-and-workspace-id)。
 
+### 选择 Qwen 对话模式
+
+在“设置 → 实时语音”中选择 Qwen 后，按使用目标选择：
+
+| 模式 | 音频链路 | 适合场景 |
+| --- | --- | --- |
+| `Agent 级联（稳定）` | ASR → DSH Agent → Qwen TTS | 稳定使用完整文本 Agent 和工具链 |
+| `Qwen 原生语音 Agent（实验）` | Qwen 原生全双工音频；需要文件、终端或审批时才调用 DSH capability gateway | 更低延迟的自然对话 |
+
+`Qwen Agent 桥接` 只用于开发诊断。若旧测试配置仍处于该模式，设置页会要求你明确改为级联或原生模式，不会自动改变对话主体。原生模式不显示独立 TTS 开关；级联模式才需要打开“使用服务商自然音色朗读 Agent 回复”。
+
 ### 填入 DSH Desktop
 
 1. 打开“设置 → 实时语音”。
 2. 服务商选择“Qwen 实时语音识别”。
 3. 普通用户选择“共享 endpoint（仅 API Key）”，无需填写 Workspace ID。
 4. 需要 Workspace 流量隔离和更高服务保证时选择“Workspace 专属 endpoint”，再填写北京地域 Workspace ID。
-5. 在 API Key 输入框粘贴 Key，选择回复音色，点击“保存实时语音设置”。
-6. 打开“显示语音按钮”和“使用服务商自然音色朗读 Agent 回复”。
+5. 在 API Key 输入框粘贴 Key。原生模式选择实时语音音色；级联模式选择 TTS 回复音色。
+6. 点击“保存实时语音设置”，再打开“显示语音按钮”。
+7. 仅在级联模式下打开“使用服务商自然音色朗读 Agent 回复”。
 
 共享 DashScope 域名目前仍可用；官方建议生产环境逐步迁移到 Workspace 专属域名，以获得更高吞吐、较低延迟和空间级流量隔离。[Base URL 说明](https://help.aliyun.com/en/model-studio/base-url)。
 
@@ -70,6 +82,7 @@ Workspace ID 不是音色，也不是 API Key。它是业务空间标识，用�
 | Workspace 域名无法解析 | Workspace ID 是否来自北京地域；是否包含空格或复制了名称而非 ID |
 | 共享模式可用、专属模式失败 | Key 与 Workspace 是否属于同一地域；RAM 用户是否加入该空间 |
 | ASR 正常但没有自然音色 | `qwen3-tts-flash-realtime` 是否有调用权限；音色是否属于该模型 |
+| 原生语音模式无法开始 | 是否已为 `qwen-audio-3.0-realtime-flash` 开通权限；测试账号是否具备 Realtime 访问资格 |
 
 ## 配置豆包
 
@@ -80,7 +93,7 @@ Workspace ID 不是音色，也不是 API Key。它是业务空间标识，用�
 - 新版控制台部分 V3 API 支持单一 `X-Api-Key`。
 - 旧应用模式使用 App ID 与 Access Token/Access Key，并按应用开通具体语音服务。
 
-DSH Desktop 当前稳定模式为了同时兼容 Seed-ASR 2 和 Seed-TTS 2，采用**旧应用凭据模式**。因此只从新版“API Key 管理”复制一个 Key，不能直接填满当前设置；必须准备 App ID 与该语音应用的 Access Token/Access Key。
+DSH Desktop 当前为了同时接入 Seed-ASR 2 和 Seed-TTS 2，采用**旧应用凭据模式**。因此只从新版“API Key 管理”复制一个 Key，不能直接填满当前设置；必须准备 App ID 与该语音应用的 Access Token/Access Key。豆包不会显示 Qwen 原生语音 Agent 模式。
 
 ### 创建语音应用并开通能力
 
@@ -144,6 +157,13 @@ DSH Desktop 默认值为：
 | ASR 可用但 TTS 失败 | 是否只开通了 ASR；目标音色是否购买/授权；`seed-tts-2.0` 是否开通 |
 | 只有新版单一 API Key | 当前 DSH Desktop 稳定模式暂不接受该模式；需创建语音应用并获取 App ID + Access Token/Access Key |
 
+## 使用与安全边界
+
+1. 保存设置后，输入框才会显示语音按钮；关闭“显示语音按钮”会立即隐藏入口。
+2. 点击输入框中的语音按钮开始会话，再次点击结束会话；侧栏会显示连接、聆听、思考和播放状态。
+3. 麦克风音频只在活动会话期间转发给当前选中的 Provider。密钥由 DSH credentials 存储，不写入设置文件、URL 或诊断导出。
+4. 文件、终端、审批和其他副作用仍由 DSH Agent/Capability Gateway 控制；Provider 不直接获得本地权限。
+
 ## Evidence → Finding → 配置路径
 
 | Evidence | Finding | 配置路径 |
@@ -152,7 +172,8 @@ DSH Desktop 默认值为：
 | Workspace ID 是专属域名组成部分 | 它不是 Key 或音色 | 共享模式留空；专属模式从北京地域业务空间复制 |
 | 豆包新版与旧版控制台并存 | “API Key”一词可能指不同凭据 | 按 DSH Desktop 字段使用旧应用 App ID + Access Token/Access Key |
 | 豆包资源与音色强绑定 | 凭据正确仍可能因资源不匹配失败 | 同时核对 ASR Resource、TTS Resource 与 speaker 授权 |
-| RTC 端到端服务另有 App/Room/Token | 稳定 ASR/TTS 凭据不能自动启用端到端 RTC | 端到端实验模式按 RTC 指南单独申请与配置 |
+| Qwen 原生语音 Agent 使用独立 Realtime 模型权限 | ASR/TTS 权限不能自动授予原生语音模型 | 为 `qwen-audio-3.0-realtime-flash` 单独确认权限 |
+| 豆包当前 Host 路由是 ASR → DSH Agent → TTS | 豆包 RTC 或单一新版 API Key 不是当前桌面合同 | 使用语音应用 App ID + Access Token/Access Key |
 
 ## 官方资料索引
 
