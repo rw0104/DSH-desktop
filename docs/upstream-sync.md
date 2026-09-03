@@ -85,6 +85,14 @@ Community Market compiled-in reviewed sources 的 live replay 已完成；用户
 - 修复后本地 Setup：`DSH-Desktop-2.1.0-x64-Setup-auth-fix.exe`，`224,089,530` bytes，SHA-256 `E873F70D8C1DCC44E9EE3728373AC3DFA71D715179E497C0C4B2CAA51C1B2181`；Portable：`DSH-Desktop-2.1.0-x64-Portable-auth-fix.zip`，`223,574,143` bytes，SHA-256 `654F93158301D52EF400DC6C79456D7283A278D7EA8394E833ED7C129CAD0DDC`；`latest.yml` SHA-256 `32DF26E530BC096DB19271B02BEE2A6B04B5FFD3DC181D82E2818E94D092D678`。
 - 以上仍是 unsigned 本地修复候选；没有覆盖用户现有安装、Profile 或稳定 Release 资产。必须使用 `auth-fix` 包重新安装，旧安装不会自动获得认证修复。
 
+## 2026-09-03 RC1 packaged Renderer authentication marker 修复
+
+- `auth-fix` 之后仍发现 `connection.authenticatedUrl()` 会按设计清除所有 query 参数并回到 `/`；如果直接把它的结果交给 Desktop shell，会丢失 `dsh-desktop-mode`、平台、版本和 Windows 盘符 markers。缺少这些 markers 会让 Web 页面无法恢复 Desktop composition，即使 process-token 已交换成功也会出现白屏或 Renderer health 失败。
+- 修复 commit：`f5d0eb5545`。Desktop 现在校验 `authenticatedUrl()` 的 origin/path，只取返回的 process token，再把原始 URL 中已验证的 Desktop markers 恢复到 token URL。Electron shell 按固定顺序执行两次加载：第一次用 token URL 完成 HttpOnly cookie exchange；第二次加载去掉一次性 token、保留 markers 的 clean URL。这样不依赖取消 `will-redirect`，也避免 Electron 连续 `loadURL` 的竞态。
+- 回归覆盖：`authenticatedDesktopRendererUrl()` 的 marker 保留与非法返回值拒绝、Electron shell 的 token-first/clean-second 调用顺序，以及 packaged bundle 中 `authenticatedUrl` 的存在性。
+- 最终本地 Setup：`DSH-Desktop-2.1.0-x64-Setup-auth-final.exe`，`224,089,817` bytes，SHA-256 `0EAE68664EB82A01CDC84A2A82C869DDEE84F62C7987BEF3D0C86C25E426A11F`；Portable：`DSH-Desktop-2.1.0-x64-Portable-auth-final.zip`，`223,574,429` bytes，SHA-256 `F9917F79A62BBD4523BDAFDEA3FFE2A1F3A6C0481FF545D335425797B5109551`；`latest.yml` `361` bytes，SHA-256 `699FEADF2565533EB23F68A4CC71A063ED012C1C6FC323F928ACF39BC52F9B28`。
+- 产物仍为 unsigned 本地测试候选；没有覆盖现有 `D:\DSH Desktop` 安装、Profile 或稳定 Release 资产。必须先完全退出旧版，再安装 `auth-final` 并执行真实安装后 smoke；在用户安装前不宣称已验证现有机器。
+
 ## 2026-09-02 v2.1.0 release-prep audit
 
 本批次在升级产品版本和安装器合同前重新核对权威远端与 registry。没有更新上游 gitlink、官方 npm family 或 Better Sidebar 依赖；本批次只修改 Desktop-owned 语音、安装器和产品版本。
