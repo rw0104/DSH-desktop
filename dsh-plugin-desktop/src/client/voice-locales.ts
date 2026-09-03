@@ -9,7 +9,7 @@ export type VoiceKey =
   | 'settings.ttsEnabled' | 'settings.ttsModel' | 'settings.ttsVoice'
   | 'settings.ttsEndpoint' | 'settings.ttsResource'
   | 'settings.credentialsGuide'
-  | 'settings.conversationMode' | 'settings.cascadeMode' | 'settings.qwenHybridMode' | 'settings.qwenNativeMode'
+  | 'settings.conversationMode' | 'settings.cascadeMode' | 'settings.qwenHybridMode' | 'settings.qwenNativeMode' | 'settings.hybridInternalNotice'
   | 'settings.providerVoiceModel' | 'settings.providerVoice' | 'settings.hybridNotice' | 'settings.nativeNotice'
 
 export const voiceLocales = {
@@ -18,7 +18,7 @@ export const voiceLocales = {
     'button.stop': '结束语音对话',
     'button.unavailable': '语音对话尚未配置',
     'settings.title': '实时语音',
-    'settings.intro': '在输入框显示语音按钮。稳定级联、Qwen Agent 桥接和 Qwen 原生语音模式都保留 DSH 的工具、审批与审计边界。',
+    'settings.intro': '在输入框显示语音按钮。普通设置提供稳定级联和 Qwen 原生语音 Agent；桥接模式仅用于开发诊断。',
     'settings.enabled': '显示语音按钮',
     'settings.provider': '默认服务商',
     'settings.ttsEnabled': '使用服务商自然音色朗读 Agent 回复',
@@ -31,6 +31,7 @@ export const voiceLocales = {
     'settings.cascadeMode': 'Agent 级联（稳定）',
     'settings.qwenHybridMode': 'Qwen Agent 桥接（实验）',
     'settings.qwenNativeMode': 'Qwen 原生语音 Agent（实验）',
+    'settings.hybridInternalNotice': '当前是仅供开发诊断的桥接模式。请选择稳定级联或 Qwen 原生语音 Agent；不会自动替换当前模式。',
     'settings.providerVoiceModel': '实时语音模型',
     'settings.providerVoice': '实时语音音色',
     'settings.hybridNotice': 'Qwen 负责实时音频；每个实质请求仍委托当前 DSH Agent，再由 Qwen 根据结构化结果组织语音。',
@@ -59,7 +60,7 @@ export const voiceLocales = {
     'button.stop': 'End voice conversation',
     'button.unavailable': 'Voice conversation is not configured',
     'settings.title': 'Realtime voice',
-    'settings.intro': 'Show a voice button in the composer. Stable cascade, Qwen Agent bridge, and Qwen native voice modes all preserve DSH tool, approval, and audit boundaries.',
+    'settings.intro': 'Show a voice button in the composer. Ordinary settings provide stable cascade and Qwen native voice Agent; bridge mode is reserved for development diagnostics.',
     'settings.enabled': 'Show voice button',
     'settings.provider': 'Default provider',
     'settings.ttsEnabled': 'Read Agent replies with the provider voice',
@@ -72,6 +73,7 @@ export const voiceLocales = {
     'settings.cascadeMode': 'Agent cascade (stable)',
     'settings.qwenHybridMode': 'Qwen Agent bridge (experimental)',
     'settings.qwenNativeMode': 'Qwen native voice Agent (experimental)',
+    'settings.hybridInternalNotice': 'The bridge mode is reserved for development diagnostics. Choose stable cascade or Qwen native voice Agent; the current mode is not changed automatically.',
     'settings.providerVoiceModel': 'Realtime voice model',
     'settings.providerVoice': 'Realtime voice',
     'settings.hybridNotice': 'Qwen handles realtime audio while every substantive request is delegated to the current DSH Agent; Qwen speaks from the structured result.',

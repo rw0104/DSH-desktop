@@ -434,6 +434,7 @@ describe('published package surface', () => {
       'cordis.patch.yml',
       'lib/**',
       'package.json',
+      'THIRD_PARTY_NOTICES.md',
       '!node_modules/node-pty/build/**',
       '!**/*.map',
       '!**/*.d.ts',
@@ -454,9 +455,9 @@ describe('published package surface', () => {
     expect(manifest.build?.win?.artifactName).toBe('DSH-Desktop-${version}-${arch}-Portable.${ext}')
     expect(manifest.build?.nsis).toEqual({
       include: 'installer.nsh',
-      license: 'THIRD_PARTY_NOTICES.md',
       oneClick: false,
       perMachine: false,
+      selectPerMachineByDefault: false,
       allowElevation: true,
       allowToChangeInstallationDirectory: true,
       createDesktopShortcut: true,
@@ -467,6 +468,17 @@ describe('published package surface', () => {
       artifactName: 'DSH-Desktop-${version}-${arch}-Setup.${ext}',
     })
     expect(manifest.build?.linux?.icon).toBe('build/app-icon.png')
+  })
+
+  it('ships third-party notices without turning them into an EULA page', () => {
+    expect(manifest.build?.nsis).not.toHaveProperty('license')
+    expect(manifest.build?.files).toContain('THIRD_PARTY_NOTICES.md')
+    expect(manifest.build?.nsis).toMatchObject({
+      oneClick: false,
+      perMachine: false,
+      selectPerMachineByDefault: false,
+      allowElevation: true,
+    })
   })
 
   it('separates unsigned smoke packaging from the signed macOS release', () => {

@@ -8,7 +8,7 @@
 
 当前 Windows x64 安装包：
 
-[下载 DSH Desktop v2.0.16](https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.16) · [直接下载 Windows 安装器](https://github.com/rw0104/DSH-desktop/releases/download/v2.0.16/DSH-Desktop-2.0.16-x64-Setup.exe)
+[下载 DSH Desktop v2.1.0](https://github.com/rw0104/DSH-desktop/releases/tag/v2.1.0) · [直接下载 Windows 安装器](https://github.com/rw0104/DSH-desktop/releases/download/v2.1.0/DSH-Desktop-2.1.0-x64-Setup.exe)
 
 安装包支持当前用户安装、选择安装目录、开始菜单和桌面快捷方式。当前安装包未进行 Authenticode 签名，Windows 可能显示 SmartScreen 或 Unknown Publisher 提示。
 
@@ -36,7 +36,8 @@ DSH Desktop 使用官方 [DeepSeek Harness](https://github.com/deepseek-ai/deeps
 
 - Electron 原生桌面壳、托盘、窗口生命周期和安装更新交接；
 - Windows Mica/macOS vibrancy 的 Advanced Shell，以及官方左侧栏和 Better Sidebar 右侧工作区的布局组合；
-- Better Sidebar `0.17.1` 的固定产品组合、跨会话固定终端和终端链接，以及可由用户安装、禁用和移除的普通第三方插件；Vision Toolkit 不属于 v2.0.16 产品插件；
+- Better Sidebar `0.17.1` 的固定产品组合、跨会话固定终端和终端链接，以及可由用户安装、禁用和移除的普通第三方插件；Vision Toolkit 不属于 v2.1.0 产品插件；
+- 实时语音侧栏支持 Qwen 与豆包，提供稳定 Agent 级联和 Qwen 原生语音 Agent 实验模式；桥接模式仅保留给开发诊断，不在普通设置中展示；
 - Host 权威的更新状态快照与只读事件流，About 页显示真实下载字节、独立校验阶段和等待安装状态；
 - 插件市场默认快速进入“发现”，1024Store 使用有界 gzip，同步 dshfind 原子完整目录，并补齐首次扫描反馈、键盘焦点和合作来源本地化；
 - 模型原生图片能力保持安全声明门禁，官方附件链不再被第三方视觉工具接管；
@@ -47,12 +48,12 @@ DSH Desktop 使用官方 [DeepSeek Harness](https://github.com/deepseek-ai/deeps
 
 ## 安装与首次启动
 
-1. 从 [v2.0.16 Release](https://github.com/rw0104/DSH-desktop/releases/tag/v2.0.16) 下载 Windows x64 安装器。
+1. 从 [v2.1.0 Release](https://github.com/rw0104/DSH-desktop/releases/tag/v2.1.0) 下载 Windows x64 安装器。
 2. 选择安装目录并完成安装。
 3. 启动 DSH Desktop，在 DSH Settings 中配置模型和凭据。
 4. 视觉模型需要在模型设置中明确声明 `image` 输入能力；本产品不再提供 Vision Toolkit 视觉增强入口。
 
-安装器已经包含 DSH Runtime 和 Better Sidebar，不要求客户电脑预装 Node.js 才能启动桌面应用。Vision Toolkit 已从 v2.0.16 正式产品和安装器彻底移除。
+安装器已经包含 DSH Runtime 和 Better Sidebar，不要求客户电脑预装 Node.js 才能启动桌面应用。Vision Toolkit 已从 v2.1.0 正式产品和安装器彻底移除。
 
 ## 从源码运行
 

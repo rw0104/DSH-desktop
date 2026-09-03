@@ -133,8 +133,20 @@ export function VoiceSettingsSection({ controller, t, openExternal }: VoiceSetti
 }
 
 function QwenSettings({ state, draft, update, t, qwenKey, setQwenKey }: { state: DesktopVoiceState; draft: DesktopVoiceSettings; update: <K extends keyof DesktopVoiceSettings>(key: K, value: DesktopVoiceSettings[K]) => void; t: (key: VoiceKey) => string; qwenKey: string; setQwenKey: (value: string) => void }) {
+  const bridgeMode = draft.conversationMode === 'qwen-hybrid'
   return <>
-    <div className="dshVoiceField"><label htmlFor="dsh-voice-conversation-mode">{t('settings.conversationMode')}</label><select id="dsh-voice-conversation-mode" value={draft.conversationMode} onChange={event => { update('conversationMode', event.target.value as DesktopVoiceSettings['conversationMode']) }}><option value="cascade">{t('settings.cascadeMode')}</option><option value="qwen-hybrid">{t('settings.qwenHybridMode')}</option><option value="qwen-native">{t('settings.qwenNativeMode')}</option></select></div>
+    <div className="dshVoiceField">
+      <label htmlFor="dsh-voice-conversation-mode">{t('settings.conversationMode')}</label>
+      {bridgeMode
+        ? <div className="dshVoiceCompatibilityNotice" role="status">
+          <p>{t('settings.hybridInternalNotice')}</p>
+          <div className="dshVoiceCompatibilityActions">
+            <button type="button" onClick={() => { update('conversationMode', 'cascade') }}>{t('settings.cascadeMode')}</button>
+            <button type="button" onClick={() => { update('conversationMode', 'qwen-native') }}>{t('settings.qwenNativeMode')}</button>
+          </div>
+        </div>
+        : <select id="dsh-voice-conversation-mode" value={draft.conversationMode} onChange={event => { update('conversationMode', event.target.value as DesktopVoiceSettings['conversationMode']) }}><option value="cascade">{t('settings.cascadeMode')}</option><option value="qwen-native">{t('settings.qwenNativeMode')}</option></select>}
+    </div>
     <div className="dshVoiceField"><label htmlFor="dsh-qwen-endpoint-mode">{t('settings.endpointMode')}</label><select id="dsh-qwen-endpoint-mode" value={draft.qwenEndpointMode} onChange={event => { update('qwenEndpointMode', event.target.value as DesktopVoiceSettings['qwenEndpointMode']) }}><option value="shared">{t('settings.apiKeyOnly')}</option><option value="workspace">{t('settings.workspaceDedicated')}</option></select></div>
     {draft.qwenEndpointMode === 'workspace' && <div className="dshVoiceField"><label htmlFor="dsh-qwen-workspace">{t('settings.workspace')}</label><input id="dsh-qwen-workspace" value={draft.qwenWorkspaceId} placeholder="llm-xxxxxxxxxxxx" onChange={event => { update('qwenWorkspaceId', event.target.value) }} /><span className="dshVoiceProviderNotice">{t('settings.workspaceHint')}</span></div>}
     {draft.conversationMode !== 'cascade' ? <>

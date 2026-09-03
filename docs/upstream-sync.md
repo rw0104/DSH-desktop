@@ -25,6 +25,30 @@ npm view dsh-better-sidebar version
 git submodule status -- deepseek-harness
 ```
 
+## 2026-09-02 v2.1.0 release-prep audit
+
+本批次在升级产品版本和安装器合同前重新核对权威远端与 registry。没有更新上游 gitlink、官方 npm family 或 Better Sidebar 依赖；本批次只修改 Desktop-owned 语音、安装器和产品版本。
+
+| 组件 | 远端/registry 结果 | 本批次决策 |
+| --- | --- | --- |
+| DSH Desktop origin | `HEAD` `b7500642633fa401ea6b57bac76b5b220b972c70`；远端 `codex/qwen-e2e-agent-orchestration` `8edc0f2d93a42b033f6a1376c5eab8644fc03e9c` | 在现有本地修复分支上继续实现并推送，不改写远端历史 |
+| Desktop reference upstream | `HEAD` `64b1511dd7360550e46748678f0bde2eb3f67f25` | 继续只读对照，不引入运行时依赖 |
+| Official Harness | submodule remote `HEAD` `49a606bc5b5934603f22a26957a07dc799ab0291`；npm `@deepseek-ai/dsh-host-apiproxy` 与 `@deepseek-ai/dsh-llm-deepseek` 均为 `0.1.1-rc.2` | 保持 pinned submodule 与 rc2 package family；继续使用已审核 Yarn patches |
+| Better Sidebar | npm `0.17.1`，tarball `https://registry.npmjs.org/dsh-better-sidebar/-/dsh-better-sidebar-0.17.1.tgz` | 保持精确 `0.17.1`，不更新 patch baseline |
+
+版本变更目标为 outer 与 `dsh-plugin-desktop` 同步到 `2.1.0`。安装器保留 assisted per-user 默认和 `allowElevation: true`，移除伪 EULA 的 `nsis.license`，并把 `THIRD_PARTY_NOTICES.md` 作为无需同意的随包披露文件；all-users 选择仍允许一次标准 UAC。完整 gate、Windows package 和安装后 smoke 通过前不得创建 release tag 或上传资产。
+
+复核命令：
+
+```powershell
+git ls-remote origin HEAD refs/heads/codex/qwen-e2e-agent-orchestration
+git ls-remote upstream HEAD refs/heads/master
+git -C deepseek-harness ls-remote origin HEAD refs/tags/v0.1.1-rc.2
+npm view @deepseek-ai/dsh-host-apiproxy@0.1.1-rc.2 version dist.tarball --json
+npm view @deepseek-ai/dsh-llm-deepseek@0.1.1-rc.2 version dist.tarball --json
+npm view dsh-better-sidebar@0.17.1 version dist.tarball --json
+```
+
 ## 2026-08-30 Better Sidebar 未发布 main 审计
 
 - `main` 为 `3aab7ca3a53357f9237a91978d57df4cf84c9c45`，相对正式 `v0.17.1` / `3b1898f9…` 超前 32 个提交；npm `latest` 仍是 `0.17.1`，本产品 pin 同为 `0.17.1`。

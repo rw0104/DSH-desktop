@@ -81,6 +81,11 @@ const VOICE_STYLES = `
 .dshVoiceSettingsError { margin:0; color:var(--dsw-alias-state-error-primary); font:var(--dsw-font-xxs-12); line-height:1.45; }
 .dshVoiceProviderNotice { margin:0; color:var(--dsw-alias-label-tertiary); font:var(--dsw-font-xxs-12); line-height:1.45; }
 .dshVoiceExperimentalNotice { margin:0; padding:9px 10px; border-left:3px solid var(--dsw-alias-state-business-primary); color:var(--dsw-alias-label-secondary); background:var(--dsw-alias-bg-layer-1); font:var(--dsw-font-xxs-12); line-height:1.5; }
+.dshVoiceCompatibilityNotice { display:flex; flex-direction:column; gap:9px; padding:10px; border-left:3px solid var(--dsw-alias-state-business-primary); color:var(--dsw-alias-label-secondary); background:var(--dsw-alias-bg-layer-1); font:var(--dsw-font-xxs-12); line-height:1.5; }
+.dshVoiceCompatibilityNotice p { margin:0; }
+.dshVoiceCompatibilityActions { display:flex; flex-wrap:wrap; gap:8px; }
+.dshVoiceCompatibilityActions button { min-height:32px; padding:0 10px; border:1px solid var(--dsw-alias-border-l2); border-radius:6px; color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-primary); font:var(--dsw-font-xxs-12); cursor:pointer; }
+.dshVoiceCompatibilityActions button:hover { border-color:var(--dsw-alias-state-business-primary); }
 .dshVoiceSettingsActions { display:flex; align-items:center; gap:10px; padding-top:3px; }
 .dshVoiceSettingsActions button { min-height:38px; padding:0 15px; border:0; border-radius:6px; color:#fff; background:#367ff5; font:var(--dsw-font-xxs-12); font-weight:650; cursor:pointer; }
 .dshVoiceSettingsActions button:hover:not(:disabled) { background:#286fe4; }

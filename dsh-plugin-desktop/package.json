@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-desktop",
-  "version": "2.0.16",
+  "version": "2.1.0",
   "description": "DSH Desktop: an Electron shell composed as a DeepSeek Harness Cordis plugin",
   "license": "MIT",
   "publishConfig": {
@@ -307,6 +307,7 @@
       "cordis.patch.yml",
       "lib/**",
       "package.json",
+      "THIRD_PARTY_NOTICES.md",
       "!node_modules/node-pty/build/**",
       "!**/*.map",
       "!**/*.d.ts",
@@ -342,9 +343,9 @@
     },
     "nsis": {
       "include": "installer.nsh",
-      "license": "THIRD_PARTY_NOTICES.md",
       "oneClick": false,
       "perMachine": false,
+      "selectPerMachineByDefault": false,
       "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,

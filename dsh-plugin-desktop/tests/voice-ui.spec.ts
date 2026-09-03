@@ -137,10 +137,22 @@ describe('desktop voice surfaces', () => {
     } as never))
     expect(html).toContain('dsh-qwen-tts-voice')
     expect(html).toContain('dsh-voice-conversation-mode')
-    expect(html).toContain('value="qwen-hybrid"')
     expect(html).toContain('value="qwen-native"')
     expect(html).not.toContain('value="qwen-e2e"')
+    expect(html).not.toContain('value="qwen-hybrid"')
     expect(html).toContain('value="Cherry"')
+  })
+
+  it('requires an explicit choice before leaving the internal bridge mode', () => {
+    const html = renderToStaticMarkup(createElement(VoiceSettingsSection, {
+      controller: controller(state({ settings: { ...state().settings, conversationMode: 'qwen-hybrid' } })),
+      t,
+      openExternal,
+    } as never))
+    expect(html).toContain('settings.hybridInternalNotice')
+    expect(html).toContain('settings.cascadeMode')
+    expect(html).toContain('settings.qwenNativeMode')
+    expect(html).not.toContain('<option value="qwen-hybrid">')
   })
 
   it('hides independent TTS controls and identifies provider-native audio', () => {
