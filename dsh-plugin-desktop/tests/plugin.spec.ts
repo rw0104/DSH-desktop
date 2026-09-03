@@ -42,6 +42,7 @@ interface PluginHarness {
   restart: ReturnType<typeof vi.fn<() => Promise<void>>>
   setLocalePreference: ReturnType<typeof vi.fn<(locale: LocaleId | undefined) => void>>
   setThemeSource: ReturnType<typeof vi.fn<(source: ThemePreference) => void>>
+  authenticatedUrl: ReturnType<typeof vi.fn<(url: string) => string>>
   rendererBoot: ReturnType<typeof vi.fn<(report: RendererBootReport) => void>>
   pickDirectory: ReturnType<typeof vi.fn<() => Promise<string | null>>>
   validateDirectory: ReturnType<typeof vi.fn<(path: string) => Promise<boolean>>>
@@ -58,6 +59,11 @@ function createHarness(platform: DesktopRuntime['platform'] = 'darwin'): PluginH
   const restart = vi.fn(async () => {})
   const setLocalePreference = vi.fn<(locale: LocaleId | undefined) => void>()
   const setThemeSource = vi.fn<(source: ThemePreference) => void>()
+  const authenticatedUrl = vi.fn((url: string) => {
+    const authenticated = new URL(url)
+    authenticated.searchParams.set('token', 'test-launch-token')
+    return authenticated.href
+  })
   const rendererBoot = vi.fn<(report: RendererBootReport) => void>()
   const pickDirectory = vi.fn(async () => null)
   const validateDirectory = vi.fn(async () => true)
@@ -117,6 +123,7 @@ function createHarness(platform: DesktopRuntime['platform'] = 'darwin'): PluginH
   }
   const ctx = {
     desktopRuntime: runtime,
+    connection: { authenticatedUrl },
     webServer: {
       host: '127.0.0.1',
       port: 43120,
@@ -127,7 +134,11 @@ function createHarness(platform: DesktopRuntime['platform'] = 'darwin'): PluginH
     },
     settings,
     logger: { warn: vi.fn(), error: vi.fn() },
-    get: vi.fn((key: unknown) => String(key) === 'desktopRuntime' ? runtime : () => {}),
+    get: vi.fn((key: unknown) => {
+       if (String(key) === 'desktopRuntime') return runtime
+       if (String(key) === 'connection') return { authenticatedUrl }
+       return () => {}
+     }),
     effect: vi.fn((register: () => unknown) => register()),
     provide: vi.fn((name: string, value: unknown) => {
       ;(ctx as unknown as Record<string, unknown>)[name] = value
@@ -146,6 +157,7 @@ function createHarness(platform: DesktopRuntime['platform'] = 'darwin'): PluginH
     restart,
     setLocalePreference,
     setThemeSource,
+    authenticatedUrl,
     rendererBoot,
     pickDirectory,
     validateDirectory,
@@ -235,9 +247,12 @@ describe('desktop Host plugin', () => {
     expect(register.mock.calls[0]?.[2]).toEqual(expect.objectContaining({ applies: 'restart' }))
     expect(register.mock.calls[0]?.[2]).not.toHaveProperty('base')
     expect(loaderAwait).not.toHaveBeenCalled()
+    expect(harness.authenticatedUrl).toHaveBeenCalledWith(
+      'http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin&dsh-desktop-version=2.0.0',
+    )
     expect(harness.shell()).toEqual(expect.objectContaining({
       mode: 'compatibility',
-      url: 'http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin&dsh-desktop-version=2.0.0',
+      url: 'http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin&dsh-desktop-version=2.0.0&token=test-launch-token',
       productName: 'DSH Desktop',
       windowTitle: 'DeepSeek Harness Desktop',
       readThemeSource: expect.any(Function),

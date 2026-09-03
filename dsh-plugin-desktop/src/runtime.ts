@@ -130,7 +130,7 @@ export interface DesktopTerminalSpec {
 
 /** Values the desktop-shell plugin hands to the Electron adapter. */
 export interface DesktopShellSpec extends DesktopWindowConfig {
-  /** Unmodified Web root served by the active DSH profile. */
+  /** Authenticated Web root URL served by the active DSH profile. */
   url: string
   /** Native application and tray label. */
   productName: string

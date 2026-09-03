@@ -6,6 +6,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-cmdline'
 import type {} from '@deepseek-ai/dsh-agent'
+import type {} from '@deepseek-ai/dsh-client-connection'
 import { registerVoiceRealtimeHost } from './voice-realtime.ts'
 import {
   LOCALE_SETTINGS_NAMESPACE,
@@ -37,7 +38,7 @@ export const name = 'desktop-shell'
 
 /** Services required before the shell can register its renderer generation. */
 /** Services required by the desktop shell; `desktopRuntime` is probed, not required. */
-export const inject = ['webServer', 'webRuntime', 'appExit', 'settings', 'agents']
+export const inject = ['webServer', 'webRuntime', 'appExit', 'settings', 'agents', 'connection']
 
 /** Standard settings namespace shared by tray and configuration surfaces. */
 export const DESKTOP_SETTINGS_NAMESPACE = 'dsh-desktop'
@@ -152,6 +153,10 @@ export function apply(ctx: Context, config: Config): void {
   if (appExit === undefined) {
     throw new Error('dsh-plugin-desktop: the launcher did not provide ctx.appExit')
   }
+  const connection = ctx.get('connection')
+  if (connection === undefined || typeof connection.authenticatedUrl !== 'function') {
+    throw new Error('dsh-plugin-desktop: the Web Connection service is required for authenticated Renderer startup')
+  }
   if (ctx.webServer.host !== '127.0.0.1') {
     throw new Error('dsh-plugin-desktop: desktop shell requires a loopback Web server')
   }
@@ -259,7 +264,9 @@ export function apply(ctx: Context, config: Config): void {
   ctx.effect(
     () => runtime.schedule({
       ...config,
-      url: desktopRendererUrl(ctx.webServer.port, config.mode, runtime.platform, runtime.updates.currentVersion),
+      url: connection.authenticatedUrl(
+        desktopRendererUrl(ctx.webServer.port, config.mode, runtime.platform, runtime.updates.currentVersion),
+      ),
       productName: 'DSH Desktop',
       windowTitle: 'DeepSeek Harness Desktop',
       iconPath,
