@@ -26,6 +26,11 @@
       "reason": "ClientModuleRegistry uses CommonJS package resolution for every dsh.client package and the web server reads its ./client bundle from that resolved path."
     },
     {
+      "id": "host-typert",
+      "kind": "host-typert",
+      "reason": "Cordis typert-loader resolves every contributor's ./typert Host manifest from the physical package tree."
+    },
+    {
       "id": "packaged-pnpm",
       "kind": "package-tree",
       "roots": [

@@ -34,7 +34,13 @@ interface ClientBundleConsumer {
   readonly reason: string
 }
 
-export type PhysicalRuntimeConsumer = PathPrefixConsumer | PackageConsumer | AsarUnpackedConsumer | ClientBundleConsumer
+interface HostTypertConsumer {
+  readonly id: string
+  readonly kind: 'host-typert'
+  readonly reason: string
+}
+
+export type PhysicalRuntimeConsumer = PathPrefixConsumer | PackageConsumer | AsarUnpackedConsumer | ClientBundleConsumer | HostTypertConsumer
 
 export interface PhysicalRuntimePolicy {
   readonly schemaVersion: 1
@@ -106,7 +112,7 @@ export function parsePhysicalRuntimePolicy(value: unknown): PhysicalRuntimePolic
       if (!Array.isArray(consumer.roots) || consumer.roots.some(root => typeof root !== 'string' || root.length === 0)) {
         throw new Error(`physical runtime consumer ${consumer.id} requires package roots`)
       }
-    } else if (consumer.kind !== 'asar-unpacked' && consumer.kind !== 'client-bundles') {
+    } else if (consumer.kind !== 'asar-unpacked' && consumer.kind !== 'client-bundles' && consumer.kind !== 'host-typert') {
       throw new Error(`physical runtime consumer ${consumer.id} has unsupported kind ${String(consumer.kind)}`)
     }
   }
@@ -156,15 +162,33 @@ function pathBelongsToPackage(path: string, packageRoot: string): boolean {
   return path === `${packageRoot}/package.json` || path.startsWith(`${packageRoot}/`)
 }
 
-function clientExportPath(value: unknown): string | undefined {
+function isRuntimePackageFile(path: string, packageRoot: string): boolean {
+  if (path === `${packageRoot}/package.json`) return true
+  return /\.(?:cjs|js|json|mjs|node|wasm)$/u.test(path)
+}
+
+function packageExportPath(value: unknown): string | undefined {
   if (typeof value === 'string') return value
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined
   const record = value as Record<string, unknown>
   for (const key of ['default', 'import', 'require', 'node', 'browser']) {
-    const path = clientExportPath(record[key])
+    const path = packageExportPath(record[key])
     if (path !== undefined) return path
   }
   return undefined
+}
+
+function packageExportFilePath(
+  packageRoot: string,
+  manifest: Record<string, unknown>,
+  exportName: string,
+): string | undefined {
+  const exports = manifest.exports
+  if (exports === null || typeof exports !== 'object' || Array.isArray(exports)) return undefined
+  const exported = packageExportPath((exports as Record<string, unknown>)[exportName])
+  if (exported === undefined || !exported.startsWith('./')) return undefined
+  const path = normalizePath(posix.join(packageRoot, exported.slice(2)))
+  return pathBelongsToPackage(path, packageRoot) ? path : undefined
 }
 
 function packageClientPath(packageRoot: string, manifest: Record<string, unknown>): string | undefined {
@@ -173,12 +197,7 @@ function packageClientPath(packageRoot: string, manifest: Record<string, unknown
   const client = (dsh as Record<string, unknown>).client
   if (client === null || typeof client !== 'object' || Array.isArray(client)) return undefined
   if ((client as Record<string, unknown>).platform !== 'web') return undefined
-  const exports = manifest.exports
-  if (exports === null || typeof exports !== 'object' || Array.isArray(exports)) return undefined
-  const clientExport = clientExportPath((exports as Record<string, unknown>)['./client'])
-  if (clientExport === undefined || !clientExport.startsWith('./')) return undefined
-  const path = normalizePath(posix.join(packageRoot, clientExport.slice(2)))
-  return pathBelongsToPackage(path, packageRoot) ? path : undefined
+  return packageExportFilePath(packageRoot, manifest, './client')
 }
 
 async function physicalFiles(root: string): Promise<readonly string[]> {
@@ -230,6 +249,13 @@ export async function selectPhysicalRuntimeFiles(
       if (pathBelongsToPackage(entry.path, packageRoot)) select(entry.path, consumerId)
     }
   }
+  const selectRuntimePackage = (packageRoot: string, consumerId: string): void => {
+    for (const entry of entries) {
+      if (pathBelongsToPackage(entry.path, packageRoot) && isRuntimePackageFile(entry.path, packageRoot)) {
+        select(entry.path, consumerId)
+      }
+    }
+  }
   const readManifest = async (packageRoot: string): Promise<Record<string, unknown>> => {
     const current = manifests.get(packageRoot)
     if (current !== undefined) return current
@@ -240,6 +266,26 @@ export async function selectPhysicalRuntimeFiles(
     }
     manifests.set(packageRoot, value as Record<string, unknown>)
     return value as Record<string, unknown>
+  }
+
+  const selectRuntimeDependencyClosure = async (root: string, consumerId: string): Promise<void> => {
+    const queue = [root]
+    const visited = new Set<string>()
+    while (queue.length > 0) {
+      const packageRoot = queue.shift()
+      if (packageRoot === undefined || visited.has(packageRoot)) continue
+      visited.add(packageRoot)
+      selectRuntimePackage(packageRoot, consumerId)
+      const manifest = await readManifest(packageRoot)
+      for (const field of ['dependencies', 'optionalDependencies'] as const) {
+        const values = manifest[field]
+        if (values === null || typeof values !== 'object' || Array.isArray(values)) continue
+        for (const dependency of Object.keys(values as Record<string, unknown>).sort()) {
+          const resolved = resolveArchivePackageRoot(packageRoots, packageRoot, dependency)
+          if (resolved !== undefined && !visited.has(resolved)) queue.push(resolved)
+        }
+      }
+    }
   }
 
   for (const consumer of policy.consumers) {
@@ -262,6 +308,12 @@ export async function selectPhysicalRuntimeFiles(
         if (clientPath === undefined) continue
         select(packageRoot.length === 0 ? 'package.json' : `${packageRoot}/package.json`, consumer.id)
         select(clientPath, consumer.id)
+      }
+    } else if (consumer.kind === 'host-typert') {
+      for (const packageRoot of packageRoots) {
+        const manifest = await readManifest(packageRoot)
+        if (packageExportFilePath(packageRoot, manifest, './typert') === undefined) continue
+        await selectRuntimeDependencyClosure(packageRoot, consumer.id)
       }
     } else {
       const roots = consumer.roots.map((root) => {

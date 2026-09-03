@@ -122,6 +122,8 @@ export const REQUIRED_UNPACKED_PACKAGE_SPECIFIERS = [
   'dsh-plugin-desktop/windows-agent-presets',
   'dsh-plugin-desktop/windows-pwsh-sandbox',
   'dsh-plugin-desktop/package.json',
+  '@deepseek-ai/dsh-api-session-controller/typert',
+  '@deepseek-ai/dsh-api-workspace-controller/typert',
 ] as const
 
 /** Injectable archive listing seam used by focused tests. */

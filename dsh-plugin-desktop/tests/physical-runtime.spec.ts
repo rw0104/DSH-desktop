@@ -101,4 +101,42 @@ describe('physical runtime projection', () => {
     ])
     expect(result.selected.get('package.json')).toEqual(new Set(['clients']))
   })
+
+  it('keeps Host Typert artifacts and their runtime dependencies for dual-face packages', async () => {
+    const hostPackage = 'node_modules/@deepseek-ai/dsh-api-session-controller'
+    const zodPackage = `${hostPackage}/node_modules/zod`
+    const result = await selectPhysicalRuntimeFiles(
+      [
+        { path: `${hostPackage}/package.json`, size: 1, unpacked: false, executable: false },
+        { path: `${hostPackage}/lib/client.js`, size: 1, unpacked: false, executable: false },
+        { path: `${hostPackage}/lib/typert.host.js`, size: 1, unpacked: false, executable: false },
+        { path: `${zodPackage}/package.json`, size: 1, unpacked: false, executable: false },
+        { path: `${zodPackage}/index.js`, size: 1, unpacked: false, executable: false },
+        { path: 'node_modules/unrelated/package.json', size: 1, unpacked: false, executable: false },
+      ],
+      parsePhysicalRuntimePolicy({
+        schemaVersion: 1,
+        consumers: [{ id: 'host', kind: 'host-typert', reason: 'Host Typert manifests' }],
+      }),
+      async path => Buffer.from(path === `${hostPackage}/package.json`
+        ? JSON.stringify({
+            name: '@deepseek-ai/dsh-api-session-controller',
+            dependencies: { zod: '^4.0.0' },
+            exports: { './typert': { default: './lib/typert.host.js' } },
+          })
+        : path === `${zodPackage}/package.json`
+          ? JSON.stringify({ name: 'zod' })
+          : '{}'),
+    )
+
+    expect([...result.selected.keys()].sort()).toEqual([
+      `${hostPackage}/lib/client.js`,
+      `${hostPackage}/lib/typert.host.js`,
+      `${zodPackage}/index.js`,
+      `${zodPackage}/package.json`,
+      `${hostPackage}/package.json`,
+    ])
+    expect(result.selected.get(`${hostPackage}/package.json`)).toEqual(new Set(['host']))
+    expect(result.selected.has('node_modules/unrelated/package.json')).toBe(false)
+  })
 })
