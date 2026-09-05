@@ -12,6 +12,8 @@
 
 本轮将 Desktop/root 产品版本提高到 2.2.4，供用户本地安装测试语音浮条、双路反馈和通用受控生成边界。所有依赖与 submodule pin 保持不变；下一次上游迁移仍需单独审查 Host/Client、工具作用域及打包闭包，并将 gitlink 更新单独提交。本轮不创建 tag 或 GitHub Release。
 
+本地测试安装器已完成：代码基线 `36fb06b353`；immutable install、完整 root check（Desktop 842 passed / 11 skipped，Market 275 passed）、14 项打包专项、包内 Profile 与 51 个客户端注册校验通过。`DSH-Desktop-2.2.4-x64-Setup.exe` 为 224,029,590 bytes，SHA-256 `A2D620C8BC22D58C338CF60BE18298040F8681244C2557AFB7FC0906609F149B`，Authenticode `NotSigned`。安装器、物理 manifest、ASAR manifest、应用 PE 版本均确认为 2.2.4 系列，包内 client 与本次构建哈希相同；`latest.yml` 的版本、文件名、两处 SHA-512 与安装器一致。本次只交付本地测试包，没有覆盖用户正在运行的安装目录，也没有上传 Release 资产。
+
 复核方式：对上述三个 URL 执行 `git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref <url> HEAD 'refs/heads/*' 'refs/tags/*'`；执行 `npm view @deepseek-ai/dsh version dist-tags time.modified --json`、`npm view dsh-better-sidebar version dist-tags time.modified --json` 和 `git submodule status -- deepseek-harness`。原始命令输出作为本地构建记录保留，不作为发布资产。
 
 ## 2026-09-05 语音工作区交互与模型发现修复审计
