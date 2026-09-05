@@ -2,6 +2,8 @@
 
 ## 2026-09-04 v2.2.0 版本更新前复核
 
+23:03 前在新增 Agent Preset 解析补丁前再次执行相同的三条 Git remote 查询，HEAD/tag 均与本节下述快照一致；registry 单独核实 `@deepseek-ai/dsh-agent-presets@0.1.2-rc.1`。新增补丁不变更版本 pin：磁盘预检未找到插件时通过锚定的 CommonJS resolver 检查可解析性，不导入插件；Desktop 对 CJS 使用真正的安装目录 require，避免仅修改 nextResolve parentURL 仍沿用原 Module.paths。真正缺失的插件仍被预检拒绝。该问题在隔离配置创建首个 Standard 会话时复现，界面健康报告本身不足以发现它。
+
 在版本更新前通过 `http://127.0.0.1:10808` 重新执行三条权威仓库的 `git ls-remote`（HEAD/固定 tag）和 `npm view`。结果与下方同日客户端修复快照一致：Harness HEAD `d347e703908d0406b7a7ef80e3a0e594d86b2215`、RC1 tag `a66e4702047846cdaa10c66c9d3df3951f5ea70d`，npm latest/next 为 `0.1.2-rc.1`；Sidebar HEAD `a5c52b3f1bc450b04578bd9252f67b7d79c98502`、v0.18.0 tag `9e1a03452794532cda1f6ac677b72579dff48dfc`，npm latest 为 `0.18.0`；参考桌面 HEAD `6f6227363e931acd9971289a8f334d88f1dbc3c9`、v2.0.4 tag `d29bf7a965fc68bf09750bc329905ecb17afe48b`。
 
 本次仅将产品/root manifest 从 2.1.0 提升至 2.2.0，保留上述已验证的运行时 pin。修复提交为 `6483575730`；root README 继续归属 rw0104/DSH-desktop，并保留仍有效的已发布下载链接。新版本说明见 [v2.2.0](releases/v2.2.0.md)。

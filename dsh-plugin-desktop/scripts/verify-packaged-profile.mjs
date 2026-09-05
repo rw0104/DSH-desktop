@@ -49,13 +49,28 @@ export function verifyPackagedProfile(appOutDir, environment = process.env) {
     const profileUrl = pathToFileURL(join(resources, 'app.asar', 'lib', 'profile.js')).href
     const profileCode = [
       `import { prepareDesktopProfile, desktopInstallAnchor, shippedPresetRoot } from ${JSON.stringify(profileUrl)};`,
+      `import { installProfilePackageResolver } from ${JSON.stringify(new URL('./module-resolution.js', profileUrl).href)};`,
+      `import { WindowsAgentPresets } from ${JSON.stringify(new URL('./windows-agent-presets.js', profileUrl).href)};`,
+      "import { createRequire } from 'node:module';",
+      "import { pathToFileURL } from 'node:url';",
       "const prepared = prepareDesktopProfile('1', process.env.DSH_HOME, 'win32');",
+      "const release=installProfilePackageResolver(prepared.bareModuleBaseUrl);",
+      "const installed=createRequire(desktopInstallAnchor());",
+      "const {Context}=await import(pathToFileURL(installed.resolve('@deepseek-ai/cordis')).href);",
+      "const context=new Context(); context.baseUrl=prepared.bareModuleBaseUrl;",
+      "context.provide('sessionProjections',{register:()=>()=>{}});",
+      "try {",
+      `const presets=new WindowsAgentPresets(context,{default:'standard',includeShippedRoot:true,includeUserRoot:false,roots:[{path:shippedPresetRoot(${JSON.stringify(profileUrl)}),trust:'system'}]});`,
+      "const standard=await presets.resolve('standard');",
+      "if(standard.broken!==undefined)throw new Error('packaged Standard preset is broken: '+standard.broken);",
       'console.log(JSON.stringify({',
+      "standardPreset: standard.id,",
       'anchor: desktopInstallAnchor(),',
       'layers: prepared.profile.layers.map(layer => layer.packageName),',
       `presetPath: shippedPresetRoot(${JSON.stringify(profileUrl)})`,
       '}));',
-    ].join('')
+      "}finally{await context.fiber.dispose();release();}",
+    ].join('\n')
     const cliVersion = runAsNode(application, [cliEntry, '--version'], probeRoot, environment)
     const pnpmVersion = runAsNode(application, [pnpmEntry, '--version'], probeRoot, environment)
     const profileOutput = runAsNode(
@@ -78,6 +93,7 @@ export function verifyPackagedProfile(appOutDir, environment = process.env) {
       || !String(profile.presetPath).includes(`${join('app.asar.unpacked', 'node_modules', '@deepseek-ai', 'dsh', 'config', 'agent-presets')}`)) {
       throw new Error(`packaged Profile produced an unexpected physical/ASAR split: ${JSON.stringify(profile)}`)
     }
+    if (profile.standardPreset !== 'standard') throw new Error('packaged Standard preset was not verified')
     return { cliVersion, pnpmVersion, profile }
   } finally {
     rmSync(probeRoot, { recursive: true, force: true })

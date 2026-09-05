@@ -1077,7 +1077,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deepseek-ai/dsh-agent-presets@npm:0.1.2-rc.1, @deepseek-ai/dsh-agent-presets@npm:^0.1.2-rc.1":
+"@deepseek-ai/dsh-agent-presets@npm:0.1.2-rc.1":
   version: 0.1.2-rc.1
   resolution: "@deepseek-ai/dsh-agent-presets@npm:0.1.2-rc.1"
   dependencies:
@@ -1100,6 +1100,32 @@ __metadata:
     "@deepseek-ai/dsh-tools": ^0.1.2-rc.1
     "@deepseek-ai/dsh-typert-protocol": ^0.1.2-rc.1
   checksum: 10c0/3f1008c5d1b5fa09a21110745a525eec4de539511e667dc689fab66187cf07a2f5f8335c901d9e714e2710855f03323a5fd0bdbc6c9e113ac958adf793095c1b
+  languageName: node
+  linkType: hard
+
+"@deepseek-ai/dsh-agent-presets@patch:@deepseek-ai/dsh-agent-presets@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-agent-presets-npm-0.1.2-rc.1-59c625fe39.patch::locator=deepseek-harness-desktop%40workspace%3A.":
+  version: 0.1.2-rc.1
+  resolution: "@deepseek-ai/dsh-agent-presets@patch:@deepseek-ai/dsh-agent-presets@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-agent-presets-npm-0.1.2-rc.1-59c625fe39.patch::version=0.1.2-rc.1&hash=acaf85&locator=deepseek-harness-desktop%40workspace%3A."
+  dependencies:
+    "@deepseek-ai/schemastery": "npm:^3.18.2"
+    js-yaml: "npm:^4.1.0"
+    zod: "npm:^4.4.3"
+  peerDependencies:
+    "@deepseek-ai/cordis": ^4.0.2
+    "@deepseek-ai/cordis-plugin-include": ^1.0.7
+    "@deepseek-ai/cordis-plugin-loader": ^1.0.3
+    "@deepseek-ai/dsh-agent": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-atomic-write": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-home-paths": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-invariants": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-scope": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-session": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-session-projection": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-settings": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-system-prompt": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-tools": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-typert-protocol": ^0.1.2-rc.1
+  checksum: 10c0/87a72dd763c8a3409a24c262b3c0bd1eb9b43f11dcccfdd1d6d1d8cd1d12286e84fa159b00bcf421fe82e07af39456df8a64de15f5bc2126eb866037f4b0ed93
   languageName: node
   linkType: hard
 

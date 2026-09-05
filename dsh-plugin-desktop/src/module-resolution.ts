@@ -1,6 +1,7 @@
 /** Profile-relative package resolution for Electron's restricted Node runtime. */
 
-import { registerHooks } from 'node:module'
+import { createRequire, isBuiltin, registerHooks } from 'node:module'
+import { pathToFileURL } from 'node:url'
 
 const LOADER_ENTRY_URL = import.meta.resolve('@deepseek-ai/cordis-plugin-loader')
 const DESKTOP_ENTRY_URL = new URL('../lib/index.js', import.meta.url).href
@@ -22,6 +23,8 @@ export function installProfilePackageResolver(
   installationBaseUrl: string = INSTALLATION_BASE_URL,
 ): () => void {
   const profileDirectoryUrl = new URL('.', profileBaseUrl).href
+  const installationRequire = createRequire(installationBaseUrl)
+  const profileRequire = createRequire(profileBaseUrl)
   const hooks = registerHooks({
     resolve(specifier, context, nextResolve) {
       const fromLoader = context.parentURL === LOADER_ENTRY_URL
@@ -34,10 +37,22 @@ export function installProfilePackageResolver(
           url: new URL('../package.json', import.meta.url).href,
         }
       }
-      if (!isBareSpecifier(specifier)) {
+      if (!isBareSpecifier(specifier) || isBuiltin(specifier)) {
         return nextResolve(specifier, context)
       }
       if (fromLoader) {
+        // Changing nextResolve's parentURL does not retarget the underlying
+        // CommonJS Module.paths. Use an actually anchored require for CJS.
+        if (context.conditions?.includes('require') === true) {
+          let filename: string
+          try {
+            filename = installationRequire.resolve(specifier)
+          } catch (cause) {
+            if (!isMissingModule(cause)) throw cause
+            filename = profileRequire.resolve(specifier)
+          }
+          return { shortCircuit: true, url: pathToFileURL(filename).href }
+        }
         try {
           return nextResolve(specifier, { ...context, parentURL: installationBaseUrl })
         } catch (cause) {
@@ -45,11 +60,15 @@ export function installProfilePackageResolver(
           return nextResolve(specifier, { ...context, parentURL: profileBaseUrl })
         }
       }
-      if (context.parentURL?.startsWith(profileDirectoryUrl) === true) {
+      if (context.parentURL?.startsWith(profileDirectoryUrl) === true
+        && context.parentURL !== installationBaseUrl) {
         try {
           return nextResolve(specifier, context)
         } catch (cause) {
           if (!isMissingModule(cause)) throw cause
+          if (context.conditions?.includes('require') === true) {
+            return { shortCircuit: true, url: pathToFileURL(installationRequire.resolve(specifier)).href }
+          }
           return nextResolve(specifier, { ...context, parentURL: installationBaseUrl })
         }
       }

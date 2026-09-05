@@ -186,6 +186,13 @@ try {
   if (agentPresets.defaultId !== 'standard') {
     throw new Error(`assembled Windows profile selected unsupported default ${agentPresets.defaultId}`)
   }
+  const standardPreset = await agentPresets.resolve('standard')
+  if (standardPreset.broken !== undefined) throw new Error(`Standard preset cannot mount: ${standardPreset.broken}`)
+  const created = await ctx.sessionController.create({ cwd: home, agentPreset: 'standard' })
+  if (typeof created.sessionId !== 'string' || created.agentPreset !== 'standard') {
+    throw new Error('assembled Profile could not create a Standard session')
+  }
+  console.log('verify-profile-session: Standard session created without an LLM request.')
   const legacyPreset = await agentPresets.resolve('minimal')
   if (legacyPreset.id !== 'minimal') {
     throw new Error(`assembled Windows profile remapped legacy preset to ${legacyPreset.id}`)

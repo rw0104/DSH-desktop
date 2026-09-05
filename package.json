@@ -45,7 +45,9 @@
     "@deepseek-ai/dsh-win32-process@npm:0.1.2-rc.1": "patch:@deepseek-ai/dsh-win32-process@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-win32-process-npm-0.1.2-rc.1-4a5022946b.patch",
     "@deepseek-ai/dsh-win32-process@npm:^0.1.2-rc.1": "patch:@deepseek-ai/dsh-win32-process@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-win32-process-npm-0.1.2-rc.1-4a5022946b.patch",
     "@deepseek-ai/dsh@npm:0.1.2-rc.1": "patch:@deepseek-ai/dsh@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-npm-0.1.2-rc.1-d30c5ceb0c.patch",
-    "@deepseek-ai/dsh@npm:^0.1.2-rc.1": "patch:@deepseek-ai/dsh@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-npm-0.1.2-rc.1-d30c5ceb0c.patch"
+    "@deepseek-ai/dsh@npm:^0.1.2-rc.1": "patch:@deepseek-ai/dsh@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-npm-0.1.2-rc.1-d30c5ceb0c.patch",
+    "@deepseek-ai/dsh-agent-presets@npm:0.1.2-rc.1": "patch:@deepseek-ai/dsh-agent-presets@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-agent-presets-npm-0.1.2-rc.1-59c625fe39.patch",
+    "@deepseek-ai/dsh-agent-presets@npm:^0.1.2-rc.1": "patch:@deepseek-ai/dsh-agent-presets@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-agent-presets-npm-0.1.2-rc.1-59c625fe39.patch"
   },
   "dependenciesMeta": {
     "@deepseek-ai/dsh-subprocess-local": {

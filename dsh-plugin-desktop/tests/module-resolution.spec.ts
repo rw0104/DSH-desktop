@@ -9,7 +9,8 @@ const hooks = vi.hoisted(() => ({
   deregister: vi.fn(),
 }))
 
-vi.mock('node:module', () => ({
+vi.mock('node:module', async (importOriginal) => ({
+  ...await importOriginal<typeof import('node:module')>(),
   registerHooks: vi.fn((definition: { resolve: typeof hooks.resolve }) => {
     hooks.resolve = definition.resolve
     return { deregister: hooks.deregister }

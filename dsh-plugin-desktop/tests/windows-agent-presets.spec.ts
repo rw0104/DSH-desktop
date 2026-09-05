@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
+import { createRequire } from 'node:module'
+import { installProfilePackageResolver } from '../src/module-resolution.ts'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   PresetExistsError,
@@ -49,6 +51,24 @@ afterEach(async () => {
 })
 
 describe('Windows agent preset guard', () => {
+  it('accepts installation-resolvable preset plugins while still rejecting missing ones', async () => {
+    const presets = createRoster(WINDOWS_SAFE_PRESET)
+    const profileBase = pathToFileURL(join(roots.at(-1) as string, 'package.json')).href
+    const installation = mkdtempSync(join(tmpdir(), 'dsh-preset-installation-'))
+    roots.push(installation)
+    const plugin = join(installation, 'node_modules/fixture-plugin')
+    mkdirSync(plugin, { recursive: true })
+    writeFileSync(join(installation, 'package.json'), '{"private":true}')
+    writeFileSync(join(plugin, 'package.json'), '{"name":"fixture-plugin","exports":"./index.js"}')
+    writeFileSync(join(plugin, 'index.js'), 'throw new Error("discovery must not import plugins")')
+    const release = installProfilePackageResolver(profileBase, pathToFileURL(join(installation, 'package.json')).href)
+    try {
+      expect(createRequire(profileBase).resolve('fixture-plugin')).toBe(join(plugin, 'index.js'))
+      expect(await presets.resolve(WINDOWS_SAFE_PRESET)).not.toHaveProperty('broken')
+    } finally { release() }
+    expect(await presets.resolve(WINDOWS_SAFE_PRESET)).toHaveProperty('broken')
+  })
+
   it('hides the unsupported minimal preset from discovery', async () => {
     const presets = createRoster(WINDOWS_SAFE_PRESET)
 
