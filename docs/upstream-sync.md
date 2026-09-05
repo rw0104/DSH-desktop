@@ -6,6 +6,8 @@
 
 修复 Desktop 自有语音按钮读取旧 `props.session.sessionId` 的问题，改用 RC1 `SessionStandardProps.sessionId`，去掉本地错误的 slot owner 类型声明。真实 RC1 props 的点击回归已先失败（TypeError，票据请求未发出）再通过；Client 测试归入独立 Client 类型检查，避免与 Host 的 Context merge 混编。图片输入自动识别保持不变；生图输出接口仍不在当前适配器支持范围内。
 
+后续实际 Chromium 点击还发现兼容模式没有 Workbench 语音出口、浏览器错误清理不能使用关闭码 1011。最终代码 `6549f1deb2` 使用公开 `shell.overlay` 增加兼容语音对话框，关闭会取消启动及停止采集，并使用应用关闭码 4001；不替换兼容模式上游根布局。最终完整检查 Desktop 803 passed / 11 skipped、Market 275 passed；实际 ASAR 无脚本替换的点击、两次本地票据 200、假麦克风音频帧、模拟回复、结束/重开/Escape、服务商拒绝提示均通过，页面异常为 0。安装器为 224,008,835 bytes，SHA-256 `E72E432A50D857E87191D25AE6A6C2FAC2334639A8522A6FC4D3C26B229733D6`；实际供应商音频通话不在本次模拟验证结论内，详见 [v2.2.2](releases/v2.2.2.md)。
+
 ## 2026-09-05 v2.2.1 语音与图像能力热修复
 
 00:31 自动识别能力扩展前重新复核三条 remote HEAD/tag 和 npm dist-tags：Harness / Sidebar 与下述快照一致；桌面参考 HEAD 为 `589b26d2dffb333edc6f832697a87e810a0d1183`，v2.0.4 tag 不变。保留全部 runtime pin，仅扩展已审计的模型发现与客户端配置合同，不引入参考实现的未审计代码。
