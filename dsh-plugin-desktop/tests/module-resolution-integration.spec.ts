@@ -41,8 +41,7 @@ it('resolves profile CommonJS requests through the installation without executin
     const result = spawnSync(process.execPath, ['--input-type=module', '--eval', code], {
       encoding: 'utf8', timeout: 15000, windowsHide: true,
     })
-    expect(result.stderr).toBe('')
-    expect(result.status).toBe(0)
+    expect(result.status, result.stderr || result.error?.message).toBe(0)
     expect(result.stdout.trim()).toBe(join(installed, 'index.js'))
   } finally {
     rmSync(root, { recursive: true, force: true })

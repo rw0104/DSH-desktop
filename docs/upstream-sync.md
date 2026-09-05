@@ -8,6 +8,8 @@
 
 本次仅将产品/root manifest 从 2.1.0 提升至 2.2.0，保留上述已验证的运行时 pin。修复提交为 `6483575730`；root README 继续归属 rw0104/DSH-desktop，并保留仍有效的已发布下载链接。新版本说明见 [v2.2.0](releases/v2.2.0.md)。
 
+最终 2.2.0 构建来自 `85063e3ef6`，包含后续 CJS/Standard Preset 修复。完整 check：Desktop 788 passed / 11 skipped、Market 275 passed，Standard 新会话创建成功。Windows 安装器为 224,005,700 bytes，SHA-256 `8A0972658AAFD54D2F4F381D4D0605F940C9B9CB9D58AC4A5EF5BF811A7FECCF`；内置版本与 PE 版本均为 2.2.0 系列，latest.yml 身份和 SHA-512 已匹配。打包 Profile 验证 Standard 可用；隔离 GUI 新会话创建成功并于本地 23:24 记录 healthy。仅推送工作分支和本地产物验证记录，本次未合并 main、未创建 Release/tag。
+
 ## 2026-09-04 客户端加载修复前复核
 
 通过 `http://127.0.0.1:10808` 执行三条权威 remote 的 `git ls-remote`（HEAD、默认分支和当前固定 tag）及 `npm view <package> dist-tags --json`：
