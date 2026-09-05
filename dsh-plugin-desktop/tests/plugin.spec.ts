@@ -141,6 +141,9 @@ function createHarness(platform: DesktopRuntime['platform'] = 'darwin'): PluginH
        return () => {}
      }),
     effect: vi.fn((register: () => unknown) => register()),
+    // This shell-only fixture has no Agent/tool services. Their injected policy is
+    // exercised with the real Cordis runtime in generation-policy.spec.ts.
+    inject: vi.fn(() => () => {}),
     provide: vi.fn((name: string, value: unknown) => {
       ;(ctx as unknown as Record<string, unknown>)[name] = value
       return () => { delete (ctx as unknown as Record<string, unknown>)[name] }

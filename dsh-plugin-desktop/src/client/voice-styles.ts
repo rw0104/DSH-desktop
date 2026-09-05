@@ -12,16 +12,22 @@ const VOICE_STYLES = `
 .dshVoiceTask strong { width:100%; }
 .dshVoiceTask span { flex:1; min-width:160px; color:var(--dsw-alias-label-secondary); }
 .dshVoiceTask button { border:0; background:transparent; color:var(--dsw-alias-interactive-label-primary); cursor:pointer; }
-.dshVoiceCompact { position:fixed; inset:auto 20px 20px auto; display:flex; align-items:center; gap:8px; width:min(420px,calc(100vw - 32px)); padding:10px; border:1px solid var(--dsw-alias-border-l2); border-radius:12px; color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-base); box-shadow:0 8px 30px rgb(0 0 0 / 15%); pointer-events:auto; }
+.dshVoiceCompact { position:fixed; inset:0 auto auto 0; box-sizing:border-box; display:flex; align-items:center; gap:2px; width:max-content; max-width:min(300px,calc(100vw - 24px)); padding:6px; border:1px solid var(--dsw-alias-border-l2); border-radius:12px; color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-base); box-shadow:0 8px 30px rgb(0 0 0 / 15%); pointer-events:auto; }
+.dshVoiceCompact .dshVoiceDrag { flex:none; width:24px; padding:0; touch-action:none; cursor:grab; user-select:none; }
+.dshVoiceCompact .dshVoiceDrag:active { cursor:grabbing; }
+.dshVoiceCompact .dshVoiceCompactIcon { flex:none; display:grid; place-items:center; width:34px; padding:0; }
+.dshVoiceVisuallyHidden { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.dshVoiceGlyph.is-muted { opacity:.55; }
+.dshVoiceGlyph.is-muted { background:linear-gradient(45deg,transparent 44%,currentColor 46%,currentColor 53%,transparent 55%); }
 .dshVoiceCompact button { min-height:34px; padding:6px 9px; border:0; border-radius:6px; background:transparent; color:inherit; cursor:pointer; }
 .dshVoiceCompact button:hover { background:var(--dsw-alias-interactive-bg-hover); }
 .dshVoiceCompact .dshVoiceCompactRestore { flex:1; min-width:0; display:flex; align-items:center; gap:8px; text-align:start; }
-.dshVoiceCompactRestore > span:last-child { overflow:hidden; }
+.dshVoiceCompactRestore > span:last-child { max-width:132px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .dshVoiceCompactRestore small { display:block; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--dsw-alias-label-secondary); }
 .dshVoiceCompactIndicator { width:9px; height:9px; border-radius:50%; background:var(--dsw-alias-state-success-primary); flex:none; }
 .dshVoiceCompact .dshVoiceEnd { color:var(--dsw-alias-state-error-primary); }
 .dshVoiceComposerButton { display:inline-grid; place-items:center; width:34px; height:34px; padding:0; border:0; border-radius:50%; color:#fff; background:#367ff5; box-shadow:0 3px 10px rgb(54 127 245 / 22%); cursor:pointer; transition:transform 140ms ease, background 140ms ease, box-shadow 140ms ease; }
-.dshVoiceComposerButton:hover { background:#286fe4; box-shadow:0 4px 13px rgb(54 127 245 / 30%); transform:translateY(-1px); }
+@media (hover:hover) and (pointer:fine) { .dshVoiceComposerButton:hover { background:#286fe4; box-shadow:0 4px 13px rgb(54 127 245 / 30%); transform:translateY(-1px); } }
 .dshVoiceComposerButton.is-active { background:#2169da; box-shadow:0 0 0 4px rgb(54 127 245 / 14%), 0 4px 13px rgb(54 127 245 / 26%); }
 .dshVoiceComposerButton:disabled { opacity:.45; cursor:default; }
 .dshVoiceWaveIcon { display:flex; align-items:center; justify-content:center; gap:3px; width:20px; height:20px; }
@@ -61,7 +67,11 @@ const VOICE_STYLES = `
 .dshVoicePresence { flex:none; height:150px; border-bottom:1px solid var(--dsw-alias-border-l2); overflow:hidden; }
 .dshVoiceOrb { position:relative; display:grid; grid-template-rows:minmax(0,1fr) 24px; place-items:center; height:100%; margin:0; overflow:hidden; isolation:isolate; }
 .dshVoiceOrbCanvas { z-index:1; display:block; width:auto; max-width:100%; height:100%; aspect-ratio:1; min-height:0; }
+.dshVoiceOrbCanvas { grid-area:1 / 1; }
+.dshVoiceOrbGpu,.dshVoiceOrb2d { visibility:hidden; }
+.dshVoiceOrb[data-renderer="webgl"] .dshVoiceOrbGpu,.dshVoiceOrb[data-renderer="2d"] .dshVoiceOrb2d { visibility:visible; }
 .dshVoiceOrbFallback { position:absolute; top:42px; z-index:0; width:92px; aspect-ratio:1; border-radius:50%; background:linear-gradient(180deg,#7d84ff,#8a9eff 42%,#fafbff 62%,#e8ecff); box-shadow:0 0 22px rgb(85 105 255 / 14%); }
+.dshVoiceOrbFallback { top:auto; grid-area:1 / 1; width:auto; height:58.4%; transform:scale(var(--dsh-voice-scale,1)); filter:brightness(var(--dsh-voice-brightness,1)); }
 .dshVoiceOrb figcaption { z-index:2; display:inline-flex; align-items:center; gap:7px; min-height:24px; color:var(--dsw-alias-label-tertiary); font:var(--dsw-font-xxxs-11); }
 .dshVoiceOrb figcaption > span { width:6px; height:6px; border-radius:50%; background:#5f73f2; box-shadow:0 0 0 4px rgb(95 115 242 / 11%); }
 .dshVoiceOrb.is-error figcaption > span { background:var(--dsw-alias-state-error-primary); box-shadow:none; }
@@ -80,7 +90,7 @@ const VOICE_STYLES = `
 .dshVoiceControls .dshVoicePrimary { color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-layer-1); }
 .dshVoicePrivacy { flex:none; margin:0; padding:0 12px 10px; color:var(--dsw-alias-label-tertiary); font:var(--dsw-font-xxxs-11); line-height:1.4; }
 @media (max-height:620px) { .dshVoiceDialog { inset:16px 16px auto auto; height:calc(100dvh - 32px); } .dshVoicePresence { height:100px; } .dshVoicePanelHeader { padding:8px 12px; } }
-@media (max-width:600px) { .dshVoiceDialog { inset:12px; width:calc(100vw - 24px); height:calc(100dvh - 24px); } .dshVoiceCompact { inset:auto 12px 12px; width:auto; } }
+@media (max-width:600px) { .dshVoiceDialog { inset:12px; width:calc(100vw - 24px); height:calc(100dvh - 24px); } }
 @media (forced-colors:active) { .dshVoiceDialog,.dshVoiceCompact { border-color:CanvasText; background:Canvas; color:CanvasText; box-shadow:none; } }
 .dshVoiceSettings { display:flex; flex-direction:column; gap:16px; width:100%; max-width:650px; padding-bottom:22px; }
 .dshVoiceSettingsIntro { display:flex; flex-direction:column; gap:5px; }
@@ -117,7 +127,7 @@ const VOICE_STYLES = `
 .dshVoiceSettingsActions button:disabled { opacity:.42; cursor:default; }
 .dshVoiceSettingsActions span { color:var(--dsw-alias-state-success-primary); font:var(--dsw-font-xxs-12); }
 .dshVoiceSettingsNote { display:flex; align-items:flex-start; gap:7px; padding-top:5px; color:var(--dsw-alias-label-tertiary); font:var(--dsw-font-xxxs-11); line-height:1.45; }
-@media (prefers-reduced-motion:reduce) { .dshVoiceComposerButton, .dshVoiceSwitch span, .dshVoiceSwitch span::after { transition:none; } .dshVoiceGlyph.is-loading, .dshVoiceWaveIcon > span { animation:none !important; } }
+@media (prefers-reduced-motion:reduce) { .dshVoiceComposerButton, .dshVoiceSwitch span, .dshVoiceSwitch span::after { transition:none; } .dshVoiceComposerButton:hover { transform:none; } .dshVoiceGlyph.is-loading, .dshVoiceWaveIcon > span { animation:none !important; } }
 `
 
 export function installVoiceStyles(): () => void {

@@ -11,11 +11,35 @@ vi.mock('react', async importOriginal => ({
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
 describe('voice composer click with the RC1 slot contract', () => {
+  it('follows silence and speech inside a large output chunk, and clears both muted sources', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(0)
+    class AudioFixture {
+      get currentTime() { return Date.now() / 1000 }
+      state = 'running'; destination = {}
+      createBuffer(_channels: number, size: number, sampleRate: number) { return { duration: size / sampleRate, getChannelData: () => new Float32Array(size) } }
+      createBufferSource() { return { connect: vi.fn(), disconnect: vi.fn(), start: vi.fn(), stop: vi.fn(), onended: null, buffer: null } }
+      close() { return Promise.resolve() }
+    }
+    vi.stubGlobal('AudioContext', AudioFixture)
+    const voice = new DesktopVoiceController({ settingsScope: { bind: () => ({ getSnapshot: () => ({ value: undefined }), subscribe: () => () => {}, set: vi.fn() }) },
+      remote: { credentials: { describe: vi.fn() } } } as never, { openTab: vi.fn() })
+    const samples = Int16Array.from({ length: 14400 }, (_, i) => i >= 4800 && i < 9600 ? Math.round(Math.sin(i * 2 * Math.PI * 1000 / 24000) * 24000) : 0)
+    ;(voice as unknown as { playPcmBytes(samples: Int16Array): void }).playPcmBytes(samples)
+    await vi.advanceTimersByTimeAsync(100); expect(voice.audio.output.rms).toBe(0)
+    await vi.advanceTimersByTimeAsync(150); expect(voice.audio.output.rms).toBeGreaterThan(.4)
+    await vi.advanceTimersByTimeAsync(200); expect(voice.audio.output.rms).toBe(0)
+    Object.assign(voice.audio.input, { rms: .8, low: .8 })
+    await voice.toggleMicrophone(); expect(voice.audio.input.rms).toBe(0)
+    voice.toggleOutput(); await vi.advanceTimersByTimeAsync(1000)
+    expect(voice.audio.output.rms).toBe(0)
+    await voice.closePanel()
+  })
   it('drives output features at the scheduled 24kHz playback time and cancels pending meters', async () => {
     vi.useFakeTimers()
+    vi.setSystemTime(0)
     const rate = vi.fn()
     class AudioFixture {
-      currentTime = 0
+      get currentTime() { return Date.now() / 1000 }
       state = 'running'
       destination = {}
       createBuffer(_channels: number, size: number, sampleRate: number) {
@@ -37,7 +61,7 @@ describe('voice composer click with the RC1 slot contract', () => {
     await vi.advanceTimersByTimeAsync(1)
     expect(voice.audio.output.rms).toBe(0)
     await vi.advanceTimersByTimeAsync(999)
-    expect(voice.audio.output).toEqual(analyzePcm16(samples, 24000))
+    expect(voice.audio.output.rms).toBeCloseTo(analyzePcm16(samples.subarray(0, 480), 24000).rms, 3)
     expect(rate).toHaveBeenCalledWith(24000)
     play.playPcmBytes(samples)
     await voice.closePanel()
@@ -59,6 +83,12 @@ describe('voice composer click with the RC1 slot contract', () => {
     expect(voice.task.getSnapshot().status).toBe('running')
     expect(socket.close).not.toHaveBeenCalled()
     expect(voice.panel.getSnapshot()).toBe('work-session')
+    await internal.handleSocketMessage(socket, { data: JSON.stringify({ type: 'agent.approval.pending', pending: 1, name: 'Pwsh' }) })
+    await internal.handleSocketMessage(socket, { data: JSON.stringify({ type: 'agent.tool.finished' }) })
+    expect(voice.task.getSnapshot().status).toBe('waiting-approval')
+    expect(socket.send).not.toHaveBeenCalled()
+    await internal.handleSocketMessage(socket, { data: JSON.stringify({ type: 'agent.approval.pending', pending: 0 }) })
+    expect(voice.task.getSnapshot().status).toBe('running')
     voice.restorePanel()
     expect(voice.minimized.getSnapshot()).toBe(false)
     await internal.handleSocketMessage(socket, { data: JSON.stringify({ type: 'agent.task.finished', status: 'completed' }) })

@@ -14,6 +14,26 @@ import {
 } from '../src/voice-realtime.ts'
 
 describe('desktop voice host settings', () => {
+  it('forwards approval state without answering approvals or treating one tool as task completion', () => {
+    const send = vi.fn(), answer = vi.fn()
+    const bridge = new VoiceAgentBridge({ readyState: 1, send } as never,
+      { provider: 'qwen', conversationMode: 'qwen-native', sessionId: 'voice-1', agentSessionId: 'agent-1' } as never,
+      { approval: { answer } } as never, undefined, undefined, undefined)
+    bridge.onAgentEvent({ type: 'approval/asked', data: { id: 'first', toolName: 'Pwsh' } })
+    bridge.onAgentEvent({ type: 'approval/asked', data: { id: 'second', toolName: 'Write' } })
+    bridge.onAgentEvent({ type: 'approval/decided', data: { id: 'first', outcome: 'rejected' } })
+    bridge.onAgentEvent({ type: 'approval/decided', data: { id: 'second', outcome: 'allowed-once' } })
+    expect(send.mock.calls.map(call => JSON.parse(call[0] as string).pending)).toEqual([1, 2, 1, 0])
+    expect(answer).not.toHaveBeenCalled()
+  })
+  it('reports a cancelled cascade Agent turn separately from a failure', () => {
+    const send = vi.fn()
+    const bridge = new VoiceAgentBridge({ readyState: 1, send } as never,
+      { provider: 'qwen', conversationMode: 'cascade', sessionId: 'voice-1', agentSessionId: 'agent-1', ttsEnabled: false } as never,
+      {} as never, undefined, undefined, undefined)
+    bridge.onAgentEvent({ type: 'turn/end', data: { reason: { kind: 'aborted' } } })
+    expect(send.mock.calls.map(call => JSON.parse(call[0] as string))).toContainEqual({ type: 'agent.task.finished', status: 'cancelled' })
+  })
   it('defaults to disabled Qwen ASR with no secret values in settings', () => {
     expect(DesktopVoiceSettingsSchema({} as never)).toEqual({
       enabled: false,

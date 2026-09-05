@@ -1,4 +1,5 @@
 /*! III.PICS Team, MIT. Adapted from pm01 realtime-presence, snapshot 5dcac08bdf9ab81c1c729ff50c5fadc8962eb45b. See THIRD_PARTY_NOTICES.md. */
+import { voiceOrbEnergy, voiceOrbRadius } from './voiceOrbFeedback.js';
 import {
   getVoiceOrbMotionProfile,
   smoothVoiceOrbAudioBand,
@@ -20,6 +21,7 @@ export const VOICE_ORB_FRAGMENT_SHADER = `
 
   uniform vec2 uResolution;
   uniform float uTime;
+  uniform float uRadius;
   uniform vec4 uMotion;
   uniform vec4 uAudio;
   uniform vec2 uDynamics;
@@ -67,8 +69,7 @@ export const VOICE_ORB_FRAGMENT_SHADER = `
     p.y *= -1.0;
     p -= onsetShake;
     float time = uTime * flowRate;
-    float breath = sin(uTime * 1.122) * (0.0024 + energy * 0.0012);
-    float radius = 0.292 + breath + uAudio.y * 0.004;
+    float radius = uRadius;
     float signedDistance = length(p) - radius;
 
     float antialias = max(1.5 / min(uResolution.x, uResolution.y), 0.0015);
@@ -182,10 +183,11 @@ const audioBand = (features, index) => (
 
 function writeVoiceOrbAudioTarget(target, status, inputFeatures, outputFeatures) {
   for (let index = 0; index < AUDIO_FEATURE_KEYS.length; index += 1) {
-    const input = audioBand(inputFeatures, index);
-    if (status === 'assistant_speaking') {
-      const output = Math.min(1, audioBand(outputFeatures, index));
-      const weightedInput = Math.min(1, input * VOICE_ORB_ASSISTANT_INPUT_WEIGHTS[index]);
+    const input = Math.max(0, Math.min(1, audioBand(inputFeatures, index)));
+    if (['idle', 'ended', 'error', 'finishing'].includes(status)) { target[index] = 0; continue; }
+    const output = Math.max(0, Math.min(1, audioBand(outputFeatures, index)));
+    if (output > 0 || status === 'assistant_speaking') {
+      const weightedInput = input * (status === 'assistant_speaking' ? VOICE_ORB_ASSISTANT_INPUT_WEIGHTS[index] : 1);
       target[index] = output + weightedInput * (1 - output);
     } else {
       target[index] = input;
@@ -226,6 +228,7 @@ export function createVoiceOrbRenderer(canvas, { maxPixelRatio = 1.8 } = {}) {
   const uniforms = {
     resolution: gl.getUniformLocation(program, 'uResolution'),
     time: gl.getUniformLocation(program, 'uTime'),
+    radius: gl.getUniformLocation(program, 'uRadius'),
     motion: gl.getUniformLocation(program, 'uMotion'),
     audio: gl.getUniformLocation(program, 'uAudio'),
     dynamics: gl.getUniformLocation(program, 'uDynamics'),
@@ -247,6 +250,7 @@ export function createVoiceOrbRenderer(canvas, { maxPixelRatio = 1.8 } = {}) {
   let audioFlowPhase = 0;
   let audioOnset = 0;
   let previousEnergy = 0;
+  let envelope = 0;
   let lastFrame = performance.now();
 
   const resize = () => {
@@ -282,6 +286,7 @@ export function createVoiceOrbRenderer(canvas, { maxPixelRatio = 1.8 } = {}) {
     }
     motion[4] += (targetMotion[4] - motion[4]) * motionSmoothing;
     const audioEnergy = Math.max(...audio);
+    envelope = smoothVoiceOrbAudioBand(envelope, voiceOrbEnergy(targetStatus, inputAudioSource, outputAudioSource), delta);
     const risingEnergy = Math.max(0, audioEnergy - previousEnergy);
     audioOnset = Math.max(audioOnset * Math.exp(-delta / 180), Math.min(1, risingEnergy * 2.4));
     previousEnergy = audioEnergy;
@@ -292,6 +297,7 @@ export function createVoiceOrbRenderer(canvas, { maxPixelRatio = 1.8 } = {}) {
     gl.useProgram(program);
     gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
     gl.uniform1f(uniforms.time, elapsed);
+    gl.uniform1f(uniforms.radius, voiceOrbRadius(elapsed, envelope, reducedMotion));
     gl.uniform4f(uniforms.motion, reducedMotion ? motion[0] * 0.12 : motion[0], reducedMotion ? Math.min(motion[1], 0.05) : motion[1], motion[2], reducedMotion ? Math.min(motion[3], 0.08) : motion[3]);
     gl.uniform4f(uniforms.audio, audio[0], audio[1], audio[2], audio[3]);
     gl.uniform2f(uniforms.dynamics, audioFlowPhase, reducedMotion ? audioOnset * 0.2 : audioOnset);

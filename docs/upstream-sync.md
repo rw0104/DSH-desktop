@@ -1,5 +1,19 @@
 # Upstream synchronization ledger
 
+## 2026-09-05 v2.2.4 本地测试安装包构建前复核
+
+经既有代理 `http://127.0.0.1:10808` 重新查询三个权威 GitHub remote 的 HEAD、heads、tags，以及 npm 的 version、dist-tags、time.modified：
+
+| 来源 | 本次远端 / registry 结果 | 本地测试包处理 |
+| --- | --- | --- |
+| Official Harness | master 与 `dsh-v0.1.3-alpha.1` 为 `d347e703908d0406b7a7ef80e3a0e594d86b2215`；RC1 tag 为 `a66e4702047846cdaa10c66c9d3df3951f5ea70d`；npm latest/next `0.1.2-rc.1`，modified `2026-09-04T03:24:58.871Z` | 保留 RC1 submodule 和发布包 family；开发分支较新但未纳入本轮兼容性审查，不把 alpha 混入修复包 |
+| Better Sidebar | main `a5c52b3f1bc450b04578bd9252f67b7d79c98502`；v0.18.0 tag `9e1a03452794532cda1f6ac677b72579dff48dfc`；npm latest `0.18.0`，modified `2026-09-03T11:40:53.234Z` | 保留 0.18.0 和既有审计 patch |
+| Desktop reference | master `bcaf1b4d9da56dad2a94ad64e4145d3d2e49e959`；v2.0.4 tag `d29bf7a965fc68bf09750bc329905ecb17afe48b`；v2.0.5 / v2.0.5-beta.1 tag `423406fe225442995902015cb6f10eed670ff115` | 只读记录，未复制参考产品行为或 README，不作为运行时依赖 |
+
+本轮将 Desktop/root 产品版本提高到 2.2.4，供用户本地安装测试语音浮条、双路反馈和通用受控生成边界。所有依赖与 submodule pin 保持不变；下一次上游迁移仍需单独审查 Host/Client、工具作用域及打包闭包，并将 gitlink 更新单独提交。本轮不创建 tag 或 GitHub Release。
+
+复核方式：对上述三个 URL 执行 `git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref <url> HEAD 'refs/heads/*' 'refs/tags/*'`；执行 `npm view @deepseek-ai/dsh version dist-tags time.modified --json`、`npm view dsh-better-sidebar version dist-tags time.modified --json` 和 `git submodule status -- deepseek-harness`。原始命令输出作为本地构建记录保留，不作为发布资产。
+
 ## 2026-09-05 语音工作区交互与模型发现修复审计
 
 03:27 经 `http://127.0.0.1:10808` 复核：Harness HEAD `d347e703908d0406b7a7ef80e3a0e594d86b2215`，RC1 tag `a66e4702047846cdaa10c66c9d3df3951f5ea70d`，npm latest/next `0.1.2-rc.1`；Sidebar HEAD `a5c52b3f1bc450b04578bd9252f67b7d79c98502`，v0.18.0 tag `9e1a03452794532cda1f6ac677b72579dff48dfc`，npm latest `0.18.0`；桌面参考 HEAD `a041cb50f0ffc8fae37d0715ca89b082d5aa1e34`，v2.0.4 tag `d29bf7a965fc68bf09750bc329905ecb17afe48b`。保留全部运行时 pin，本批次只修正 Desktop 交互、用户提供的 pm01 语音绘制核心移植，以及已审计 pi-ai 下游补丁中的模型发现逻辑。

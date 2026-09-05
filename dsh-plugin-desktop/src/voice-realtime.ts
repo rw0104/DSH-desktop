@@ -335,6 +335,7 @@ interface E2eDelegation {
 }
 
 export class VoiceAgentBridge {
+  private readonly pendingVoiceApprovals = new Set<string>()
   private provider: WebSocket | undefined
   private started = false
   private closed = false
@@ -483,6 +484,17 @@ export class VoiceAgentBridge {
 
   onAgentEvent(event: AgentEvent): void {
     if (this.closed) return
+    if (event.type === 'approval/asked') {
+      this.pendingVoiceApprovals.add(String(event.data.id))
+      sendClient(this.client, { type: 'agent.approval.pending', pending: this.pendingVoiceApprovals.size, name: String(event.data.toolName || '') })
+      return
+    }
+    if (event.type === 'approval/decided') {
+      this.pendingVoiceApprovals.delete(String(event.data.id))
+      sendClient(this.client, { type: 'agent.approval.pending', pending: this.pendingVoiceApprovals.size })
+      return
+    }
+    if (event.type === 'turn/end') this.pendingVoiceApprovals.clear()
     if (this.isProviderVoice()) { this.onE2eAgentEvent(event); return }
     if (event.type === 'turn/start') {
       this.beginAgentTurn(Number(event.data.turn))
@@ -499,12 +511,13 @@ export class VoiceAgentBridge {
       if (chunk.type === 'tool-call-delta') sendClient(this.client, { type: 'agent.tool.delta', name: chunk.name || '', text: chunk.argumentsDelta })
     } else if (event.type === 'tool/call') sendClient(this.client, { type: 'agent.tool.started', name: event.data.name })
     else if (event.type === 'tool/result') sendClient(this.client, { type: 'agent.tool.finished', name: event.data.message.content[0]?.type || 'tool' })
-    else if (event.type === 'turn/end') this.endAgentTurn(event.data.reason?.kind === 'completed')
+    else if (event.type === 'turn/end') this.endAgentTurn(event.data.reason?.kind === 'completed', event.data.reason?.kind === 'aborted')
   }
 
   close(reason = 'client_closed'): void {
     if (this.closed) return
     this.closed = true
+    this.pendingVoiceApprovals.clear()
     if (this.finishTimer !== undefined) clearTimeout(this.finishTimer)
     this.finishTimer = undefined
     if (this.isProviderVoice()) this.cancelE2eTurn(reason)
@@ -663,7 +676,7 @@ export class VoiceAgentBridge {
     this.e2eDelegations.delete(current.callId)
     this.activeE2eCallId = undefined
     this.activeAgentTurn = undefined
-    sendClient(this.client, { type: 'agent.task.finished', status: event.data.reason?.kind === 'completed' ? 'completed' : 'failed' })
+    sendClient(this.client, { type: 'agent.task.finished', status: event.data.reason?.kind === 'completed' ? 'completed' : event.data.reason?.kind === 'aborted' ? 'cancelled' : 'failed' })
     if (event.data.reason?.kind !== 'completed') {
       this.e2e?.writeFunctionOutput(current.callId, buildDshCapabilityResult('failed', '', ['The DSH Agent turn ended before completion.']))
     } else {
@@ -737,8 +750,8 @@ export class VoiceAgentBridge {
     this.activeAgentTurn = Number.isFinite(turn) ? turn : undefined
   }
 
-  private endAgentTurn(completed: boolean): void {
-    sendClient(this.client, { type: 'agent.task.finished', status: completed ? 'completed' : 'failed' })
+  private endAgentTurn(completed: boolean, cancelled = false): void {
+    sendClient(this.client, { type: 'agent.task.finished', status: completed ? 'completed' : cancelled ? 'cancelled' : 'failed' })
     if (!completed) {
       this.cancelTts('agent_turn_incomplete')
       sendClient(this.client, { type: 'agent.response.done', ttsExpected: false })

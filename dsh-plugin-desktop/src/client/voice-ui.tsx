@@ -7,6 +7,8 @@ import type { VoiceKey } from './voice-locales.ts'
 import { VoiceOrb } from './voice-orb.tsx'
 import { useVoicePanelCopy, type VoicePanelCopy, type VoicePanelLocale } from './voice-panel-copy.ts'
 import { VoiceTranscript } from './voice-transcript.tsx'
+import { VoiceCompact } from './voice-compact.tsx'
+import type { VoicePoint } from './voice-position.ts'
 import type { DesktopExternalNavigationAction } from '../external-navigation-contract.ts'
 
 export interface VoiceInjected {
@@ -22,6 +24,8 @@ export function VoiceOverlay({ controller, locale }: VoiceInjected) {
   const task = useSyncExternalStore(controller.task.subscribe, controller.task.getSnapshot, controller.task.getSnapshot)
   const copy = useVoicePanelCopy(locale)
   const dialog = useRef<HTMLDialogElement>(null)
+  const compactPosition = useRef<VoicePoint | null>(null)
+  useEffect(() => { compactPosition.current = null }, [sessionId])
   useEffect(() => {
     const node = dialog.current
     if (node === null || sessionId === null || minimized) return
@@ -33,14 +37,8 @@ export function VoiceOverlay({ controller, locale }: VoiceInjected) {
     if (minimized && document.activeElement === document.body) document.querySelector<HTMLButtonElement>('.dshVoiceCompactRestore')?.focus()
   }, [minimized])
   if (sessionId === null) return null
-  if (minimized) return <section className="dshVoiceCompact" aria-label={copy.title}>
-    <button className="dshVoiceCompactRestore" type="button" onClick={() => controller.restorePanel()} aria-label={copy.restore}>
-      <span className="dshVoiceCompactIndicator" aria-hidden />
-      <span>{copy[state.status]}{task.status !== 'idle' && <small>{voiceTaskLabel(task.status, copy)}{task.tool ? ': ' + task.tool : ''}</small>}</span>
-    </button>
-    <button type="button" aria-pressed={state.microphoneMuted} onClick={() => { void controller.toggleMicrophone() }}>{state.microphoneMuted ? copy.unmute : copy.mute}</button>
-    <button className="dshVoiceEnd" type="button" onClick={() => { void controller.closePanel() }}>{copy.end}</button>
-  </section>
+  if (minimized) return <VoiceCompact controller={controller} state={state} copy={copy} position={compactPosition}
+    taskLabel={task.status === 'idle' ? '' : voiceTaskLabel(task.status, copy) + (task.tool ? ': ' + task.tool : '')} />
   return <dialog ref={dialog} className="dshVoiceDialog" aria-label={copy.title} aria-modal="false"
     onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); controller.minimizePanel() } }}>
     <VoiceSidebarTab controller={controller} scope={{ sessionId }} {...locale === undefined ? {} : { locale }} onMinimize={() => controller.minimizePanel()} onClose={() => { void controller.closePanel() }} />
@@ -71,6 +69,7 @@ export function VoiceComposerButton({ sessionId, controller, t }: VoiceButtonPro
 }
 
 function voiceTaskLabel(status: string, copy: VoicePanelCopy): string {
+  if (status === 'waiting-approval') return copy.taskApproval
   return status === 'running' ? copy.taskRunning : status === 'completed' ? copy.taskCompleted : status === 'cancelled' ? copy.taskCancelled : copy.taskFailed
 }
 
@@ -122,7 +121,7 @@ export function VoiceSidebarTab({ controller, scope, locale, onMinimize, onClose
         <span className="dshVoiceGlyph is-speaker" aria-hidden /> {state.outputMuted ? copy.sound : copy.speaker}
       </button>
     </div>
-    <p className="dshVoicePrivacy">{copy.privacy}</p>
+    <p className="dshVoicePrivacy">{copy.privacy.replace('{provider}', state.settings.provider === 'qwen' ? 'Qwen / DashScope' : 'Doubao / Volcengine')} {copy.endHint}</p>
   </section>
 }
 

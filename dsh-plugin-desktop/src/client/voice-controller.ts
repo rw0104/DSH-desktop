@@ -288,7 +288,7 @@ export class DesktopVoiceController {
   readonly store: SnapshotStore<DesktopVoiceState> = createSnapshotStore(INITIAL)
   readonly panel = createSnapshotStore<string | null>(null)
   readonly minimized = createSnapshotStore(false)
-  readonly task = createSnapshotStore<{ status: 'idle' | 'running' | 'completed' | 'failed' | 'cancelled'; tool: string }>({ status: 'idle', tool: '' })
+  readonly task = createSnapshotStore<{ status: 'idle' | 'running' | 'waiting-approval' | 'completed' | 'failed' | 'cancelled'; tool: string }>({ status: 'idle', tool: '' })
   /** Stable objects read by the pm01 renderer every frame, without re-rendering captions. */
   readonly audio = { input: { ...INITIAL.inputAudio }, output: { ...INITIAL.outputAudio } }
   readonly transcriptView = { following: true, top: 0 }
@@ -304,7 +304,6 @@ export class DesktopVoiceController {
   private captureWorklet: AudioWorkletNode | null = null
   private captureGain: GainNode | null = null
   private lastAudioFeatureAt = 0
-  private lastOutputFeatureAt = 0
   private playbackAt = 0
   private activeGeneration = 0
   private credentialRefresh: Promise<void> | null = null
@@ -621,11 +620,14 @@ export class DesktopVoiceController {
     }
     else if (type === 'speech.stopped') this.set({ status: 'thinking' })
     else if (type === 'agent.request.accepted' || type === 'agent.tool.started') {
-      this.task.set({ status: 'running', tool: typeof message.name === 'string' ? message.name : '' })
+      if (this.task.getSnapshot().status !== 'waiting-approval') this.task.set({ status: 'running', tool: typeof message.name === 'string' ? message.name : '' })
       this.set({ status: 'thinking' })
       this.minimizePanel()
     } else if (type === 'agent.tool.finished') {
-      this.task.set({ status: 'running', tool: '' })
+      if (this.task.getSnapshot().status !== 'waiting-approval') this.task.set({ status: 'running', tool: '' })
+    } else if (type === 'agent.approval.pending') {
+      this.task.set({ status: Number(message.pending) > 0 ? 'waiting-approval' : 'running', tool: typeof message.name === 'string' ? message.name : '' })
+      this.minimizePanel()
     } else if (type === 'agent.task.finished') {
       const status = message.status === 'completed' ? 'completed' : message.status === 'cancelled' ? 'cancelled' : 'failed'
       this.task.set({ status, tool: '' })
@@ -735,18 +737,23 @@ export class DesktopVoiceController {
     const startAt = this.playbackAt
     source.start(this.playbackAt)
     this.playbackAt += buffer.duration
-    const features = analyzePcm16(samples, 24000)
-    const timer = setTimeout(() => {
-      this.outputFeatureTimers.delete(source)
+    // Sample a 20ms window against the audio clock, including delayed/suspended playback.
+    // Large provider chunks must not flatten the envelope into one number per chunk.
+    const meter = (): void => {
       if (!this.playbackSources.has(source) || this.store.getSnapshot().outputMuted) return
+      const offset = Math.floor((context.currentTime - startAt) * 24000)
+      if (offset >= samples.length) { this.outputFeatureTimers.delete(source); return }
+      if (offset < 0 || context.state === 'suspended') {
+        this.outputFeatureTimers.set(source, setTimeout(meter, 20)); return
+      }
+      const features = analyzePcm16(samples.subarray(offset, Math.min(samples.length, offset + 480)), 24000)
       Object.assign(this.audio.output, features)
-      const nowMs = performance.now()
-      if (nowMs - this.lastOutputFeatureAt >= 80) {
-        this.lastOutputFeatureAt = nowMs
+      if (this.store.getSnapshot().status !== 'assistant-speaking') {
         this.set({ status: 'assistant-speaking', outputAudio: features, error: null })
-      } else this.set({ status: 'assistant-speaking', error: null })
-    }, Math.max(0, (startAt - now) * 1000))
-    this.outputFeatureTimers.set(source, timer)
+      }
+      this.outputFeatureTimers.set(source, setTimeout(meter, 20))
+    }
+    this.outputFeatureTimers.set(source, setTimeout(meter, Math.max(0, (startAt - now) * 1000)))
   }
 
   private schedulePlaybackDone(): void {
@@ -847,7 +854,6 @@ export class DesktopVoiceController {
     this.audioContext = null
     this.playbackAt = 0
     this.lastAudioFeatureAt = 0
-    this.lastOutputFeatureAt = 0
     this.set({ inputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 }, outputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 } })
   }
 }

@@ -34,6 +34,7 @@ const EXPECTED_HOST_ROUTES = new Set([
   ...Object.values(marketRoutes),
   '/dsh-desktop/api/voice/config',
   '/dsh-desktop/api/voice/settings',
+  '/dsh-desktop/api/generation/settings',
   '/dsh-desktop/api/voice/credentials',
   '/dsh-desktop/api/voice/ticket',
 ])

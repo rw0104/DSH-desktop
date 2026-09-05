@@ -26,6 +26,7 @@ import { DesktopVoiceController } from './voice-controller.ts'
 import { VoiceComposerButton, VoiceOverlay, VoiceSettingsSection, VoiceSidebarTab } from './voice-ui.tsx'
 import { voiceLocales, type VoiceKey } from './voice-locales.ts'
 import { installVoiceStyles } from './voice-styles.ts'
+import { GenerationSettingsSection } from './generation-settings.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -186,7 +187,13 @@ export function apply(ctx: ClientContext): void {
       locale: 'desktop.voice',
       inject: () => ({ controller: voice, openExternal: requestDesktopExternalNavigation }),
     }, VoiceSettingsSection))
+    const disposeGenerationSlot = ctx.slots.inject('settings.section', () => ctx.slots.register({
+      name: 'settings.section', id: 'desktop-generation', order: 45,
+      label: () => String(ctx.locale.getLocale().active).startsWith('zh') ? '受控生成' : 'Controlled generation',
+      inject: () => ({ locale: voicePanelLocale }),
+    }, GenerationSettingsSection))
     return () => {
+      disposeGenerationSlot()
       disposeVoiceSlot()
       disposeSlot()
       disposeLocaleZh()

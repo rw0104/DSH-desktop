@@ -1,23 +1,23 @@
 /*! III.PICS Team, MIT. Adapted from pm01 realtime-presence, snapshot 5dcac08bdf9ab81c1c729ff50c5fadc8962eb45b. See THIRD_PARTY_NOTICES.md. */
-export function drawVoiceOrbFallback(canvas, status = 'idle', maxPixelRatio = 2) {
+export function drawVoiceOrbFallback(canvas, status = 'idle', maxPixelRatio = 2, feedback = {}) {
   const context = canvas.getContext('2d');
   if (!context) return false;
   const rect = canvas.getBoundingClientRect();
   const dpr = Math.min(window.devicePixelRatio || 1, maxPixelRatio);
   const width = Math.max(1, Math.round(rect.width * dpr));
   const height = Math.max(1, Math.round(rect.height * dpr));
-  canvas.width = width;
-  canvas.height = height;
+  if (canvas.width !== width) canvas.width = width;
+  if (canvas.height !== height) canvas.height = height;
   context.clearRect(0, 0, width, height);
   context.save();
   context.translate(width / 2, height / 2);
-  const radius = Math.min(width, height) * 0.292;
+  const radius = Math.min(width, height) * (feedback.radius ?? 0.292);
   const quietState = ['ended', 'error', 'microphone_interrupted'].includes(status);
 
-  context.shadowColor = `rgba(125, 148, 255, ${quietState ? 0.08 : 0.12})`;
+  context.shadowColor = `rgba(125, 148, 255, ${quietState ? 0.08 : 0.12 + (feedback.energy ?? 0) * 0.5})`;
   context.shadowBlur = radius * 0.1;
   const body = context.createLinearGradient(0, -radius, 0, radius);
-  body.addColorStop(0, '#7d84ff');
+  body.addColorStop(0, `rgb(${125 + (feedback.energy ?? 0) * 45},132,255)`);
   body.addColorStop(0.4, '#869dff');
   body.addColorStop(0.58, '#fafbff');
   body.addColorStop(1, '#e9edff');

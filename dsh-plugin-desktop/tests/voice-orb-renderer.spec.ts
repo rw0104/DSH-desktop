@@ -1,7 +1,7 @@
-import { createHash } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createVoiceOrbRenderer, resolveVoiceOrbAudioTarget, VOICE_ORB_FRAGMENT_SHADER } from '../src/client/realtime-presence/voiceOrbRenderer.js'
 import { getVoiceOrbMotionProfile, smoothVoiceOrbAudioBand } from '../src/client/realtime-presence/voiceOrbMotion.js'
+import { voiceOrbEnergy, voiceOrbRadius } from '../src/client/realtime-presence/voiceOrbFeedback.js'
 
 afterEach(() => vi.unstubAllGlobals())
 function gpu(options: { fragmentFailure?: boolean; noBuffer?: boolean } = {}) {
@@ -29,9 +29,13 @@ function gpu(options: { fragmentFailure?: boolean; noBuffer?: boolean } = {}) {
   return { canvas, gl, frames, uniforms, tick(count = 1) { for (let i = 0; i < count; i++) { const batch = [...frames.values()]; frames.clear(); now += 16; batch.forEach(fn => fn(now)) } } }
 }
 
-describe('pm01 voice renderer parity', () => {
-  it('retains the reference shader and band-mixing formulas', () => {
-    expect(createHash('sha256').update(VOICE_ORB_FRAGMENT_SHADER).digest('hex')).toBe('745f9de101da1ab432198f398dbf49e07a43db7d211dd822b4d18fe896fafab8')
+describe('pm01 rendering with DSH audio feedback', () => {
+  it('retains band mixing while adding visible, bounded radius feedback', () => {
+    expect(VOICE_ORB_FRAGMENT_SHADER).toContain('float radius = uRadius;')
+    expect(voiceOrbRadius(0, .8) / voiceOrbRadius(0, 0)).toBeCloseTo(1.06)
+    expect(voiceOrbRadius(100, 1, true)).toBe(.292)
+    expect(voiceOrbEnergy('user_speaking', { rms: .1 }, { rms: .8 })).toBe(.8)
+    expect(voiceOrbEnergy('ended', { rms: 1 }, { rms: 1 })).toBe(0)
     const mixed = resolveVoiceOrbAudioTarget('assistant_speaking', { rms: .2, low: .2, mid: .2, high: .2 }, { rms: .8, low: .8, mid: .8, high: .8 })
     for (const [i, value] of [.8288, .8256, .8328, .836].entries()) expect(mixed[i]).toBeCloseTo(value, 8)
     expect(getVoiceOrbMotionProfile('listening')).toEqual([.045, .18, 1, .09, 0])
@@ -54,8 +58,10 @@ describe('pm01 voice renderer parity', () => {
     expect(test.uniforms.get('uDynamics')![1]!).toBeLessThan(peak / 100)
     const loudStart = phase(); test.tick(30)
     expect(phase() - loudStart).toBeGreaterThan(quiet * 2)
+    expect(test.uniforms.get('uRadius')![0]).toBeGreaterThan(.292 * 1.04)
     renderer.setReducedMotion(true); test.tick(150)
     expect(test.uniforms.get('uAudio')![0]).toBeCloseTo(.8 * .32, 3)
+    expect(test.uniforms.get('uRadius')![0]).toBe(.292)
     renderer.setActive(false); expect(test.frames.size).toBe(0)
     renderer.setActive(true); expect(test.frames.size).toBe(1)
     renderer.destroy(); expect(test.frames.size).toBe(0)

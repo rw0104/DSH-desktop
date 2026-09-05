@@ -752,7 +752,7 @@ the package names, versions, and licenses for transparency.
 
 ## III.PICS realtime voice presence
 
-The WebGL voice orb, motion profiles and 2D fallback are derived from the user-provided III.PICS project, `client/src/features/realtime-presence`, snapshot `5dcac08bdf9ab81c1c729ff50c5fadc8962eb45b`. The source package declares MIT licensing. DSH adapts lifecycle, desktop sizing, resource cleanup and audio scheduling; it does not distribute reference screenshots or videos.
+The WebGL voice orb, motion profiles and 2D fallback are derived from the user-provided III.PICS project, `client/src/features/realtime-presence`, snapshot `5dcac08bdf9ab81c1c729ff50c5fadc8962eb45b`. The source package declares MIT licensing. DSH adapts lifecycle, desktop sizing, resource cleanup and audio scheduling, and adds its own envelope-driven radius and animated fallback feedback. The radius formula is a DSH enhancement, not unchanged pm01 shader parity. DSH does not distribute reference screenshots or videos.
 
 Copyright (c) III.PICS Team
 

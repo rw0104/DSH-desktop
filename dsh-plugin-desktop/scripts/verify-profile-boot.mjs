@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { boot } from '@deepseek-ai/dsh-app-boot'
+import { assembleContextFor } from '@deepseek-ai/dsh-agent'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
 import {
   createLaunchEnvironmentSnapshot,
@@ -193,6 +195,25 @@ try {
     throw new Error('assembled Profile could not create a Standard session')
   }
   console.log('verify-profile-session: Standard session created without an LLM request.')
+  const generationAgent = ctx.agents.get(created.sessionId)
+  if (!generationAgent || !ctx.tools.get('DesktopGenerateImage', generationAgent)
+    || !ctx.commands.list(generationAgent).some(command => command.name === 'image')) {
+    throw new Error('Standard session is missing the controlled generation Host boundary')
+  }
+  const generationCommand = await ctx.commands.execute(generationAgent, '/generation on', [], new AbortController().signal)
+  if (generationCommand?.result.kind !== 'success') throw new Error('Standard session cannot enable controlled generation')
+  const generationPrompt = await ctx.systemPrompt.assemble(assembleContextFor(generationAgent, new AbortController().signal))
+  const exposedTools = generationPrompt.tools.map(tool => tool.name)
+  if (exposedTools.length !== 1 || exposedTools[0] !== 'DesktopGenerateImage') {
+    throw new Error(`controlled generation exposed unexpected tools: ${exposedTools.join(', ')}`)
+  }
+  const deniedDelegation = await ctx.tools.execute({ name: 'subagent', callId: ToolCallId('generation-smoke'),
+    agent: generationAgent, arguments: {}, signal: new AbortController().signal })
+  if (!deniedDelegation.isError || !JSON.stringify(deniedDelegation.content).includes('受控生成')) {
+    throw new Error('Standard scoped subagent tool escaped the generation guard')
+  }
+  await ctx.commands.execute(generationAgent, '/generation off', [], new AbortController().signal)
+  console.log('verify-profile-generation: real Standard preset restricts tools to the image broker and restores ordinary mode.')
   const legacyPreset = await agentPresets.resolve('minimal')
   if (legacyPreset.id !== 'minimal') {
     throw new Error(`assembled Windows profile remapped legacy preset to ${legacyPreset.id}`)

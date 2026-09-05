@@ -8,6 +8,7 @@ import type {} from '@deepseek-ai/dsh-cmdline'
 import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-client-connection'
 import { registerVoiceRealtimeHost } from './voice-realtime.ts'
+import { registerGenerationHost } from './generation-host.ts'
 import {
   LOCALE_SETTINGS_NAMESPACE,
   type LocaleSettings,
@@ -198,6 +199,7 @@ export function apply(ctx: Context, config: Config): void {
     },
   )
   registerVoiceRealtimeHost(ctx)
+  registerGenerationHost(ctx)
   const rendererOrigin = `http://127.0.0.1:${String(ctx.webServer.port)}`
   ctx.effect(
     () => ctx.webServer.register({
