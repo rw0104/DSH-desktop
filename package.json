@@ -51,7 +51,8 @@
     "@deepseek-ai/dsh-llm-pi-ai@npm:^0.1.2-rc.1": "patch:@deepseek-ai/dsh-llm-pi-ai@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-pi-ai-npm-0.1.2-rc.1-60fc205c66.patch",
     "@deepseek-ai/dsh-llm-pi-ai@npm:0.1.2-rc.1": "patch:@deepseek-ai/dsh-llm-pi-ai@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-pi-ai-npm-0.1.2-rc.1-60fc205c66.patch",
     "@deepseek-ai/dsh-llm@npm:^0.1.2-rc.1": "patch:@deepseek-ai/dsh-llm@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-npm-0.1.2-rc.1-2c4c0a76ed.patch",
-    "@deepseek-ai/dsh-llm@npm:0.1.2-rc.1": "patch:@deepseek-ai/dsh-llm@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-npm-0.1.2-rc.1-2c4c0a76ed.patch"
+    "@deepseek-ai/dsh-llm@npm:0.1.2-rc.1": "patch:@deepseek-ai/dsh-llm@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-npm-0.1.2-rc.1-2c4c0a76ed.patch",
+    "@earendil-works/pi-ai@npm:^0.84.2": "patch:@earendil-works/pi-ai@npm%3A0.84.4#~/.yarn/patches/@earendil-works-pi-ai-npm-0.84.4-1e468e33fa.patch"
   },
   "dependenciesMeta": {
     "@deepseek-ai/dsh-subprocess-local": {

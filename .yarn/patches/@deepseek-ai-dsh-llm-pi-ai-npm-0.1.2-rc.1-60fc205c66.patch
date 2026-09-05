@@ -1,12 +1,12 @@
 diff --git a/lib/index.js b/lib/index.js
-index c25e5c7afcd9381dec2490fbff24910f173281d0..5e3e8aa0454ee8bb131977676498e9a46e3c301b 100644
+index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf95483a3d8 100644
 --- a/lib/index.js
 +++ b/lib/index.js
 @@ -1,4 +1,7 @@
  import { launchEnvironmentOf } from "@deepseek-ai/dsh-launch-environment";
 +import { detectModelInput } from "./model-input.js";
 +import { detectModelOutput, isOpenRouterEndpoint, IMAGE_APIS } from "./model-output.js";
-+import { streamNativeImage, projectAssistantImageHistory } from "./native-image.js";
++import { streamNativeImage, projectAssistantImageHistory, saveReturnedImage } from "./native-image.js";
  import { CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, INVALID_CREDENTIAL_CODE, LlmAdapter, LlmError, QUOTA_EXCEEDED_CODE, ReasoningEffortId, RetryPolicySchema, assertUsableApiKey, attributionHeaders, contentHasImage, isContextWindowExceededError, isQuotaExceededError, normalizeApiKey, offloadRequestImagesWithPolicy, offloadedImageText, requestImageHandleText, resolveImageAttachmentAccess, resolveRetryPolicy } from "@deepseek-ai/dsh-llm";
  import { deepEqualJson } from "@deepseek-ai/dsh-util-values";
  import { createModels, createProvider, getSupportedThinkingLevels, isContextOverflow } from "@earendil-works/pi-ai";
@@ -47,7 +47,36 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..5e3e8aa0454ee8bb131977676498e9a4
  	if (/\b(?:401|403)\b/.test(message)) return "AUTH";
  	if (isQuotaExceededError(message)) return QUOTA_EXCEEDED_CODE;
  	if (/\b429\b|rate.?limit/i.test(message)) return "RATE_LIMIT";
-@@ -1711,7 +1721,8 @@ var PiAiAdapter = class extends LlmAdapter {
+@@ -1376,10 +1386,18 @@ function mapStopReason(message, contextWindow) {
+ * @returns the harness chunks, ending with `usage` then `finish`; throws
+ *   `LlmError` (`STREAM_CLOSED`) if the source ends without a terminal event.
+ */
+-async function* toStreamChunks(events, contextWindow, callerSignal) {
++async function* toStreamChunks(events, contextWindow, callerSignal, attachments, imageSignal) {
++	let hasImages = false;
+ 	const toolIds = /* @__PURE__ */ new Map();
+ 	for await (const event of events) switch (event.type) {
+ 		case "start": break;
++		case "image_end": {
++			const attachment = await saveReturnedImage(event.image, attachments, imageSignal);
++			hasImages = true;
++			yield { type: "block-start", index: event.contentIndex, blockType: "image" };
++			yield { type: "block-end", index: event.contentIndex, block: { type: "image", attachment } };
++			break;
++		}
+ 		case "text_start":
+ 			yield {
+ 				type: "block-start",
+@@ -1474,7 +1492,7 @@ async function* toStreamChunks(events, contextWindow, callerSignal) {
+ 			yield {
+ 				type: "finish",
+ 				reason: mapStopReason(event.message, contextWindow),
+-				replayState: toPiReplayState(event.message)
++				replayState: hasImages ? void 0 : toPiReplayState(event.message)
+ 			};
+ 			return;
+ 		case "error":
+@@ -1711,7 +1729,8 @@ var PiAiAdapter = class extends LlmAdapter {
  				provider,
  				id: model.id,
  				name: model.name,
@@ -57,7 +86,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..5e3e8aa0454ee8bb131977676498e9a4
  			}));
  		});
  	}
-@@ -1731,6 +1742,7 @@ var PiAiAdapter = class extends LlmAdapter {
+@@ -1731,6 +1750,7 @@ var PiAiAdapter = class extends LlmAdapter {
  			id: model,
  			name: resolvedModel.name,
  			inputModalities: [...resolvedModel.input],
@@ -65,7 +94,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..5e3e8aa0454ee8bb131977676498e9a4
  			context: { contextWindow: resolvedModel.contextWindow },
  			...configuredMaxTokens === void 0 ? {} : { defaultMaxTokens: configuredMaxTokens },
  			...reasoningInfo(resolvedModel, defaultLevel)
-@@ -1756,6 +1768,13 @@ var PiAiAdapter = class extends LlmAdapter {
+@@ -1756,6 +1776,13 @@ var PiAiAdapter = class extends LlmAdapter {
  			if (options.stop !== void 0) throw new LlmError("llm-pi-ai does not support GenerateOptions.stop", "UNSUPPORTED_OPTION");
  			const profile = this.profileOf(snapshot, options.provider);
  			const model = this.modelOf(snapshot, options.provider, options.model);
@@ -79,7 +108,16 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..5e3e8aa0454ee8bb131977676498e9a4
  			const reasoning = resolveReasoningLevel(model, options.reasoningEffort ?? profile.reasoning);
  			const apiKey = await this.config.resolveApiKey(options.provider, profile);
  			const consumer = new AbortController();
-@@ -2068,7 +2087,8 @@ function label(...candidates) {
+@@ -1793,7 +1820,7 @@ var PiAiAdapter = class extends LlmAdapter {
+ 					...options.sessionId === void 0 ? {} : { sessionId: String(options.sessionId) },
+ 					signal: watchdog.signal,
+ 					headers: requestHeaders(profile.headers)
+-				}), model.contextWindow, options.signal)[Symbol.asyncIterator]();
++				}), model.contextWindow, options.signal, this.config.resolveAttachments?.(), watchdog.signal)[Symbol.asyncIterator]();
+ 				let exhausted = false;
+ 				try {
+ 					while (true) {
+@@ -2068,7 +2095,8 @@ function label(...candidates) {
  * them to `URL` resolution.
  */
  function listingUrl(baseURL) {
@@ -89,7 +127,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..5e3e8aa0454ee8bb131977676498e9a4
  }
  /**
  * Read a reply body, refusing one that outgrows the ceiling. A declared length
-@@ -2113,7 +2133,7 @@ async function readBounded(response, url) {
+@@ -2113,7 +2141,7 @@ async function readBounded(response, url) {
  * skipped rather than failing the whole interrogation: a single malformed row
  * should not deny the user the rest of a working endpoint's catalog.
  */
@@ -98,7 +136,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..5e3e8aa0454ee8bb131977676498e9a4
  	const data = body?.data;
  	if (!Array.isArray(data)) throw new LlmError("the endpoint's model listing has no \"data\" array; enter this provider's models by hand", "DISCOVERY_FAILED");
  	const models = [];
-@@ -2126,6 +2146,8 @@ function readListing(body) {
+@@ -2126,6 +2154,8 @@ function readListing(body) {
  		const maxTokens = capacity(entry?.max_output_tokens, entry?.max_tokens);
  		models.push({
  			id,
@@ -107,7 +145,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..5e3e8aa0454ee8bb131977676498e9a4
  			...name === void 0 ? {} : { name },
  			...contextWindow === void 0 ? {} : { contextWindow },
  			...maxTokens === void 0 ? {} : { maxTokens }
-@@ -2157,10 +2179,15 @@ function usableProbeKey(raw) {
+@@ -2157,10 +2187,15 @@ function usableProbeKey(raw) {
  *   refuses or fails the request, or the reply is not a model listing.
  */
  async function discoverModels(request, storedProfile) {
@@ -125,7 +163,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..5e3e8aa0454ee8bb131977676498e9a4
  			name: model.name,
  			contextWindow: model.contextWindow,
  			maxTokens: model.maxTokens
-@@ -2202,7 +2229,7 @@ async function discoverModels(request, storedProfile) {
+@@ -2202,7 +2237,7 @@ async function discoverModels(request, storedProfile) {
  	} catch (error) {
  		throw new LlmError(`${url} did not answer with JSON`, "DISCOVERY_FAILED", { cause: error });
  	}
@@ -134,7 +172,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..5e3e8aa0454ee8bb131977676498e9a4
  }
  //#endregion
  //#region lib/types/login.js
-@@ -2518,7 +2545,12 @@ function apply(ctx, config) {
+@@ -2518,7 +2553,12 @@ function apply(ctx, config) {
  		if (profile === void 0) return void 0;
  		return {
  			headers: profile.headers,
@@ -787,10 +825,10 @@ index 0000000000000000000000000000000000000000..1daba85a79b8c795b986ac321ae9af74
 +}
 diff --git a/lib/native-image.js b/lib/native-image.js
 new file mode 100644
-index 0000000000000000000000000000000000000000..9c84bb4c00df430496a2c1b737125ddc769b46e6
+index 0000000000000000000000000000000000000000..1b688198ee67626ccfabc3f4e9da0eb448768864
 --- /dev/null
 +++ b/lib/native-image.js
-@@ -0,0 +1,211 @@
+@@ -0,0 +1,220 @@
 +import { LlmError, attributionHeaders } from '@deepseek-ai/dsh-llm';
 +
 +const MAX_BODY = 64 * 1024 * 1024;
@@ -849,6 +887,15 @@ index 0000000000000000000000000000000000000000..9c84bb4c00df430496a2c1b737125ddc
 +  const mime = mediaType ?? detected;
 +  if (!IMAGE_MIMES.has(mime) || mime !== detected) throw new LlmError('The selected model returned an unsupported or mismatched image format.', 'INVALID_IMAGE');
 +  return { data, mediaType: mime };
++}
++/** Persist unsolicited native image output from the ordinary chat SDK. */
++export async function saveReturnedImage(image, attachments, signal) {
++  signal?.throwIfAborted();
++  if (!attachments?.saveImages) throw new LlmError('Image output requires the existing attachment store.', 'UNSUPPORTED_CONTENT');
++  const [ref] = await attachments.saveImages([raster(image.data, image.mimeType)]);
++  signal?.throwIfAborted();
++  if (!ref) throw new LlmError('Generated image could not be persisted.', 'INVALID_IMAGE');
++  return ref;
 +}
 +function inline(url) {
 +  const match = typeof url === 'string' && /^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(url);

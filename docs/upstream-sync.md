@@ -10,6 +10,8 @@
 
 五份既有 RC1 Yarn patch 增加输出能力、原生图片响应/历史、已存凭据复用与明确的输入/输出标签；不升级 package family 或改动 submodule。移除 Desktop 自有强制生成设置、命令及工具锁。实际 Agent 与正式附件存储验证了原生图片交付，完整浏览器流程验证了二轮编辑、刷新读回和入口移除；高级布局的严格 details 插槽补齐上游 `SessionProvider`。供应商地区 403 独立标为 `REGION_UNAVAILABLE`，不会伪装成密钥配置错误。真实账号生成与地区可用性由用户使用测试包确认，本轮未发起计费生图。
 
+另对现有 `@earendil-works/pi-ai@0.84.4` 增加精确版本 Yarn patch，保留普通兼容聊天流实际返回的图片及混合 content 数组，经正式附件存储验证后交付；这样未收录、未声明 output 的自定义模型也不会丢图。重复帧去重、无效图片拒绝与无跨供应商请求均有回归覆盖。该 patch 不升级 SDK；52 项目录快照只用于默认能力补全，不构成允许生成的模型白名单。
+
 ## 2026-09-05 v2.2.4 本地测试安装包构建前复核
 
 经既有代理 `http://127.0.0.1:10808` 重新查询三个权威 GitHub remote 的 HEAD、heads、tags，以及 npm 的 version、dist-tags、time.modified：

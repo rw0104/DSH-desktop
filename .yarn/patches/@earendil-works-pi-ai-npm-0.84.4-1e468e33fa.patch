@@ -1,0 +1,64 @@
+diff --git a/dist/api/openai-completions.js b/dist/api/openai-completions.js
+index c732f1fa77815c60bae57077a1e00161562548cc..4609cdd1d5f028d133547e24812e53689f1bb5da 100644
+--- a/dist/api/openai-completions.js
++++ b/dist/api/openai-completions.js
+@@ -220,6 +220,7 @@ export const stream = (model, context, options) => {
+             let textBlock = null;
+             let thinkingBlock = null;
+             let hasFinishReason = false;
++            const returnedImages = new Set();
+             const toolCallBlocksByIndex = new Map();
+             const toolCallBlocksById = new Map();
+             const blocks = output.content;
+@@ -396,6 +397,26 @@ export const stream = (model, context, options) => {
+                     hasFinishReason = true;
+                 }
+                 if (choice.delta) {
++                    // Some compatible providers return native images on otherwise ordinary chat models.
++                    // Preserve actual output even when their model catalog omits output modalities.
++                    const contentParts = Array.isArray(choice.delta.content) ? choice.delta.content : [];
++                    const imageParts = [...(choice.delta.images ?? []), ...contentParts.filter(part => part.type === "image_url")];
++                    for (const part of imageParts) {
++                        const url = typeof part.image_url === "string" ? part.image_url : part.image_url?.url;
++                        if (typeof url !== "string" || url.length > 28 * 1024 * 1024)
++                            throw new Error("Invalid or oversized generated image response");
++                        if (returnedImages.has(url)) continue;
++                        const match = /^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(url);
++                        if (!match) throw new Error("The selected model returned an image URL instead of inline image bytes");
++                        if (returnedImages.size >= 8) throw new Error("Too many generated images in one response");
++                        returnedImages.add(url);
++                        const image = { type: "image", data: match[2], mimeType: match[1].toLowerCase() };
++                        const contentIndex = output.content.length;
++                        output.content.push(image);
++                        stream.push({ type: "image_end", contentIndex, image, partial: output });
++                    }
++                    if (Array.isArray(choice.delta.content))
++                        choice.delta.content = contentParts.filter(part => part.type === "text" && typeof part.text === "string").map(part => part.text).join("");
+                     if (choice.delta.content !== null &&
+                         choice.delta.content !== undefined &&
+                         choice.delta.content.length > 0) {
+diff --git a/dist/types.d.ts b/dist/types.d.ts
+index 2bb23658ee692343e4561ac461bd0e8d9328c5a1..bb554d6bcee61309e8136f0a612a403c7d43b799 100644
+--- a/dist/types.d.ts
++++ b/dist/types.d.ts
+@@ -306,7 +306,7 @@ export interface UserMessage {
+ }
+ export interface AssistantMessage {
+     role: "assistant";
+-    content: (TextContent | ThinkingContent | ToolCall)[];
++    content: (TextContent | ThinkingContent | ToolCall | ImageContent)[];
+     api: Api;
+     provider: ProviderId;
+     model: string;
+@@ -400,6 +400,11 @@ export interface Context {
+ export type AssistantMessageEvent = {
+     type: "start";
+     partial: AssistantMessage;
++} | {
++    type: "image_end";
++    contentIndex: number;
++    image: ImageContent;
++    partial: AssistantMessage;
+ } | {
+     type: "text_start";
+     contentIndex: number;

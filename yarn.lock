@@ -2738,7 +2738,7 @@ __metadata:
 
 "@deepseek-ai/dsh-llm-pi-ai@patch:@deepseek-ai/dsh-llm-pi-ai@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-pi-ai-npm-0.1.2-rc.1-60fc205c66.patch::locator=deepseek-harness-desktop%40workspace%3A.":
   version: 0.1.2-rc.1
-  resolution: "@deepseek-ai/dsh-llm-pi-ai@patch:@deepseek-ai/dsh-llm-pi-ai@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-pi-ai-npm-0.1.2-rc.1-60fc205c66.patch::version=0.1.2-rc.1&hash=a6dbc2&locator=deepseek-harness-desktop%40workspace%3A."
+  resolution: "@deepseek-ai/dsh-llm-pi-ai@patch:@deepseek-ai/dsh-llm-pi-ai@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-pi-ai-npm-0.1.2-rc.1-60fc205c66.patch::version=0.1.2-rc.1&hash=d08ec5&locator=deepseek-harness-desktop%40workspace%3A."
   dependencies:
     "@deepseek-ai/dsh-brand": "npm:^0.1.2-rc.1"
     "@deepseek-ai/dsh-util-values": "npm:^0.1.2-rc.1"
@@ -2754,7 +2754,7 @@ __metadata:
     "@deepseek-ai/dsh-llm": ^0.1.2-rc.1
     "@deepseek-ai/dsh-settings": ^0.1.2-rc.1
     "@deepseek-ai/dsh-timeout": ^0.1.2-rc.1
-  checksum: 10c0/ad5a429c7be267fa48752cfd525af36dc428c70dbc7800a6fded65b1acb31c3a6c0bd93e6f9478720f4c8b5b2b46e66ea0b568ba128e2f592f637866b79e8a33
+  checksum: 10c0/007b8c357ea3199d0c390dc92453f058bb737a1b400ce5de5fe8c6f3d56dcdb2feadee39bbdc83a2d1742ed38e0780f8917a0e58c8e27e5ece869d87be0f1b23
   languageName: node
   linkType: hard
 
@@ -4826,7 +4826,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@earendil-works/pi-ai@npm:^0.84.2":
+"@earendil-works/pi-ai@npm:0.84.4":
   version: 0.84.4
   resolution: "@earendil-works/pi-ai@npm:0.84.4"
   dependencies:
@@ -4843,6 +4843,26 @@ __metadata:
   bin:
     pi-ai: dist/cli.js
   checksum: 10c0/0330c56f60d4857131cfee2a0c4bbc50442c4650c95f169214e74edf1cd114cefe895cfea7135b83a959126f31189c72e1c146d8cc7ad99bdddbf38beab88c3d
+  languageName: node
+  linkType: hard
+
+"@earendil-works/pi-ai@patch:@earendil-works/pi-ai@npm%3A0.84.4#~/.yarn/patches/@earendil-works-pi-ai-npm-0.84.4-1e468e33fa.patch":
+  version: 0.84.4
+  resolution: "@earendil-works/pi-ai@patch:@earendil-works/pi-ai@npm%3A0.84.4#~/.yarn/patches/@earendil-works-pi-ai-npm-0.84.4-1e468e33fa.patch::version=0.84.4&hash=aad27d"
+  dependencies:
+    "@anthropic-ai/sdk": "npm:0.91.1"
+    "@aws-sdk/client-bedrock-runtime": "npm:3.1048.0"
+    "@earendil-works/pi-telemetry": "npm:^0.84.4"
+    "@google/genai": "npm:1.52.0"
+    "@smithy/node-http-handler": "npm:4.7.3"
+    http-proxy-agent: "npm:7.0.2"
+    https-proxy-agent: "npm:7.0.6"
+    openai: "npm:6.40.0"
+    partial-json: "npm:0.1.7"
+    typebox: "npm:1.3.7"
+  bin:
+    pi-ai: dist/cli.js
+  checksum: 10c0/d91e71c8253c6b208b76b4763176100477e1cd7724857b2a6548c972d0f0361d22a0a804eabdf24d2d958766f53d997bd20857c164d78eb20c114078a9276ef6
   languageName: node
   linkType: hard
 

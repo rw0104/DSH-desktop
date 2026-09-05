@@ -42,6 +42,36 @@ function imageReply() {
     + '\n\ndata: ' + JSON.stringify({ id: 'native-image', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 3, completion_tokens: 5 } }) + '\n\ndata: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } })
 }
 describe('selected model native image output', () => {
+  it('preserves an actual image returned by an unlisted model without requiring output metadata', async () => {
+    const { ctx } = await setup('private-image-alias')
+    const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(async () => imageReply()); vi.stubGlobal('fetch', fetch)
+    const chunks = await run(ctx, 'private-image-alias')
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(chunks.filter(chunk => chunk.type === 'block-end' && chunk.block.type === 'image')).toHaveLength(1)
+    expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'stop' } })
+    expect(JSON.parse(fetch.mock.calls[0]?.[1]?.body as string).model).toBe('private-image-alias')
+  })
+  it('preserves mixed content arrays and deduplicates replayed image frames on an ordinary custom route', async () => {
+    const { ctx, saveImages } = await setup('private-image-alias', {}, { provider: 'private-gateway', api: 'openai-completions', baseURL: 'https://fixture.invalid/v1' })
+    const image = { type: 'image_url', image_url: { url: 'data:image/png;base64,' + PNG } }
+    const frames = [
+      { choices: [{ index: 0, delta: { content: [{ type: 'text', text: 'Here it is.' }, image] } }] },
+      { choices: [{ index: 0, delta: { images: [image] }, finish_reason: 'stop' }] },
+    ]
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(frames.map(frame => 'data: ' + JSON.stringify(frame) + '\n\n').join('') + 'data: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } })))
+    const chunks = await run(ctx, 'private-image-alias', undefined, 'private-gateway')
+    expect(chunks.filter(chunk => chunk.type === 'block-end' && chunk.block.type === 'image')).toHaveLength(1)
+    expect(chunks).toContainEqual(expect.objectContaining({ type: 'block-end', block: { type: 'text', text: 'Here it is.' } }))
+    expect(saveImages).toHaveBeenCalledTimes(1)
+    expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'stop' } })
+  })
+  it('rejects invalid image bytes returned on an unlisted model without saving them', async () => {
+    const { ctx, saveImages } = await setup('private-image-alias')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('data: ' + JSON.stringify({ choices: [{ index: 0, delta: { images: [{ image_url: { url: 'data:image/png;base64,aGVsbG8=' } }] }, finish_reason: 'stop' }] }) + '\n\ndata: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } })))
+    const chunks = await run(ctx, 'private-image-alias')
+    expect(saveImages).not.toHaveBeenCalled()
+    expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'error' } })
+  })
   it('reuses the selected provider saved API-key record for model discovery instead of sending an unauthenticated request', async () => {
     const ctx = new Context(); contexts.push(ctx)
     await ctx.plugin(LlmRuntime)
