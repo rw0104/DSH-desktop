@@ -4,6 +4,8 @@
 
 03:27 经 `http://127.0.0.1:10808` 复核：Harness HEAD `d347e703908d0406b7a7ef80e3a0e594d86b2215`，RC1 tag `a66e4702047846cdaa10c66c9d3df3951f5ea70d`，npm latest/next `0.1.2-rc.1`；Sidebar HEAD `a5c52b3f1bc450b04578bd9252f67b7d79c98502`，v0.18.0 tag `9e1a03452794532cda1f6ac677b72579dff48dfc`，npm latest `0.18.0`；桌面参考 HEAD `a041cb50f0ffc8fae37d0715ca89b082d5aa1e34`，v2.0.4 tag `d29bf7a965fc68bf09750bc329905ecb17afe48b`。保留全部运行时 pin，本批次只修正 Desktop 交互、用户提供的 pm01 语音绘制核心移植，以及已审计 pi-ai 下游补丁中的模型发现逻辑。
 
+最终 2.2.3 代码基线 `dcce1eccab`：Desktop 810 passed / 11 skipped、Market 275 passed、14 项打包专项测试及 packaged Profile 通过；实际 ASAR 的 WebGL 动画、字幕滚动、任务收起/恢复、键盘操作、上下文恢复、2D 降级及多视口深浅主题验证通过，页面异常为 0。安装器 224,017,668 bytes，SHA-256 `D073626EDFDFFCCB6858603FD751327D6CBF60C934A959D83595E16445388167`。仅本地候选包，无正式 Release/tag；真实供应商生图执行尚未接入，Apple 全库静态门禁不在本次通过声明内。详见 [v2.2.3](releases/v2.2.3.md)。
+
 ## 2026-09-05 v2.2.2 语音点击合同修复
 
 01:32 通过 `http://127.0.0.1:10808` 复核三条权威 remote HEAD/tag 与 npm dist-tags：Harness HEAD `d347e703908d0406b7a7ef80e3a0e594d86b2215`、RC1 tag `a66e4702047846cdaa10c66c9d3df3951f5ea70d`，latest/next `0.1.2-rc.1`；Sidebar HEAD `a5c52b3f1bc450b04578bd9252f67b7d79c98502`、v0.18.0 tag `9e1a03452794532cda1f6ac677b72579dff48dfc`，latest `0.18.0`；桌面参考 HEAD `5d482fd76d5434f90028f3925de900d31d7e7862`，v2.0.4 tag `d29bf7a965fc68bf09750bc329905ecb17afe48b`。保持所有 runtime pin，不引入未审计参考提交。
