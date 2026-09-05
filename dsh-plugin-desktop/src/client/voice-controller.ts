@@ -198,7 +198,7 @@ function resamplePcm16(input: Float32Array, sourceRate: number): Int16Array {
   return result
 }
 
-function analyzePcm16(samples: Int16Array, sampleRate = 16_000): VoiceAudioFeatures {
+export function analyzePcm16(samples: Int16Array, sampleRate = 16_000): VoiceAudioFeatures {
   if (samples.length === 0) return { rms: 0, peak: 0, low: 0, mid: 0, high: 0 }
   const lowAlpha = 1 - Math.exp((-2 * Math.PI * 280) / sampleRate)
   const midAlpha = 1 - Math.exp((-2 * Math.PI * 2200) / sampleRate)
@@ -287,6 +287,12 @@ function messageOf(value: unknown): string {
 export class DesktopVoiceController {
   readonly store: SnapshotStore<DesktopVoiceState> = createSnapshotStore(INITIAL)
   readonly panel = createSnapshotStore<string | null>(null)
+  readonly minimized = createSnapshotStore(false)
+  readonly task = createSnapshotStore<{ status: 'idle' | 'running' | 'completed' | 'failed' | 'cancelled'; tool: string }>({ status: 'idle', tool: '' })
+  /** Stable objects read by the pm01 renderer every frame, without re-rendering captions. */
+  readonly audio = { input: { ...INITIAL.inputAudio }, output: { ...INITIAL.outputAudio } }
+  readonly transcriptView = { following: true, top: 0 }
+  private readonly outputFeatureTimers = new Map<AudioBufferSourceNode, ReturnType<typeof setTimeout>>()
   private readonly scope: SettingsScope<DesktopVoiceSettings>
   private readonly api: Pick<ClientRemote, 'credentials'>
   private socket: WebSocket | null = null
@@ -326,6 +332,8 @@ export class DesktopVoiceController {
   isActive(): boolean { return ACTIVE.has(this.store.getSnapshot().status) }
 
   private set(patch: Partial<DesktopVoiceState>): void {
+    if (patch.inputAudio) Object.assign(this.audio.input, patch.inputAudio)
+    if (patch.outputAudio) Object.assign(this.audio.output, patch.outputAudio)
     this.store.set({ ...this.store.getSnapshot(), ...patch })
   }
 
@@ -437,6 +445,7 @@ export class DesktopVoiceController {
 
   open(sessionId: string): void {
     if (!sessionId) return
+    this.minimized.set(false)
     if (this.presentation === 'overlay') this.panel.set(sessionId)
     else this.sidebar.openTab({ type: 'desktop:voice', title: 'Voice', meta: { sessionId } }, { sessionId })
   }
@@ -445,7 +454,11 @@ export class DesktopVoiceController {
     ++this.activeGeneration
     await this.completeFinish(this.socket)
     this.panel.set(null)
+    this.minimized.set(false)
   }
+
+  minimizePanel(): void { if (this.panel.getSnapshot() !== null) this.minimized.set(true) }
+  restorePanel(): void { this.minimized.set(false) }
 
   async openAndStart(sessionId: string): Promise<void> {
     this.open(sessionId)
@@ -460,6 +473,8 @@ export class DesktopVoiceController {
       return
     }
     const generation = ++this.activeGeneration
+    Object.assign(this.transcriptView, { following: true, top: 0 })
+    this.task.set({ status: 'idle', tool: '' })
     this.set({ status: 'requesting', error: null, turns: [], liveInput: '', liveOutput: '' })
     try {
       const ticketResponse = await fetch(VOICE_TICKET_PATH, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionId }) })
@@ -517,7 +532,7 @@ export class DesktopVoiceController {
   async toggleMicrophone(): Promise<void> {
     const muted = !this.store.getSnapshot().microphoneMuted
     this.stream?.getAudioTracks().forEach(track => { track.enabled = !muted })
-    this.set({ microphoneMuted: muted })
+    this.set({ microphoneMuted: muted, ...(muted ? { inputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 } } : {}) })
   }
 
   toggleOutput(): void {
@@ -576,10 +591,12 @@ export class DesktopVoiceController {
     const socket = this.socket
     if (this.store.getSnapshot().microphoneMuted || socket?.readyState !== WebSocket.OPEN || socket.bufferedAmount > MAX_VOICE_SOCKET_BUFFER) return
     socket.send(JSON.stringify({ type: 'audio.append', audio: base64(new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength)) }))
+    const features = analyzePcm16(pcm, 16000)
+    Object.assign(this.audio.input, features)
     const now = performance.now()
     if (now - this.lastAudioFeatureAt >= 80) {
       this.lastAudioFeatureAt = now
-      this.set({ inputAudio: analyzePcm16(pcm) })
+      this.set({ inputAudio: features })
     }
   }
 
@@ -602,7 +619,17 @@ export class DesktopVoiceController {
       this.cancelPlayback(false)
       this.set({ status: 'user-speaking', liveOutput: '' })
     }
-    else if (type === 'speech.stopped' || type === 'agent.request.accepted') this.set({ status: 'thinking' })
+    else if (type === 'speech.stopped') this.set({ status: 'thinking' })
+    else if (type === 'agent.request.accepted' || type === 'agent.tool.started') {
+      this.task.set({ status: 'running', tool: typeof message.name === 'string' ? message.name : '' })
+      this.set({ status: 'thinking' })
+      this.minimizePanel()
+    } else if (type === 'agent.tool.finished') {
+      this.task.set({ status: 'running', tool: '' })
+    } else if (type === 'agent.task.finished') {
+      const status = message.status === 'completed' ? 'completed' : message.status === 'cancelled' ? 'cancelled' : 'failed'
+      this.task.set({ status, tool: '' })
+    }
     else if (type === 'transcript.partial') this.queueInput(String(message.text || ''))
     else if (type === 'transcript.final') {
       this.flushRealtimeUi()
@@ -694,20 +721,32 @@ export class DesktopVoiceController {
     source.buffer = buffer
     source.connect(context.destination)
     source.onended = () => {
+      const timer = this.outputFeatureTimers.get(source)
+      if (timer !== undefined) clearTimeout(timer)
+      this.outputFeatureTimers.delete(source)
       this.playbackSources.delete(source)
+      source.disconnect()
+      if (this.playbackSources.size === 0) this.set({ outputAudio: { rms: 0, peak: 0, low: 0, mid: 0, high: 0 } })
       if (!this.ttsExpected && !this.providerOutputExpected && this.playbackSources.size === 0) this.finishPlaybackState()
     }
     this.playbackSources.add(source)
     const now = context.currentTime
     this.playbackAt = Math.max(this.playbackAt, now)
+    const startAt = this.playbackAt
     source.start(this.playbackAt)
     this.playbackAt += buffer.duration
-    const nowMs = performance.now()
-    const snapshot = this.store.getSnapshot()
-    if (nowMs - this.lastOutputFeatureAt >= 80) {
-      this.lastOutputFeatureAt = nowMs
-      this.set({ status: 'assistant-speaking', outputAudio: analyzePcm16(samples), error: null })
-    } else if (snapshot.status !== 'assistant-speaking' || snapshot.error !== null) this.set({ status: 'assistant-speaking', error: null })
+    const features = analyzePcm16(samples, 24000)
+    const timer = setTimeout(() => {
+      this.outputFeatureTimers.delete(source)
+      if (!this.playbackSources.has(source) || this.store.getSnapshot().outputMuted) return
+      Object.assign(this.audio.output, features)
+      const nowMs = performance.now()
+      if (nowMs - this.lastOutputFeatureAt >= 80) {
+        this.lastOutputFeatureAt = nowMs
+        this.set({ status: 'assistant-speaking', outputAudio: features, error: null })
+      } else this.set({ status: 'assistant-speaking', error: null })
+    }, Math.max(0, (startAt - now) * 1000))
+    this.outputFeatureTimers.set(source, timer)
   }
 
   private schedulePlaybackDone(): void {
@@ -727,10 +766,14 @@ export class DesktopVoiceController {
   }
 
   private cancelPlayback(notifyHost: boolean): void {
+    for (const timer of this.outputFeatureTimers.values()) clearTimeout(timer)
+    this.outputFeatureTimers.clear()
     if (this.playbackDoneTimer !== null) clearTimeout(this.playbackDoneTimer)
     this.playbackDoneTimer = null
     for (const source of this.playbackSources) {
+      source.onended = null
       try { source.stop() } catch { /* already stopped */ }
+      source.disconnect()
     }
     this.playbackSources.clear()
     this.playbackAt = this.audioContext?.currentTime ?? 0

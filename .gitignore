@@ -16,6 +16,7 @@ dsh-community-market/lib/
 # Local-only development plans, investigations, build diaries, and evidence.
 # Public product/release documentation remains tracked elsewhere under docs/.
 /docs/local/*
+/.apple-ui
 !/docs/local/.gitkeep
 /docs/[0-9][0-9]-*.md
 /docs/20??-??-??_*.md

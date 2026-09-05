@@ -164,7 +164,8 @@ if (noticesArg !== -1) {
       : `> Notice-required licenses in use: ${[...new Set(noticeOnly.map(entry => entry.license))].join(', ')}. Their license texts ship inside node_modules; see the package LICENSE files for the full terms.`,
     '',
   ].filter(line => line !== '')
-  writeFileSync(join(packageRoot, target), lines.join('\n'))
+  const vendoredNotices = readFileSync(join(packageRoot, 'build/vendor-notices.md'), 'utf8')
+  writeFileSync(join(packageRoot, target), `${lines.join('\n')}\n\n${vendoredNotices}`)
 }
 
 const total = seen.size - 1

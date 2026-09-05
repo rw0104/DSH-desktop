@@ -121,9 +121,10 @@ export function apply(ctx: ClientContext): void {
   const sidebar = ctx.get('betterSidebar') as BetterSidebarRegistry | undefined
   if (sidebar === undefined) throw new Error('dsh-plugin-desktop: upstream Better Sidebar service is unavailable')
   const voice = new DesktopVoiceController(ctx, sidebar, environment.mode === 'compatibility' ? 'overlay' : 'sidebar')
+  const voicePanelLocale = { subscribe: (listener: () => void) => ctx.locale.subscribe(listener), getSnapshot: () => String(ctx.locale.getLocale().active) }
   if (environment.mode === 'compatibility') {
     ctx.slots.inject('shell.overlay', () => ctx.slots.register({
-      name: 'shell.overlay', id: 'desktop-voice-overlay', inject: () => ({ controller: voice }),
+      name: 'shell.overlay', id: 'desktop-voice-overlay', inject: () => ({ controller: voice, locale: voicePanelLocale }),
     }, VoiceOverlay))
   }
   ctx.effect(() => {
@@ -143,7 +144,7 @@ export function apply(ctx: ClientContext): void {
     title: () => ctx.locale.bind('desktop.voice')('settings.title'),
     order: 25,
     single: true,
-    component: ({ scope }) => createElement(VoiceSidebarTab, { controller: voice, scope: { sessionId: scope.sessionId } }),
+    component: ({ scope }) => createElement(VoiceSidebarTab, { controller: voice, scope: { sessionId: scope.sessionId }, locale: voicePanelLocale }),
   }), 'dsh-plugin-desktop: realtime voice sidebar tab')
   ctx.effect(() => {
     return sidebar.registerTab({

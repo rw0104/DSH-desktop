@@ -621,6 +621,7 @@ export class VoiceAgentBridge {
         ? 'The selected DSH Agent is unavailable.'
         : 'The DSH Agent is busy with a non-voice task. Retry after that task finishes.'
       this.e2eDelegations.delete(callId)
+      sendClient(this.client, { type: 'agent.task.finished', status: 'failed' })
       this.e2e?.writeFunctionOutput(callId, buildDshCapabilityResult('failed', '', [message]))
       this.startNextE2eDelegation()
       return
@@ -635,6 +636,7 @@ export class VoiceAgentBridge {
       this.activeE2eCallId = undefined
       this.e2eDelegations.delete(callId)
       const message = cause instanceof Error ? cause.message : 'The voice capability request could not be sent to the DSH Agent.'
+      sendClient(this.client, { type: 'agent.task.finished', status: 'failed' })
       this.e2e?.writeFunctionOutput(callId, buildDshCapabilityResult('failed', '', [message]))
       this.startNextE2eDelegation()
     }
@@ -661,6 +663,7 @@ export class VoiceAgentBridge {
     this.e2eDelegations.delete(current.callId)
     this.activeE2eCallId = undefined
     this.activeAgentTurn = undefined
+    sendClient(this.client, { type: 'agent.task.finished', status: event.data.reason?.kind === 'completed' ? 'completed' : 'failed' })
     if (event.data.reason?.kind !== 'completed') {
       this.e2e?.writeFunctionOutput(current.callId, buildDshCapabilityResult('failed', '', ['The DSH Agent turn ended before completion.']))
     } else {
@@ -717,6 +720,7 @@ export class VoiceAgentBridge {
       if (callIds.includes(this.e2eQueue[index]!)) this.e2eQueue.splice(index, 1)
     }
     if (ownsAgentTurn) {
+      sendClient(this.client, { type: 'agent.task.finished', status: 'cancelled' })
       this.activeE2eCallId = undefined
       this.activeAgentTurn = undefined
       const agent = this.ctx.agents.get(this.ticket.agentSessionId as never)
@@ -734,6 +738,7 @@ export class VoiceAgentBridge {
   }
 
   private endAgentTurn(completed: boolean): void {
+    sendClient(this.client, { type: 'agent.task.finished', status: completed ? 'completed' : 'failed' })
     if (!completed) {
       this.cancelTts('agent_turn_incomplete')
       sendClient(this.client, { type: 'agent.response.done', ttsExpected: false })

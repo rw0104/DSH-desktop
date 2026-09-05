@@ -1,5 +1,5 @@
 diff --git a/lib/index.js b/lib/index.js
-index c25e5c7afcd9381dec2490fbff24910f173281d0..d824778d7d4b16862a6402dcecdd5542e63011d3 100644
+index c25e5c7afcd9381dec2490fbff24910f173281d0..71b5469b8c5facb0a928b1957b983ed33bbe07d0 100644
 --- a/lib/index.js
 +++ b/lib/index.js
 @@ -1,4 +1,5 @@
@@ -25,7 +25,17 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..d824778d7d4b16862a6402dcecdd5542
  	reasoningEfforts: z.union([z.const(false), reasoningEfforts]),
  	compat: compatProfile
  };
-@@ -2126,6 +2128,7 @@ function readListing(body) {
+@@ -2068,7 +2070,8 @@ function label(...candidates) {
+ * them to `URL` resolution.
+ */
+ function listingUrl(baseURL) {
+-	return `${baseURL.replace(/\/+$/, "")}/models`;
++	const base = baseURL.replace(/\/+$/, "");
++	return new URL(baseURL).pathname === "/" ? `${base}/v1/models` : `${base}/models`;
+ }
+ /**
+ * Read a reply body, refusing one that outgrows the ceiling. A declared length
+@@ -2126,6 +2129,7 @@ function readListing(body) {
  		const maxTokens = capacity(entry?.max_output_tokens, entry?.max_tokens);
  		models.push({
  			id,
@@ -33,9 +43,18 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..d824778d7d4b16862a6402dcecdd5542
  			...name === void 0 ? {} : { name },
  			...contextWindow === void 0 ? {} : { contextWindow },
  			...maxTokens === void 0 ? {} : { maxTokens }
-@@ -2161,6 +2164,8 @@ async function discoverModels(request, storedProfile) {
+@@ -2157,10 +2161,15 @@ function usableProbeKey(raw) {
+ *   refuses or fails the request, or the reply is not a model listing.
+ */
+ async function discoverModels(request, storedProfile) {
+-	if (request.provider !== void 0) {
++	if (request.provider !== void 0 && !request.baseURL?.trim()) {
  		const installed = catalogModels(request.provider);
- 		if (installed.size > 0) return [...installed.values()].map((model) => ({
+-		if (installed.size > 0) return [...installed.values()].map((model) => ({
++		const baseURL = catalogProvider(request.provider)?.baseUrl;
++		const api = request.api ?? sharedCatalogApi(installed) ?? "openai-completions";
++		if (baseURL && LISTABLE_PROTOCOLS.has(api)) request = { ...request, baseURL, api };
++		else if (installed.size > 0) return [...installed.values()].map((model) => ({
  			id: model.id,
 +			inputModalities: [...model.input],
 +			inputCapabilitySource: "catalog",

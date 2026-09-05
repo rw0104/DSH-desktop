@@ -30,6 +30,33 @@ function editorSeams(): Record<string, (...args: any[]) => any> {
 }
 
 describe('automatic custom-model image capabilities', () => {
+  it('asks the official OpenAI endpoint for image IDs when no custom URL is specified', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [{ id: 'gpt-image-2' }] })))
+    vi.stubGlobal('fetch', fetch)
+    const ctx = new Context()
+    try {
+      await ctx.plugin(LlmRuntime)
+      await ctx.plugin(PiAi, { providers: {} })
+      expect((await ctx.llm.discoverModels('llm-pi-ai', { provider: 'openai' })).map(model => model.id)).toEqual(['gpt-image-2'])
+      expect(fetch).toHaveBeenCalledWith('https://api.openai.com/v1/models', expect.objectContaining({ method: 'GET' }))
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('queries an explicitly configured endpoint instead of replacing its image models with a builtin chat catalog', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [
+      { id: 'gpt-image-2' }, { id: 'qwen-image-2.0' }, { id: 'provider-private-image' },
+    ] })))
+    vi.stubGlobal('fetch', fetch)
+    const ctx = new Context()
+    try {
+      await ctx.plugin(LlmRuntime)
+      await ctx.plugin(PiAi, { providers: {} })
+      const found = await ctx.llm.discoverModels('llm-pi-ai', { provider: 'openai', baseURL: 'https://fixture.invalid/' })
+      expect(fetch).toHaveBeenCalledWith('https://fixture.invalid/v1/models', expect.objectContaining({ method: 'GET' }))
+      expect(found.map(model => model.id)).toEqual(['gpt-image-2', 'qwen-image-2.0', 'provider-private-image'])
+    } finally { await ctx.fiber.dispose() }
+  })
+
   it('preserves discovered capability through adoption and the actual settings schema', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [
       { id: 'private-visual', input_modalities: ['text', 'image'] },
@@ -54,15 +81,15 @@ describe('automatic custom-model image capabilities', () => {
     } finally { await ctx.fiber.dispose(); await restored.fiber.dispose() }
   })
 
-  it('uses the installed provider catalog without a network probe', async () => {
+  it('keeps non-listable native provider catalogs available without inventing a listing protocol', async () => {
     const fetch = vi.fn().mockRejectedValue(new Error('discovery must stay offline'))
     vi.stubGlobal('fetch', fetch)
     const ctx = new Context()
     try {
       await ctx.plugin(LlmRuntime)
       await ctx.plugin(PiAi, { providers: {} })
-      const found = await ctx.llm.discoverModels('llm-pi-ai', { provider: 'openai' })
-      expect(found.find(model => model.id === 'gpt-4o-mini')).toMatchObject({ inputModalities: ['text', 'image'], inputCapabilitySource: 'catalog' })
+      const found = await ctx.llm.discoverModels('llm-pi-ai', { provider: 'anthropic' })
+      expect(found.some(model => model.inputModalities?.includes('image') && model.inputCapabilitySource === 'catalog')).toBe(true)
       expect(fetch).not.toHaveBeenCalled()
     } finally { await ctx.fiber.dispose() }
   })

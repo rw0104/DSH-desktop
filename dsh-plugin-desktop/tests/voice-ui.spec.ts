@@ -57,6 +57,8 @@ function controller(snapshot: DesktopVoiceState): DesktopVoiceController {
   return {
     subscribe: () => () => {},
     getSnapshot: () => snapshot,
+    task: { subscribe: () => () => {}, getSnapshot: () => ({ status: 'idle', tool: '' }) },
+    audio: { input: snapshot.inputAudio, output: snapshot.outputAudio },
     isActive: () => snapshot.status !== 'idle',
     openAndStart: vi.fn(),
     finish: vi.fn(),

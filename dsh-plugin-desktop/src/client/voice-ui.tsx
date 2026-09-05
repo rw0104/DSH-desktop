@@ -5,26 +5,45 @@ import type { DesktopVoiceController } from './voice-controller.ts'
 import type { DesktopVoiceState, DesktopVoiceSettings } from './voice-controller.ts'
 import type { VoiceKey } from './voice-locales.ts'
 import { VoiceOrb } from './voice-orb.tsx'
+import { useVoicePanelCopy, type VoicePanelCopy, type VoicePanelLocale } from './voice-panel-copy.ts'
+import { VoiceTranscript } from './voice-transcript.tsx'
 import type { DesktopExternalNavigationAction } from '../external-navigation-contract.ts'
 
 export interface VoiceInjected {
   controller: DesktopVoiceController
+  locale?: VoicePanelLocale
 }
 
-/** Additive overlay for the upstream compatibility shell, which has no Workbench tab outlet. */
-export function VoiceOverlay({ controller }: VoiceInjected) {
+/** Modeless utility: ongoing speech must not block the workspace or approval dialogs. */
+export function VoiceOverlay({ controller, locale }: VoiceInjected) {
   const sessionId = useSyncExternalStore(controller.panel.subscribe, controller.panel.getSnapshot, controller.panel.getSnapshot)
+  const minimized = useSyncExternalStore(controller.minimized.subscribe, controller.minimized.getSnapshot, controller.minimized.getSnapshot)
+  const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
+  const task = useSyncExternalStore(controller.task.subscribe, controller.task.getSnapshot, controller.task.getSnapshot)
+  const copy = useVoicePanelCopy(locale)
   const dialog = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     const node = dialog.current
-    if (node === null || sessionId === null) return
-    node.showModal()
+    if (node === null || sessionId === null || minimized) return
+    node.show()
+    node.querySelector<HTMLButtonElement>('[data-voice-minimize]')?.focus()
     return () => { node.close() }
-  }, [sessionId])
+  }, [sessionId, minimized])
+  useEffect(() => {
+    if (minimized && document.activeElement === document.body) document.querySelector<HTMLButtonElement>('.dshVoiceCompactRestore')?.focus()
+  }, [minimized])
   if (sessionId === null) return null
-  return <dialog ref={dialog} className="dshVoiceDialog" aria-label="Realtime voice dialog" onCancel={event => { event.preventDefault(); void controller.closePanel() }}>
-    <button type="button" className="dshVoiceDialogClose" aria-label="Close realtime voice" onClick={() => { void controller.closePanel() }}>×</button>
-    <VoiceSidebarTab controller={controller} scope={{ sessionId }} />
+  if (minimized) return <section className="dshVoiceCompact" aria-label={copy.title}>
+    <button className="dshVoiceCompactRestore" type="button" onClick={() => controller.restorePanel()} aria-label={copy.restore}>
+      <span className="dshVoiceCompactIndicator" aria-hidden />
+      <span>{copy[state.status]}{task.status !== 'idle' && <small>{voiceTaskLabel(task.status, copy)}{task.tool ? ': ' + task.tool : ''}</small>}</span>
+    </button>
+    <button type="button" aria-pressed={state.microphoneMuted} onClick={() => { void controller.toggleMicrophone() }}>{state.microphoneMuted ? copy.unmute : copy.mute}</button>
+    <button className="dshVoiceEnd" type="button" onClick={() => { void controller.closePanel() }}>{copy.end}</button>
+  </section>
+  return <dialog ref={dialog} className="dshVoiceDialog" aria-label={copy.title} aria-modal="false"
+    onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); controller.minimizePanel() } }}>
+    <VoiceSidebarTab controller={controller} scope={{ sessionId }} {...locale === undefined ? {} : { locale }} onMinimize={() => controller.minimizePanel()} onClose={() => { void controller.closePanel() }} />
   </dialog>
 }
 
@@ -51,53 +70,60 @@ export function VoiceComposerButton({ sessionId, controller, t }: VoiceButtonPro
   )
 }
 
-export function VoiceSidebarTab({ controller, scope }: { controller: DesktopVoiceController; scope: { sessionId: string; cwd?: string } }) {
+function voiceTaskLabel(status: string, copy: VoicePanelCopy): string {
+  return status === 'running' ? copy.taskRunning : status === 'completed' ? copy.taskCompleted : status === 'cancelled' ? copy.taskCancelled : copy.taskFailed
+}
+
+export function VoiceSidebarTab({ controller, scope, locale, onMinimize, onClose }: {
+  controller: DesktopVoiceController; scope: { sessionId: string; cwd?: string }; locale?: VoicePanelLocale;
+  onMinimize?: () => void; onClose?: () => void
+}) {
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
-  const status = statusText(state)
-  return (
-    <section className="dshVoicePanel" aria-label="Realtime voice">
-      <header className="dshVoicePanelHeader">
-        <div>
-          <span className="dshVoicePanelEyebrow"><span className="dshVoiceGlyph is-wave" aria-hidden /> Realtime voice</span>
-          <h2>{voiceModeTitle(state)}</h2>
-        </div>
-        <span className={`dshVoiceStatus is-${state.status}`}>{status}</span>
-      </header>
+  const task = useSyncExternalStore(controller.task.subscribe, controller.task.getSnapshot, controller.task.getSnapshot)
+  const copy = useVoicePanelCopy(locale)
+  const status = copy[state.status]
+  return <section className="dshVoicePanel" aria-label={copy.title}>
+    <header className="dshVoicePanelHeader">
+      <div><span className="dshVoicePanelEyebrow">{copy.title}</span><h2>{voiceModeTitle(state)}</h2></div>
+      <span className={`dshVoiceStatus is-${state.status}`} role="status">{status}</span>
+      {onMinimize && <button data-voice-minimize type="button" className="dshVoiceWindowAction" onClick={onMinimize} aria-label={copy.minimize} title={copy.minimize}>↘</button>}
+      {onClose && <button type="button" className="dshVoiceWindowAction" onClick={onClose} aria-label={copy.close} title={copy.close}>×</button>}
+    </header>
+    <details className="dshVoiceDetails">
+      <summary>{copy.details}</summary>
       <dl className="dshVoiceSessionInfo">
-        <div><dt>Mode</dt><dd>{state.sessionInfo.conversationMode}</dd></div>
-        <div><dt>Audio</dt><dd>{state.sessionInfo.audioSource}</dd></div>
-        <div><dt>Model</dt><dd>{state.sessionInfo.modelId || 'Not connected'}</dd></div>
-        <div><dt>Voice</dt><dd>{state.sessionInfo.voice || 'Off'}</dd></div>
-        <div><dt>Authority</dt><dd>{state.sessionInfo.agentAuthority}</dd></div>
-        <div><dt>Build</dt><dd>{state.sessionInfo.buildCommit}</dd></div>
+        <div><dt>{copy.mode}</dt><dd>{state.sessionInfo.conversationMode}</dd></div>
+        <div><dt>{copy.audio}</dt><dd>{state.sessionInfo.audioSource}</dd></div>
+        <div><dt>{copy.model}</dt><dd>{state.sessionInfo.modelId || copy.unset}</dd></div>
+        <div><dt>{copy.voice}</dt><dd>{state.sessionInfo.voice || copy.unset}</dd></div>
+        <div><dt>{copy.authority}</dt><dd>{state.sessionInfo.agentAuthority}</dd></div>
+        <div><dt>{copy.build}</dt><dd>{state.sessionInfo.buildCommit}</dd></div>
       </dl>
-      {state.error !== null && <div className="dshVoiceError" role="alert">{state.error}</div>}
-      <div className="dshVoicePresence">
-        <VoiceOrb status={state.status} inputFeatures={state.inputAudio} outputFeatures={state.outputAudio} label={status} />
-      </div>
-      <div className={`dshVoiceTranscript${state.turns.length ? ' has-content' : ''}`} aria-live="polite">
-        {state.turns.length === 0 && state.liveInput === '' && state.liveOutput === '' && (
-          <div className="dshVoiceEmpty">{state.settings.enabled ? 'Speak naturally. Your transcript will appear here.' : 'Enable realtime voice in Settings to begin.'}</div>
-        )}
-        {state.turns.map(turn => <article key={turn.id} className={`dshVoiceTurn is-${turn.role}`}><span>{turn.role === 'user' ? 'You' : 'Agent'}</span><p>{turn.text}</p></article>)}
-        {state.liveInput !== '' && <article className="dshVoiceTurn is-user is-live"><span>You</span><p>{state.liveInput}</p></article>}
-        {state.liveOutput !== '' && <article className="dshVoiceTurn is-assistant is-live"><span>Agent</span><p>{state.liveOutput}</p></article>}
-      </div>
-      <div className="dshVoiceControls">
-        <button type="button" className="dshVoiceControl" disabled={!controller.isActive()} aria-pressed={state.microphoneMuted} onClick={() => { void controller.toggleMicrophone() }}>
-          <span className="dshVoiceGlyph is-mic" aria-hidden /> {state.microphoneMuted ? 'Unmute' : 'Mute'}
-        </button>
-        <button type="button" className="dshVoicePrimary" disabled={state.status === 'finishing'} onClick={() => { if (controller.isActive()) void controller.finish(); else void controller.start(scope.sessionId) }}>
-          <span className={`dshVoiceGlyph is-${state.status === 'finishing' ? 'loading' : controller.isActive() ? 'stop' : 'start'}`} aria-hidden />
-          {controller.isActive() ? 'End' : 'Start voice'}
-        </button>
-        <button type="button" className="dshVoiceControl" disabled={!controller.isActive()} aria-pressed={state.outputMuted} onClick={() => { controller.toggleOutput() }}>
-          <span className="dshVoiceGlyph is-speaker" aria-hidden /> {state.outputMuted ? 'Sound on' : 'Speaker'}
-        </button>
-      </div>
-      <p className="dshVoicePrivacy">Microphone audio is relayed to the selected provider while a session is active.</p>
-    </section>
-  )
+    </details>
+    {state.error !== null && <div className="dshVoiceError" role="alert">{state.error}</div>}
+    {task.status !== 'idle' && <div className="dshVoiceTask" role="status">
+      <strong>{voiceTaskLabel(task.status, copy)}{task.tool ? ': ' + task.tool : ''}</strong>
+      <span>{copy.taskHint}</span>
+      {onMinimize && <button type="button" onClick={onMinimize}>{copy.minimize}</button>}
+    </div>}
+    <div className="dshVoicePresence">
+      <VoiceOrb status={state.status} inputFeatures={controller.audio.input} outputFeatures={controller.audio.output} label={status} />
+    </div>
+    <VoiceTranscript state={state} copy={copy} view={controller.transcriptView} />
+    <div className="dshVoiceControls">
+      <button type="button" className="dshVoiceControl" disabled={!controller.isActive()} aria-pressed={state.microphoneMuted} onClick={() => { void controller.toggleMicrophone() }}>
+        <span className="dshVoiceGlyph is-mic" aria-hidden /> {state.microphoneMuted ? copy.unmute : copy.mute}
+      </button>
+      <button type="button" className="dshVoicePrimary" disabled={state.status === 'finishing'} onClick={() => { if (controller.isActive()) void controller.finish(); else void controller.start(scope.sessionId) }}>
+        <span className={`dshVoiceGlyph is-${state.status === 'finishing' ? 'loading' : controller.isActive() ? 'stop' : 'start'}`} aria-hidden />
+        {controller.isActive() ? copy.stop : copy.start}
+      </button>
+      <button type="button" className="dshVoiceControl" disabled={!controller.isActive()} aria-pressed={state.outputMuted} onClick={() => { controller.toggleOutput() }}>
+        <span className="dshVoiceGlyph is-speaker" aria-hidden /> {state.outputMuted ? copy.sound : copy.speaker}
+      </button>
+    </div>
+    <p className="dshVoicePrivacy">{copy.privacy}</p>
+  </section>
 }
 
 type VoiceSettingsProps = {
@@ -198,11 +224,6 @@ function DoubaoSettings({ state, draft, update, t, doubaoAppId, setDoubaoAppId, 
 
 function KeyField({ id, label, configured, writable, value, onChange }: { id: string; label: string; configured: boolean; writable: boolean; value: string; onChange: (value: string) => void }) {
   return <div className="dshVoiceKeyField"><div className="dshVoiceKeyLabel"><label htmlFor={id}>{label}</label><span className={configured ? 'is-configured' : ''}>{configured ? 'Configured' : 'Not set'}</span></div><input id={id} type="password" autoComplete="off" value={value} disabled={!writable} placeholder={configured ? 'Stored securely' : 'Paste provider key'} onChange={event => { onChange(event.target.value) }} /></div>
-}
-
-function statusText(state: DesktopVoiceState): string {
-  const labels: Record<DesktopVoiceState['status'], string> = { idle: 'Ready', requesting: 'Requesting mic', connecting: 'Connecting', listening: 'Listening', 'user-speaking': 'Listening to you', thinking: 'Thinking', 'assistant-speaking': 'Speaking', finishing: 'Finishing', ended: 'Ended', error: 'Needs attention' }
-  return labels[state.status]
 }
 
 function voiceModeTitle(state: DesktopVoiceState): string {
