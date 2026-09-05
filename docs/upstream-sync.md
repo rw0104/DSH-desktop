@@ -8,6 +8,8 @@
 
 本次保留当前全部运行时 pin。修正 Desktop 语音控制器的 RC1 凭据接口，并补齐 Session Controller 下游补丁中的 `typert.host.js`/`typert.remote-client.js` 模型目录 schema，使 `inputModalities` 不在校验时丢失。真实接口形状、schema 解析测试均已先复现失败后通过；自定义 pi-ai 视觉模型通过固定图片的本地 HTTP 传输测试。详见 [v2.2.1](releases/v2.2.1.md)。
 
+用户随后要求默认自动识别，扩展 pi-ai 模型发现、LLM Remote 结果及 Models 编辑器的下游补丁：优先供应商输入声明，其次同 ID 内置目录，最后按用户选择使用明确 Vision / VL 名称标记推断，并保留来源和高级手动覆盖。配置不批量重写，不执行后台图片探测。最终代码基线 `06e8fd03b7`：immutable install、完整 check（Desktop 799 passed / 11 skipped、Market 275 passed）、14 项打包专项检查及打包 Profile 通过；实际 ASAR 自动识别检查通过，51 个客户端通过，隔离 GUI 在 `2026-09-05T08:08:04.373Z` 为 healthy。安装器 224,008,237 bytes，SHA-256 `11DBB32F28C133FA2467163171961B3AE1C70D9D6DC3D4513D88D1098361476A`，未签名；仅工作分支及本地测试包，不合并 main、不创建 tag / Release。真实语音音频往返仍待用户实机验收。
+
 ## 2026-09-04 v2.2.0 版本更新前复核
 
 23:03 前在新增 Agent Preset 解析补丁前再次执行相同的三条 Git remote 查询，HEAD/tag 均与本节下述快照一致；registry 单独核实 `@deepseek-ai/dsh-agent-presets@0.1.2-rc.1`。新增补丁不变更版本 pin：磁盘预检未找到插件时通过锚定的 CommonJS resolver 检查可解析性，不导入插件；Desktop 对 CJS 使用真正的安装目录 require，避免仅修改 nextResolve parentURL 仍沿用原 Module.paths。真正缺失的插件仍被预检拒绝。该问题在隔离配置创建首个 Standard 会话时复现，界面健康报告本身不足以发现它。
