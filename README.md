@@ -12,6 +12,8 @@
 
 安装包支持当前用户安装、选择安装目录、开始菜单和桌面快捷方式。当前安装包未进行 Authenticode 签名，Windows 可能显示 SmartScreen 或 Unknown Publisher 提示。
 
+当前源码版本为 **2.2.0**：升级到 Harness `0.1.2-rc.1` 和 Better Sidebar `0.18.0`，增强会话、文件变动与连接体验，并修复安装后插件加载失败。完整变化和插件兼容要求见 [v2.2.0 更新说明](docs/releases/v2.2.0.md)。新版本下载资产发布前，上方链接仍指向已发布的 v2.1.0。
+
 ## 交流群
 
 DSH Desktop 交流 QQ 群：**1106941154**。
@@ -36,7 +38,7 @@ DSH Desktop 使用官方 [DeepSeek Harness](https://github.com/deepseek-ai/deeps
 
 - Electron 原生桌面壳、托盘、窗口生命周期和安装更新交接；
 - Windows Mica/macOS vibrancy 的 Advanced Shell，以及官方左侧栏和 Better Sidebar 右侧工作区的布局组合；
-- Better Sidebar `0.17.1` 的固定产品组合、跨会话固定终端和终端链接，以及可由用户安装、禁用和移除的普通第三方插件；Vision Toolkit 不属于 v2.1.0 产品插件；
+- Better Sidebar `0.18.0` 的固定产品组合、统一文件变动与 Git/diff 面板、跨会话固定终端和终端链接，以及可由用户安装、禁用和移除的普通第三方插件；Vision Toolkit 不属于产品插件；
 - 实时语音侧栏支持 Qwen 与豆包，提供稳定 Agent 级联和 Qwen 原生语音 Agent 实验模式；桥接模式仅保留给开发诊断，不在普通设置中展示；
 - Host 权威的更新状态快照与只读事件流，About 页显示真实下载字节、独立校验阶段和等待安装状态；
 - 插件市场默认快速进入“发现”，1024Store 使用有界 gzip，同步 dshfind 原子完整目录，并补齐首次扫描反馈、键盘焦点和合作来源本地化；
