@@ -16,6 +16,10 @@ import {
 } from '../src/window-chrome.ts'
 
 describe('desktop client environment', () => {
+  it('declares both the Remote parent and credential service before voice reads ctx.remote', () => {
+    expect(inject).toEqual(expect.arrayContaining(['remote', 'remote.credentials']))
+  })
+
   it('waits for the maintained upstream Better Sidebar before registering Desktop tabs', () => {
     expect(inject).toContain('betterSidebar')
   })

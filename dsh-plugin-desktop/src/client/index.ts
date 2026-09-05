@@ -77,6 +77,7 @@ export type { DesktopClientEnvironment, DesktopClientMode, DesktopClientPlatform
 export const inject = [
   'slots',
   'connection',
+  'remote',
   'remote.credentials',
   'locale',
   'sessions',
