@@ -72,6 +72,25 @@ function controller(snapshot: DesktopVoiceState): DesktopVoiceController {
 const openExternal = vi.fn().mockResolvedValue(undefined)
 
 describe('desktop voice surfaces', () => {
+  it('enables voice from RC1 Remote credential status without the removed connection.api', async () => {
+    const snapshot = state({ settings: { ...state().settings, enabled: true, qwenEndpointMode: 'shared' } })
+    const describe = vi.fn().mockResolvedValue({ ok: true, value: {
+      DASHSCOPE_API_KEY: { configured: true, writable: true },
+    } })
+    const voice = new DesktopVoiceController({
+      settingsScope: { bind: () => ({ getSnapshot: () => ({ value: snapshot.settings }), subscribe: () => () => {}, set: vi.fn() }) },
+      get: () => ({}),
+      remote: { credentials: { describe, set: vi.fn(), unset: vi.fn() } },
+    } as never, { openTab: vi.fn() })
+    await voice.refreshCredentials()
+    expect(voice.getSnapshot().qwenKeyConfigured).toBe(true)
+    expect(describe).toHaveBeenCalledWith(['DASHSCOPE_API_KEY', 'DOUBAO_APP_ID', 'DOUBAO_ACCESS_KEY'])
+    const html = renderToStaticMarkup(createElement(VoiceComposerButton, {
+      session: { sessionId: 'session-1' }, controller: voice, t,
+    }))
+    expect(html).not.toContain('disabled')
+  })
+
   it('keeps the composer button hidden while the user disables voice', () => {
     const html = renderToStaticMarkup(createElement(VoiceComposerButton, {
       session: { sessionId: 'session-1' },
@@ -200,7 +219,7 @@ describe('desktop voice surfaces', () => {
   })
 
   it('saves the settings draft and entered secrets as one action', async () => {
-    const credentialSet = vi.fn().mockResolvedValue({ result: { ok: true } })
+    const credentialSet = vi.fn().mockResolvedValue({ ok: true, value: undefined })
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) })
     vi.stubGlobal('fetch', fetchMock)
     const snapshot = state({ settings: { ...state().settings, enabled: true } })
@@ -211,11 +230,12 @@ describe('desktop voice surfaces', () => {
     }
     const voice = new DesktopVoiceController({
       settingsScope: { bind: () => scope },
-      get: () => ({ api: { credentials: {
-        describe: vi.fn().mockResolvedValue({ result: { ok: true, value: { credentials: {} } } }),
+      get: () => ({}),
+      remote: { credentials: {
+        describe: vi.fn().mockResolvedValue({ ok: true, value: {} }),
         set: credentialSet,
         unset: vi.fn(),
-      } } }),
+      } },
     } as never, { openTab: vi.fn() })
 
     await expect(voice.saveConfiguration(snapshot.settings, {
@@ -228,6 +248,6 @@ describe('desktop voice surfaces', () => {
       body: JSON.stringify(snapshot.settings),
     }))
     expect(credentialSet).toHaveBeenCalledOnce()
-    expect(credentialSet).toHaveBeenCalledWith({ ref: 'DASHSCOPE_API_KEY', value: 'sk-new' })
+    expect(credentialSet).toHaveBeenCalledWith('DASHSCOPE_API_KEY', 'sk-new')
   })
 })

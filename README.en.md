@@ -32,7 +32,7 @@ DSH Desktop integrates the local Web UI, Host service, and plugin system from [D
 
 This downstream release channel currently publishes Windows x64 installers. The source retains macOS build support, but this repository does not yet publish a signed and notarized DMG. Windows requires no additional runtime.
 
-The current source version is **2.2.0**, using Harness `0.1.2-rc.1` and Better Sidebar `0.18.0`. It improves conversation and connection handling, adds the sidebar's unified file changes and Git/diff views, and fixes plugin loading after installation. See the [v2.2.0 notes](docs/releases/v2.2.0.md) for changes and plugin compatibility requirements. Published download links remain unchanged until the new assets are released.
+The current source version is **2.2.1**, using Harness `0.1.2-rc.1` and Better Sidebar `0.18.0`. This hotfix restores voice credential readiness and preserves model image capabilities across the Remote boundary. See the [v2.2.1 notes](docs/releases/v2.2.1.md) for the fixes and custom-model image configuration, and [v2.2.0](docs/releases/v2.2.0.md) for the runtime upgrade. Published download links remain unchanged until the new assets are released.
 
 | Platform | Download | Installation |
 | --- | --- | --- |

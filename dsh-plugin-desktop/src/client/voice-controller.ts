@@ -1,18 +1,8 @@
-interface VoiceCredentialResult {
-  ok: true
-  value: { credentials: Record<string, { configured?: boolean; writable?: boolean }> }
-}
-
-interface VoiceCredentialApi {
-  describe(input: { refs: string[] }): Promise<{ result: VoiceCredentialResult | { ok: false; error: { message: string } } }>
-  set(input: { ref: string; value: string }): Promise<{ result: { ok: true } | { ok: false; error: { message: string } } }>
-  unset(input: { ref: string }): Promise<{ result: { ok: true } | { ok: false; error: { message: string } } }>
-}
-
-interface VoiceConnectionApi { credentials: VoiceCredentialApi }
+import type { ClientRemote } from '@deepseek-ai/dsh-api-gateway/client'
+import type {} from '@deepseek-ai/dsh-api-settings-controller/remote'
 
 interface VoiceContext {
-  get(name: string): unknown
+  remote: Pick<ClientRemote, 'credentials'>
   settingsScope: SettingsScopeBinder
 }
 
@@ -297,7 +287,7 @@ function messageOf(value: unknown): string {
 export class DesktopVoiceController {
   readonly store: SnapshotStore<DesktopVoiceState> = createSnapshotStore(INITIAL)
   private readonly scope: SettingsScope<DesktopVoiceSettings>
-  private readonly api: VoiceConnectionApi
+  private readonly api: Pick<ClientRemote, 'credentials'>
   private socket: WebSocket | null = null
   private stream: MediaStream | null = null
   private audioContext: AudioContext | null = null
@@ -322,7 +312,7 @@ export class DesktopVoiceController {
 
   constructor(ctx: VoiceContext, private readonly sidebar: VoiceSidebarApi) {
     this.scope = ctx.settingsScope.bind<DesktopVoiceSettings>({ namespace: DESKTOP_VOICE_SETTINGS_NAMESPACE })
-    this.api = (ctx.get('connection') as { api: VoiceConnectionApi }).api
+    this.api = ctx.remote
     this.scope.subscribe(() => this.syncSettings())
     this.syncSettings()
     void this.refreshCredentials()
@@ -365,9 +355,9 @@ export class DesktopVoiceController {
     if (this.credentialRefresh !== null) return this.credentialRefresh
     this.credentialRefresh = (async () => {
       try {
-        const response = await this.api.credentials.describe({ refs: [QWEN_API_KEY_REF, DOUBAO_APP_ID_REF, DOUBAO_ACCESS_KEY_REF] })
-        if (!response.result.ok) return
-        const credentials = response.result.value.credentials
+        const response = await this.api.credentials.describe([QWEN_API_KEY_REF, DOUBAO_APP_ID_REF, DOUBAO_ACCESS_KEY_REF])
+        if (!response.ok) throw new Error(response.error.message)
+        const credentials = response.value
         this.set({
           qwenKeyConfigured: credentials[QWEN_API_KEY_REF]?.configured === true,
           doubaoAppIdConfigured: credentials[DOUBAO_APP_ID_REF]?.configured === true,
@@ -376,9 +366,8 @@ export class DesktopVoiceController {
           doubaoAppIdWritable: credentials[DOUBAO_APP_ID_REF]?.writable !== false,
           doubaoAccessKeyWritable: credentials[DOUBAO_ACCESS_KEY_REF]?.writable !== false,
         })
-      } catch {
-        // A missing credentials service leaves the controls usable; the Host
-        // reports the actionable failure when the user tries to save or start.
+      } catch (error) {
+        this.set({ error: messageOf(error) })
       } finally {
         this.credentialRefresh = null
       }
@@ -398,8 +387,8 @@ export class DesktopVoiceController {
     const trimmed = value.trim()
     if (!trimmed) return
     try {
-      const response = await this.api.credentials.set({ ref, value: trimmed })
-      if (!response.result.ok) throw new Error(response.result.error.message)
+      const response = await this.api.credentials.set(ref, trimmed)
+      if (!response.ok) throw new Error(response.error.message)
       await this.refreshCredentials()
     } catch (error) {
       this.set({ error: messageOf(error) })
@@ -423,8 +412,8 @@ export class DesktopVoiceController {
       for (const [ref, raw] of entries) {
         const value = raw?.trim()
         if (!value) continue
-        const result = await this.api.credentials.set({ ref, value })
-        if (!result.result.ok) throw new Error(result.result.error.message)
+        const result = await this.api.credentials.set(ref, value)
+        if (!result.ok) throw new Error(result.error.message)
       }
       await this.refreshCredentials()
       this.set({ error: null })
@@ -437,8 +426,8 @@ export class DesktopVoiceController {
 
   async clearCredential(ref: string): Promise<void> {
     try {
-      const response = await this.api.credentials.unset({ ref })
-      if (!response.result.ok) throw new Error(response.result.error.message)
+      const response = await this.api.credentials.unset(ref)
+      if (!response.ok) throw new Error(response.error.message)
       await this.refreshCredentials()
     } catch (error) {
       this.set({ error: messageOf(error) })

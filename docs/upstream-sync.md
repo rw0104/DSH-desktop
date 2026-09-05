@@ -1,5 +1,11 @@
 # Upstream synchronization ledger
 
+## 2026-09-05 v2.2.1 语音与图像能力热修复
+
+依赖补丁变更前于本地 2026-09-04 23:50 通过 `http://127.0.0.1:10808` 复核三条权威 Git remote 的 HEAD/固定 tag 与 npm dist-tags：Harness HEAD `d347e703908d0406b7a7ef80e3a0e594d86b2215`、RC1 tag `a66e4702047846cdaa10c66c9d3df3951f5ea70d`，latest/next 均 `0.1.2-rc.1`；Sidebar HEAD `a5c52b3f1bc450b04578bd9252f67b7d79c98502`、v0.18.0 tag `9e1a03452794532cda1f6ac677b72579dff48dfc`，latest `0.18.0`；桌面参考 HEAD 更新为 `8dc81f06aec9620548809baf582bb1a5aa590d74`，v2.0.4 tag 仍为 `d29bf7a965fc68bf09750bc329905ecb17afe48b`。参考 HEAD 仅记录，不引入 runtime。
+
+本次保留当前全部运行时 pin。修正 Desktop 语音控制器的 RC1 凭据接口，并补齐 Session Controller 下游补丁中的 `typert.host.js`/`typert.remote-client.js` 模型目录 schema，使 `inputModalities` 不在校验时丢失。真实接口形状、schema 解析测试均已先复现失败后通过；自定义 pi-ai 视觉模型通过固定图片的本地 HTTP 传输测试。详见 [v2.2.1](releases/v2.2.1.md)。
+
 ## 2026-09-04 v2.2.0 版本更新前复核
 
 23:03 前在新增 Agent Preset 解析补丁前再次执行相同的三条 Git remote 查询，HEAD/tag 均与本节下述快照一致；registry 单独核实 `@deepseek-ai/dsh-agent-presets@0.1.2-rc.1`。新增补丁不变更版本 pin：磁盘预检未找到插件时通过锚定的 CommonJS resolver 检查可解析性，不导入插件；Desktop 对 CJS 使用真正的安装目录 require，避免仅修改 nextResolve parentURL 仍沿用原 Module.paths。真正缺失的插件仍被预检拒绝。该问题在隔离配置创建首个 Standard 会话时复现，界面健康报告本身不足以发现它。

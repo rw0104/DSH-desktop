@@ -1244,7 +1244,7 @@ __metadata:
 
 "@deepseek-ai/dsh-api-session-controller@patch:@deepseek-ai/dsh-api-session-controller@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-api-session-controller-npm-0.1.2-rc.1-5c6b1d3a09.patch::locator=deepseek-harness-desktop%40workspace%3A.":
   version: 0.1.2-rc.1
-  resolution: "@deepseek-ai/dsh-api-session-controller@patch:@deepseek-ai/dsh-api-session-controller@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-api-session-controller-npm-0.1.2-rc.1-5c6b1d3a09.patch::version=0.1.2-rc.1&hash=262dd7&locator=deepseek-harness-desktop%40workspace%3A."
+  resolution: "@deepseek-ai/dsh-api-session-controller@patch:@deepseek-ai/dsh-api-session-controller@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-api-session-controller-npm-0.1.2-rc.1-5c6b1d3a09.patch::version=0.1.2-rc.1&hash=2371e6&locator=deepseek-harness-desktop%40workspace%3A."
   dependencies:
     "@deepseek-ai/dsh-brand": "npm:^0.1.2-rc.1"
     "@deepseek-ai/dsh-deque": "npm:^0.1.2-rc.1"
@@ -1283,7 +1283,7 @@ __metadata:
       optional: true
     "@deepseek-ai/dsh-session-projection-cache":
       optional: true
-  checksum: 10c0/82b891ba4be7201b27955198e5460a44d2434a114f85de857be70042653492aac5965b75ca498e01b2d09df6fee5d791972f18040c3e1bd140add48117bebc67
+  checksum: 10c0/d5dac34933cfa265a1d7dec5d202ecf4b2322c64973f032b0be945b0f55dca45c3b4c4d1a8b0ccca7324588573452ab094578f459de3efe58b25cbf92fd8e864
   languageName: node
   linkType: hard
 

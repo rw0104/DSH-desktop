@@ -31,3 +31,25 @@ index bc420a9d4c816d9142e10f4ca5305f5aa7236935..0275f9315bf77b9222ee99b4f90dfbb2
      readonly reasoning?: ModelReasoning;
  }
  /** One provider and its successfully loaded model catalog. */
+diff --git a/lib/typert.host.js b/lib/typert.host.js
+--- a/lib/typert.host.js
++++ b/lib/typert.host.js
+@@ -465,6 +465,7 @@
+   'id': z.string().readonly(),
+   'name': z.string().readonly(),
+   'description': z.string().readonly().optional(),
++    'inputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
+   'reasoning': z.object({
+   'efforts': z.array(z.object({
+   'id': z.string().readonly(),
+diff --git a/lib/typert.remote-client.js b/lib/typert.remote-client.js
+--- a/lib/typert.remote-client.js
++++ b/lib/typert.remote-client.js
+@@ -465,6 +465,7 @@
+   'id': z.string().readonly(),
+   'name': z.string().readonly(),
+   'description': z.string().readonly().optional(),
++    'inputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
+   'reasoning': z.object({
+   'efforts': z.array(z.object({
+   'id': z.string().readonly(),
