@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { SessionStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { DesktopVoiceController } from './voice-controller.ts'
@@ -9,6 +9,23 @@ import type { DesktopExternalNavigationAction } from '../external-navigation-con
 
 export interface VoiceInjected {
   controller: DesktopVoiceController
+}
+
+/** Additive overlay for the upstream compatibility shell, which has no Workbench tab outlet. */
+export function VoiceOverlay({ controller }: VoiceInjected) {
+  const sessionId = useSyncExternalStore(controller.panel.subscribe, controller.panel.getSnapshot, controller.panel.getSnapshot)
+  const dialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const node = dialog.current
+    if (node === null || sessionId === null) return
+    node.showModal()
+    return () => { node.close() }
+  }, [sessionId])
+  if (sessionId === null) return null
+  return <dialog ref={dialog} className="dshVoiceDialog" aria-label="Realtime voice dialog" onCancel={event => { event.preventDefault(); void controller.closePanel() }}>
+    <button type="button" className="dshVoiceDialogClose" aria-label="Close realtime voice" onClick={() => { void controller.closePanel() }}>×</button>
+    <VoiceSidebarTab controller={controller} scope={{ sessionId }} />
+  </dialog>
 }
 
 type VoiceButtonProps = Pick<SessionStandardProps, 'sessionId'> & { controller: DesktopVoiceController; t: (key: VoiceKey) => string }

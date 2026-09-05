@@ -1,4 +1,8 @@
 const VOICE_STYLES = `
+.dshVoiceDialog { width:min(460px,calc(100vw - 32px)); max-height:calc(100vh - 40px); padding:0; border:1px solid var(--dsw-alias-border-l2); border-radius:16px; color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-base); box-shadow:0 20px 70px rgb(0 0 0 / 24%); overflow:auto; }
+.dshVoiceDialog::backdrop { background:rgb(0 0 0 / 30%); }
+.dshVoiceDialogClose { position:sticky; top:8px; float:right; z-index:1; margin:8px 8px -38px 0; width:30px; height:30px; border:0; border-radius:8px; color:inherit; background:var(--dsw-alias-bg-layer-1); cursor:pointer; font-size:22px; }
+.dshVoiceDialog .dshVoicePanelHeader { padding-right:48px; }
 .dshVoiceComposerButton { display:inline-grid; place-items:center; width:34px; height:34px; padding:0; border:0; border-radius:50%; color:#fff; background:#367ff5; box-shadow:0 3px 10px rgb(54 127 245 / 22%); cursor:pointer; transition:transform 140ms ease, background 140ms ease, box-shadow 140ms ease; }
 .dshVoiceComposerButton:hover { background:#286fe4; box-shadow:0 4px 13px rgb(54 127 245 / 30%); transform:translateY(-1px); }
 .dshVoiceComposerButton.is-active { background:#2169da; box-shadow:0 0 0 4px rgb(54 127 245 / 14%), 0 4px 13px rgb(54 127 245 / 26%); }

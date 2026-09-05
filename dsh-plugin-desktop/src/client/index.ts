@@ -23,7 +23,7 @@ import { WorkspaceChangesTab } from './WorkspaceChangesTab.tsx'
 import { installDesktopAboutStyles, installWorkspaceChangesStyles } from './styles.ts'
 import { readDesktopUpdateUiState, subscribeDesktopUpdateUiState } from './update-state.ts'
 import { DesktopVoiceController } from './voice-controller.ts'
-import { VoiceComposerButton, VoiceSettingsSection, VoiceSidebarTab } from './voice-ui.tsx'
+import { VoiceComposerButton, VoiceOverlay, VoiceSettingsSection, VoiceSidebarTab } from './voice-ui.tsx'
 import { voiceLocales, type VoiceKey } from './voice-locales.ts'
 import { installVoiceStyles } from './voice-styles.ts'
 
@@ -120,7 +120,12 @@ export function apply(ctx: ClientContext): void {
   }
   const sidebar = ctx.get('betterSidebar') as BetterSidebarRegistry | undefined
   if (sidebar === undefined) throw new Error('dsh-plugin-desktop: upstream Better Sidebar service is unavailable')
-  const voice = new DesktopVoiceController(ctx, sidebar)
+  const voice = new DesktopVoiceController(ctx, sidebar, environment.mode === 'compatibility' ? 'overlay' : 'sidebar')
+  if (environment.mode === 'compatibility') {
+    ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+      name: 'shell.overlay', id: 'desktop-voice-overlay', inject: () => ({ controller: voice }),
+    }, VoiceOverlay))
+  }
   ctx.effect(() => {
     const disposeLocale = ctx.locale.register('desktop.voice', voiceLocales)
     const disposeStyles = installVoiceStyles()

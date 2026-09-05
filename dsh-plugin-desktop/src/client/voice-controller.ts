@@ -286,6 +286,7 @@ function messageOf(value: unknown): string {
 
 export class DesktopVoiceController {
   readonly store: SnapshotStore<DesktopVoiceState> = createSnapshotStore(INITIAL)
+  readonly panel = createSnapshotStore<string | null>(null)
   private readonly scope: SettingsScope<DesktopVoiceSettings>
   private readonly api: Pick<ClientRemote, 'credentials'>
   private socket: WebSocket | null = null
@@ -310,7 +311,7 @@ export class DesktopVoiceController {
   private ttsExpected = false
   private providerOutputExpected = false
 
-  constructor(ctx: VoiceContext, private readonly sidebar: VoiceSidebarApi) {
+  constructor(ctx: VoiceContext, private readonly sidebar: VoiceSidebarApi, private readonly presentation: 'sidebar' | 'overlay' = 'sidebar') {
     this.scope = ctx.settingsScope.bind<DesktopVoiceSettings>({ namespace: DESKTOP_VOICE_SETTINGS_NAMESPACE })
     this.api = ctx.remote
     this.scope.subscribe(() => this.syncSettings())
@@ -436,7 +437,14 @@ export class DesktopVoiceController {
 
   open(sessionId: string): void {
     if (!sessionId) return
-    this.sidebar.openTab({ type: 'desktop:voice', title: 'Voice', meta: { sessionId } }, { sessionId })
+    if (this.presentation === 'overlay') this.panel.set(sessionId)
+    else this.sidebar.openTab({ type: 'desktop:voice', title: 'Voice', meta: { sessionId } }, { sessionId })
+  }
+
+  async closePanel(): Promise<void> {
+    ++this.activeGeneration
+    await this.completeFinish(this.socket)
+    this.panel.set(null)
   }
 
   async openAndStart(sessionId: string): Promise<void> {
@@ -469,6 +477,7 @@ export class DesktopVoiceController {
         buildCommit?: string
       }
       if (!ticket.ticket || !ticket.wsPath || !ticket.sessionId) throw new Error('The realtime voice ticket response is incomplete.')
+      if (generation !== this.activeGeneration) return
       this.set({ sessionInfo: this.sessionInfo(ticket) })
       await this.openMicrophone(generation)
       if (generation !== this.activeGeneration) return
@@ -756,7 +765,7 @@ export class DesktopVoiceController {
     void this.stopMedia()
     const socket = this.socket
     this.socket = null
-    if (socket && socket.readyState < WebSocket.CLOSING) socket.close(1011, 'voice_error')
+    if (socket && socket.readyState < WebSocket.CLOSING) socket.close(4001, 'voice_error')
   }
 
   private async completeFinish(socket: WebSocket | null): Promise<void> {
