@@ -12,6 +12,8 @@
 
 另对现有 `@earendil-works/pi-ai@0.84.4` 增加精确版本 Yarn patch，保留普通兼容聊天流实际返回的图片及混合 content 数组，经正式附件存储验证后交付；这样未收录、未声明 output 的自定义模型也不会丢图。重复帧去重、无效图片拒绝与无跨供应商请求均有回归覆盖。该 patch 不升级 SDK；52 项目录快照只用于默认能力补全，不构成允许生成的模型白名单。
 
+最终本地安装器对应源码 `f53bf4e028d9`：immutable install、完整 root check（Desktop 840 passed / 11 skipped，Market 275 passed）、包内 Profile 与 51 项客户端注册通过。实际 ASAR Host/Client 的回环服务测试完成原生图片交付、二轮引用、刷新读回、能力标签和受控入口移除，页面异常为 0；这不代替真实账号验证。`DSH-Desktop-2.2.5-x64-Setup.exe` 为 224,114,050 bytes，SHA-256 `D0D079763AC811811368FFD5C518AA002E218538B09D8A25B1B6B98FD75C3B59`，Authenticode `NotSigned`。物理/ASAR manifest、PE 版本、包内前端和适配器/SDK patch 文件字节、`latest.yml` SHA-512 均与本次产物一致。本次只交付本地测试包，不创建 tag、上传 Release 或覆盖用户运行目录。
+
 ## 2026-09-05 v2.2.4 本地测试安装包构建前复核
 
 经既有代理 `http://127.0.0.1:10808` 重新查询三个权威 GitHub remote 的 HEAD、heads、tags，以及 npm 的 version、dist-tags、time.modified：
