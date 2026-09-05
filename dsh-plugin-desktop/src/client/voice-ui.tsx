@@ -1,4 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import type { SessionStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { DesktopVoiceController } from './voice-controller.ts'
 import type { DesktopVoiceState, DesktopVoiceSettings } from './voice-controller.ts'
 import type { VoiceKey } from './voice-locales.ts'
@@ -9,9 +11,9 @@ export interface VoiceInjected {
   controller: DesktopVoiceController
 }
 
-type VoiceButtonProps = { session: { sessionId: string }; controller: DesktopVoiceController; t: (key: VoiceKey) => string }
+type VoiceButtonProps = Pick<SessionStandardProps, 'sessionId'> & { controller: DesktopVoiceController; t: (key: VoiceKey) => string }
 
-export function VoiceComposerButton({ session, controller, t }: VoiceButtonProps) {
+export function VoiceComposerButton({ sessionId, controller, t }: VoiceButtonProps) {
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
   const ready = state.settings.provider === 'qwen'
     ? state.qwenKeyConfigured && (state.settings.qwenEndpointMode === 'shared' || state.settings.qwenWorkspaceId.trim().length > 0)
@@ -25,7 +27,7 @@ export function VoiceComposerButton({ session, controller, t }: VoiceButtonProps
       aria-label={active ? t('button.stop') : t('button.start')}
       title={ready ? (active ? t('button.stop') : t('button.start')) : t('button.unavailable')}
       disabled={!ready && !active}
-      onClick={() => { if (active) void controller.finish(); else void controller.openAndStart(session.sessionId) }}
+      onClick={() => { if (active) void controller.finish(); else void controller.openAndStart(sessionId) }}
     >
       <span className="dshVoiceWaveIcon" aria-hidden><span /><span /><span /><span /></span>
     </button>

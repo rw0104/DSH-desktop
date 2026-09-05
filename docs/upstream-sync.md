@@ -1,5 +1,11 @@
 # Upstream synchronization ledger
 
+## 2026-09-05 v2.2.2 语音点击合同修复
+
+01:32 通过 `http://127.0.0.1:10808` 复核三条权威 remote HEAD/tag 与 npm dist-tags：Harness HEAD `d347e703908d0406b7a7ef80e3a0e594d86b2215`、RC1 tag `a66e4702047846cdaa10c66c9d3df3951f5ea70d`，latest/next `0.1.2-rc.1`；Sidebar HEAD `a5c52b3f1bc450b04578bd9252f67b7d79c98502`、v0.18.0 tag `9e1a03452794532cda1f6ac677b72579dff48dfc`，latest `0.18.0`；桌面参考 HEAD `5d482fd76d5434f90028f3925de900d31d7e7862`，v2.0.4 tag `d29bf7a965fc68bf09750bc329905ecb17afe48b`。保持所有 runtime pin，不引入未审计参考提交。
+
+修复 Desktop 自有语音按钮读取旧 `props.session.sessionId` 的问题，改用 RC1 `SessionStandardProps.sessionId`，去掉本地错误的 slot owner 类型声明。真实 RC1 props 的点击回归已先失败（TypeError，票据请求未发出）再通过；Client 测试归入独立 Client 类型检查，避免与 Host 的 Context merge 混编。图片输入自动识别保持不变；生图输出接口仍不在当前适配器支持范围内。
+
 ## 2026-09-05 v2.2.1 语音与图像能力热修复
 
 00:31 自动识别能力扩展前重新复核三条 remote HEAD/tag 和 npm dist-tags：Harness / Sidebar 与下述快照一致；桌面参考 HEAD 为 `589b26d2dffb333edc6f832697a87e810a0d1183`，v2.0.4 tag 不变。保留全部 runtime pin，仅扩展已审计的模型发现与客户端配置合同，不引入参考实现的未审计代码。

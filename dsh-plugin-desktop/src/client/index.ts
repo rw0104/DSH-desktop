@@ -32,7 +32,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'desktop.voice': VoiceKey
   }
   interface SlotMap {
-    'conversation.input.right': { kind: 'list'; scope: 'session'; owner: { readonly session: { readonly sessionId: string }; readonly input: unknown } }
+    'conversation.input.right': { kind: 'list'; scope: 'session' }
   }
 }
 

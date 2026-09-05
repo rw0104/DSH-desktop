@@ -86,14 +86,14 @@ describe('desktop voice surfaces', () => {
     expect(voice.getSnapshot().qwenKeyConfigured).toBe(true)
     expect(describe).toHaveBeenCalledWith(['DASHSCOPE_API_KEY', 'DOUBAO_APP_ID', 'DOUBAO_ACCESS_KEY'])
     const html = renderToStaticMarkup(createElement(VoiceComposerButton, {
-      session: { sessionId: 'session-1' }, controller: voice, t,
+      sessionId: 'session-1' as never, controller: voice, t,
     }))
     expect(html).not.toContain('disabled')
   })
 
   it('keeps the composer button hidden while the user disables voice', () => {
     const html = renderToStaticMarkup(createElement(VoiceComposerButton, {
-      session: { sessionId: 'session-1' },
+      sessionId: 'session-1' as never,
       controller: controller(state()),
       t,
     } as never))
