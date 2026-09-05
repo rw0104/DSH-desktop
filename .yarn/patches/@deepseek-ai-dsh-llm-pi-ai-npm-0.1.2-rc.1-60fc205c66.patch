@@ -1,49 +1,113 @@
 diff --git a/lib/index.js b/lib/index.js
-index c25e5c7afcd9381dec2490fbff24910f173281d0..71b5469b8c5facb0a928b1957b983ed33bbe07d0 100644
+index c25e5c7afcd9381dec2490fbff24910f173281d0..5e3e8aa0454ee8bb131977676498e9a46e3c301b 100644
 --- a/lib/index.js
 +++ b/lib/index.js
-@@ -1,4 +1,5 @@
+@@ -1,4 +1,7 @@
  import { launchEnvironmentOf } from "@deepseek-ai/dsh-launch-environment";
 +import { detectModelInput } from "./model-input.js";
++import { detectModelOutput, isOpenRouterEndpoint, IMAGE_APIS } from "./model-output.js";
++import { streamNativeImage, projectAssistantImageHistory } from "./native-image.js";
  import { CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, INVALID_CREDENTIAL_CODE, LlmAdapter, LlmError, QUOTA_EXCEEDED_CODE, ReasoningEffortId, RetryPolicySchema, assertUsableApiKey, attributionHeaders, contentHasImage, isContextWindowExceededError, isQuotaExceededError, normalizeApiKey, offloadRequestImagesWithPolicy, offloadedImageText, requestImageHandleText, resolveImageAttachmentAccess, resolveRetryPolicy } from "@deepseek-ai/dsh-llm";
  import { deepEqualJson } from "@deepseek-ai/dsh-util-values";
  import { createModels, createProvider, getSupportedThinkingLevels, isContextOverflow } from "@earendil-works/pi-ai";
-@@ -654,7 +655,7 @@ function resolveRouteModels(request) {
+@@ -654,7 +657,8 @@ function resolveRouteModels(request) {
  			api,
  			provider,
  			baseUrl,
 -			input: declaredInput(entry.input) ?? base?.input ?? [...request.defaultInput],
++			...detectModelOutput(entry, { provider, api, baseURL: baseUrl }),
 +			input: declaredInput(entry.input) ?? base?.input ?? detectModelInput(entry).inputModalities ?? [...request.defaultInput],
  			cost: base?.cost ?? NO_COST,
  			contextWindow,
  			maxTokens,
-@@ -930,6 +931,7 @@ const modelFields = {
+@@ -930,6 +934,10 @@ const modelFields = {
  	contextWindow: z.number().step(1).min(1),
  	maxTokens: z.number().step(1).min(1),
  	input: z.array(z.union(MODALITIES)),
++	output: z.array(z.union(MODALITIES)),
++	imageGenerationApi: z.union(IMAGE_APIS),
++	supportsTools: z.boolean(),
 +	inputCapabilitySource: z.union(["provider", "catalog", "name", "unknown"]),
  	reasoningEfforts: z.union([z.const(false), reasoningEfforts]),
  	compat: compatProfile
  };
-@@ -2068,7 +2070,8 @@ function label(...candidates) {
+@@ -1057,6 +1065,7 @@ function resolveProfiles(providers) {
+ 			...rest.headers === void 0 ? {} : { headers: { ...rest.headers } },
+ 			...rest.thinkingBudgets === void 0 ? {} : { thinkingBudgets: { ...rest.thinkingBudgets } },
+ 			configuredMaxTokens: catalog.configuredMaxTokens,
++			imageModels: new Map(catalog.models.map(model => [model.id, detectModelOutput(model, { provider, api: model.api, baseURL: model.baseUrl })])),
+ 			piProvider: buildProvider({
+ 				provider,
+ 				displayName,
+@@ -1289,6 +1298,7 @@ function mapUsage(usage) {
+ 	};
+ }
+ function classifyPiAiError(message) {
++	if (/\b403\b/.test(message) && /region|geo.?restriction|country|territory/i.test(message)) return "REGION_UNAVAILABLE";
+ 	if (/\b(?:401|403)\b/.test(message)) return "AUTH";
+ 	if (isQuotaExceededError(message)) return QUOTA_EXCEEDED_CODE;
+ 	if (/\b429\b|rate.?limit/i.test(message)) return "RATE_LIMIT";
+@@ -1711,7 +1721,8 @@ var PiAiAdapter = class extends LlmAdapter {
+ 				provider,
+ 				id: model.id,
+ 				name: model.name,
+-				inputModalities: [...model.input]
++				inputModalities: [...model.input],
++				...this.profileOf(snapshot, provider).imageModels.get(model.id)
+ 			}));
+ 		});
+ 	}
+@@ -1731,6 +1742,7 @@ var PiAiAdapter = class extends LlmAdapter {
+ 			id: model,
+ 			name: resolvedModel.name,
+ 			inputModalities: [...resolvedModel.input],
++			...profile.imageModels.get(model),
+ 			context: { contextWindow: resolvedModel.contextWindow },
+ 			...configuredMaxTokens === void 0 ? {} : { defaultMaxTokens: configuredMaxTokens },
+ 			...reasoningInfo(resolvedModel, defaultLevel)
+@@ -1756,6 +1768,13 @@ var PiAiAdapter = class extends LlmAdapter {
+ 			if (options.stop !== void 0) throw new LlmError("llm-pi-ai does not support GenerateOptions.stop", "UNSUPPORTED_OPTION");
+ 			const profile = this.profileOf(snapshot, options.provider);
+ 			const model = this.modelOf(snapshot, options.provider, options.model);
++			const imageCapability = profile.imageModels.get(model.id);
++			if (imageCapability?.outputModalities?.includes("image")) {
++				if (options.purpose) throw new LlmError("Automatic auxiliary calls are not sent to image-generation models.", "UNSUPPORTED_CONTENT");
++				yield* streamNativeImage(options, { ...model, ...imageCapability }, profile, snapshot.models, this.config.resolveAttachments?.(), await this.config.resolveApiKey(options.provider, profile));
++				return;
++			}
++			options = projectAssistantImageHistory(options, model);
+ 			const reasoning = resolveReasoningLevel(model, options.reasoningEffort ?? profile.reasoning);
+ 			const apiKey = await this.config.resolveApiKey(options.provider, profile);
+ 			const consumer = new AbortController();
+@@ -2068,7 +2087,8 @@ function label(...candidates) {
  * them to `URL` resolution.
  */
  function listingUrl(baseURL) {
 -	return `${baseURL.replace(/\/+$/, "")}/models`;
 +	const base = baseURL.replace(/\/+$/, "");
-+	return new URL(baseURL).pathname === "/" ? `${base}/v1/models` : `${base}/models`;
++	return isOpenRouterEndpoint(baseURL) ? `${base}/models?output_modalities=all` : new URL(baseURL).pathname === "/" ? `${base}/v1/models` : `${base}/models`;
  }
  /**
  * Read a reply body, refusing one that outgrows the ceiling. A declared length
-@@ -2126,6 +2129,7 @@ function readListing(body) {
+@@ -2113,7 +2133,7 @@ async function readBounded(response, url) {
+ * skipped rather than failing the whole interrogation: a single malformed row
+ * should not deny the user the rest of a working endpoint's catalog.
+ */
+-function readListing(body) {
++function readListing(body, route) {
+ 	const data = body?.data;
+ 	if (!Array.isArray(data)) throw new LlmError("the endpoint's model listing has no \"data\" array; enter this provider's models by hand", "DISCOVERY_FAILED");
+ 	const models = [];
+@@ -2126,6 +2146,8 @@ function readListing(body) {
  		const maxTokens = capacity(entry?.max_output_tokens, entry?.max_tokens);
  		models.push({
  			id,
 +			...detectModelInput(entry),
++			...detectModelOutput(entry, route),
  			...name === void 0 ? {} : { name },
  			...contextWindow === void 0 ? {} : { contextWindow },
  			...maxTokens === void 0 ? {} : { maxTokens }
-@@ -2157,10 +2161,15 @@ function usableProbeKey(raw) {
+@@ -2157,10 +2179,15 @@ function usableProbeKey(raw) {
  *   refuses or fails the request, or the reply is not a model listing.
  */
  async function discoverModels(request, storedProfile) {
@@ -61,13 +125,37 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..71b5469b8c5facb0a928b1957b983ed3
  			name: model.name,
  			contextWindow: model.contextWindow,
  			maxTokens: model.maxTokens
+@@ -2202,7 +2229,7 @@ async function discoverModels(request, storedProfile) {
+ 	} catch (error) {
+ 		throw new LlmError(`${url} did not answer with JSON`, "DISCOVERY_FAILED", { cause: error });
+ 	}
+-	return readListing(body);
++	return readListing(body, { provider: request.provider, api, baseURL: request.baseURL });
+ }
+ //#endregion
+ //#region lib/types/login.js
+@@ -2518,7 +2545,12 @@ function apply(ctx, config) {
+ 		if (profile === void 0) return void 0;
+ 		return {
+ 			headers: profile.headers,
+-			resolveApiKey: () => resolveApiKey(provider, profile)
++			resolveApiKey: async () => {
++				const explicit = await resolveApiKey(provider, profile);
++				if (explicit !== void 0) return explicit;
++				const resolved = await adapter.current().models.getAuth(provider);
++				return resolved?.auth.apiKey;
++			}
+ 		};
+ 	};
+ 	ctx.llm.registerModelDiscovery(NS, (request, signal) => discoverModels({
 diff --git a/lib/model-input.js b/lib/model-input.js
 new file mode 100644
-index 0000000000000000000000000000000000000000..250552a478f597c3a79e909c4c12616d2c24ad44
+index 0000000000000000000000000000000000000000..9f0cabbdc095d71eb6f01981eebc2904035e6a6c
 --- /dev/null
 +++ b/lib/model-input.js
-@@ -0,0 +1,48 @@
+@@ -0,0 +1,50 @@
 +import { getBuiltinModels, getBuiltinProviders } from "@earendil-works/pi-ai/providers/all";
++import imageCatalog from "./model-output-catalog.js";
 +
 +// Desktop-owned inference: no network, active image probes, or profile writes.
 +// Explicit model.input is resolved BEFORE this fallback.
@@ -107,7 +195,8 @@ index 0000000000000000000000000000000000000000..250552a478f597c3a79e909c4c12616d
 +    if (flags.some(value => typeof value !== "boolean") || flags.some(value => value !== flags[0])) return { inputCapabilitySource: "unknown" };
 +    return { inputModalities: flags[0] ? ["text", "image"] : ["text"], inputCapabilitySource: "provider" };
 +  }
-+  const known = catalogInput(entry.id);
++  const imageInput = (imageCatalog[entry.id] ?? imageCatalog['google/' + entry.id] ?? imageCatalog['openai/' + entry.id])?.inputModalities;
++  const known = imageInput ?? catalogInput(entry.id);
 +  if (known === null) return { inputCapabilitySource: "unknown" }; // Conflicting catalogs do not justify guessing.
 +  if (known !== undefined) return { inputModalities: [...known], inputCapabilitySource: "catalog" };
 +  if ([entry.id, entry.name, entry.display_name].some(value => typeof value === "string" && VISUAL_NAME.test(value))) {
@@ -115,16 +204,835 @@ index 0000000000000000000000000000000000000000..250552a478f597c3a79e909c4c12616d
 +  }
 +  return {};
 +}
+diff --git a/lib/model-output-catalog.js b/lib/model-output-catalog.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..66c558f97b32e773609260e1dac2b462a13d9759
+--- /dev/null
++++ b/lib/model-output-catalog.js
+@@ -0,0 +1,535 @@
++// Exact model capability snapshot, 2026-09-05. Source: https://openrouter.ai/api/v1/models?output_modalities=all
++// Only advertised image-output IDs; no fuzzy name matching or network probing.
++export default {
++  "microsoft/mai-image-2.6": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "microsoft/mai-image-2.6-flash": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "meta/muse-image": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v4-styles-pro": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v4-styles-vector": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v4-styles-pro-vector": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v4-styles": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "bytedance-seed/seedream-5-0-lite": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "bytedance-seed/seedream-5-0-pro": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "x-ai/grok-imagine-image-2.0": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "qwen/qwen-image-3": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "qwen/qwen-image-3-pro": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "microsoft/mai-image-2.5-pro": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "krea/krea-2-large": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "krea/krea-2-medium": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "krea/krea-2-medium-turbo": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "openrouter/auto-beta": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "text",
++      "image"
++    ],
++    "supportsTools": true
++  },
++  "google/gemini-3.1-flash-lite-image": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "text",
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "openai/gpt-image-2": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "openai/gpt-image-1": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "openai/gpt-image-1-mini": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "google/gemini-3.1-flash-image": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "text",
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "google/gemini-3-pro-image": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "text",
++      "image"
++    ],
++    "supportsTools": true
++  },
++  "sourceful/riverflow-v2.5-pro": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "sourceful/riverflow-v2.5-fast": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "microsoft/mai-image-2.5": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "x-ai/grok-imagine-image-quality": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v4.1-pro-vector": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v4.1-vector": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v4.1-utility-pro": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v4.1-utility": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v4.1-pro": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v4.1": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v4-pro-vector": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v4-vector": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v4-pro": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v4": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "recraft/recraft-v3": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "openai/gpt-5.4-image-2": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "text",
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "google/gemini-3.1-flash-image-preview": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "text",
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "sourceful/riverflow-v2-pro": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "sourceful/riverflow-v2-fast": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "black-forest-labs/flux.2-klein-4b": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "bytedance-seed/seedream-4.5": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "black-forest-labs/flux.2-max": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "black-forest-labs/flux.2-flex": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "black-forest-labs/flux.2-pro": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "google/gemini-3-pro-image-preview": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "text",
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "openai/gpt-5-image-mini": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "text",
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "openai/gpt-5-image": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "text",
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "google/gemini-2.5-flash-image": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "text",
++      "image"
++    ],
++    "supportsTools": false
++  },
++  "openrouter/auto": {
++    "inputModalities": [
++      "text",
++      "image"
++    ],
++    "outputModalities": [
++      "text",
++      "image"
++    ],
++    "supportsTools": true
++  }
++};
+diff --git a/lib/model-output.js b/lib/model-output.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..1daba85a79b8c795b986ac321ae9af74420c0296
+--- /dev/null
++++ b/lib/model-output.js
+@@ -0,0 +1,34 @@
++import catalog from './model-output-catalog.js';
++
++export const IMAGE_APIS = ['chat-completions', 'openrouter-images', 'openai-images', 'google-generative-ai', 'openai-responses'];
++function modalities(value) {
++  if (!Array.isArray(value) || value.length === 0 || value.some(item => typeof item !== 'string')) return;
++  const result = ['text', 'image'].filter(item => value.includes(item));
++  return result.length ? result : undefined;
++}
++export function isOpenRouterEndpoint(baseURL) {
++  try { const url = new URL(baseURL); return url.protocol === 'https:' && url.hostname === 'openrouter.ai' && !url.port && url.pathname.replace(/\/+$/, '') === '/api/v1'; } catch { return false; }
++}
++/** Distinguish image INPUT from OUTPUT and derive the wire shape from real metadata, not prompt keywords. */
++export function detectModelOutput(entry, route = {}) {
++  const raw = [entry.outputModalities, entry.output_modalities, entry.architecture?.output_modalities];
++  if (!Array.isArray(entry.output) || entry.output.length) raw.push(entry.output);
++  const declared = raw.filter(value => value !== undefined);
++  const normalized = declared.map(modalities);
++  if (normalized.some(value => value === undefined) || normalized.some(value => JSON.stringify(value) !== JSON.stringify(normalized[0]))) return {};
++  const known = catalog[entry.id] ?? (route.api === 'google-generative-ai' ? catalog['google/' + entry.id] : undefined)
++    ?? (route.provider === 'openai' ? catalog['openai/' + entry.id] : undefined);
++  const output = normalized[0] ?? known?.outputModalities;
++  if (!output) return {};
++  const result = { outputModalities: [...output] };
++  if (!output.includes('image')) return result;
++  if (IMAGE_APIS.includes(entry.imageGenerationApi)) result.imageGenerationApi = entry.imageGenerationApi;
++  else if (route.api === 'google-generative-ai') result.imageGenerationApi = 'google-generative-ai';
++  else if ((route.provider === 'openrouter' || isOpenRouterEndpoint(route.baseURL)) && !output.includes('text')) result.imageGenerationApi = 'openrouter-images';
++  else if (route.provider === 'openai' && !output.includes('text')) result.imageGenerationApi = 'openai-images';
++  else if (route.api === 'openai-responses') result.imageGenerationApi = 'openai-responses';
++  else if (route.api === 'openai-completions' || route.provider === 'openrouter') result.imageGenerationApi = 'chat-completions';
++  const advertisedTools = Array.isArray(entry.supported_parameters) ? entry.supported_parameters.includes('tools') : undefined;
++  result.supportsTools = entry.supportsTools ?? advertisedTools ?? known?.supportsTools ?? false;
++  return result;
++}
+diff --git a/lib/native-image.js b/lib/native-image.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..9c84bb4c00df430496a2c1b737125ddc769b46e6
+--- /dev/null
++++ b/lib/native-image.js
+@@ -0,0 +1,211 @@
++import { LlmError, attributionHeaders } from '@deepseek-ai/dsh-llm';
++
++const MAX_BODY = 64 * 1024 * 1024;
++const MAX_IMAGE = 20 * 1024 * 1024;
++const IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
++
++function abort(signal) { if (signal?.aborted) throw new LlmError('Image model request cancelled.', 'ABORTED'); }
++function errorCode(status, message) {
++  if (status === 403 && /region|geo.?restriction|country|territory/i.test(message)) return 'REGION_UNAVAILABLE';
++  return status === 401 || status === 403 ? 'AUTH' : status === 429 ? 'RATE_LIMIT' : status >= 500 ? 'SERVER' : 'INVALID_REQUEST';
++}
++async function* records(response, signal) {
++  const reader = response.body?.getReader();
++  if (!reader) throw new LlmError('Image model returned an empty body.', 'EMPTY_RESPONSE');
++  const declared = Number(response.headers.get('content-length'));
++  if (declared > MAX_BODY) { await reader.cancel(); throw new LlmError('Image model response exceeds 64 MiB.', 'RESPONSE_TOO_LARGE'); }
++  const stream = response.headers.get('content-type')?.includes('text/event-stream');
++  const decoder = new TextDecoder(); let buffer = '', size = 0;
++  try {
++    for (;;) {
++      abort(signal);
++      const { done, value } = await reader.read(); abort(signal);
++      if (done) { buffer += decoder.decode(); break; }
++      size += value.byteLength;
++      if (size > MAX_BODY) throw new LlmError('Image model response exceeds 64 MiB.', 'RESPONSE_TOO_LARGE');
++      buffer += decoder.decode(value, { stream: true });
++      if (stream) {
++        let split;
++        while ((split = buffer.search(/\r?\n\r?\n/)) >= 0) {
++          const separator = /^\r?\n\r?\n/.exec(buffer.slice(split))[0];
++          const event = buffer.slice(0, split); buffer = buffer.slice(split + separator.length);
++          const data = event.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
++          if (data === '[DONE]') { yield { done: true }; continue; }
++          if (data) yield JSON.parse(data);
++        }
++      }
++    }
++    if (buffer.trim()) {
++      if (!stream) yield JSON.parse(buffer);
++      else {
++        const data = buffer.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
++        if (data === '[DONE]') yield { done: true };
++        else if (data) yield JSON.parse(data);
++      }
++    }
++  } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
++}
++function raster(encoded, mediaType) {
++  if (typeof encoded !== 'string' || !encoded || encoded.length > Math.ceil(MAX_IMAGE / 3) * 4 || encoded.length % 4 || /[^A-Za-z0-9+/=]/.test(encoded)) throw new LlmError('Invalid or oversized generated image.', 'INVALID_IMAGE');
++  const data = Buffer.from(encoded, 'base64');
++  if (data.toString('base64') !== encoded || data.length > MAX_IMAGE) throw new LlmError('Invalid image encoding.', 'INVALID_IMAGE');
++  const detected = data.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) ? 'image/png'
++    : data[0] === 255 && data[1] === 216 && data[2] === 255 ? 'image/jpeg'
++    : data.toString('ascii',0,4) === 'RIFF' && data.toString('ascii',8,12) === 'WEBP' ? 'image/webp'
++    : ['GIF87a','GIF89a'].includes(data.toString('ascii',0,6)) ? 'image/gif' : undefined;
++  const mime = mediaType ?? detected;
++  if (!IMAGE_MIMES.has(mime) || mime !== detected) throw new LlmError('The selected model returned an unsupported or mismatched image format.', 'INVALID_IMAGE');
++  return { data, mediaType: mime };
++}
++function inline(url) {
++  const match = typeof url === 'string' && /^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(url);
++  if (!match) throw new LlmError('The selected model returned an image URL instead of inline image bytes.', 'UNSUPPORTED_IMAGE_RESPONSE');
++  return raster(match[2], match[1].toLowerCase());
++}
++function contextMessage(message) {
++  return !['skill-catalog'].includes(message.source?.kind) && !(message.source?.kind === 'plugin' && ['@deepseek-ai/dsh-system-prompt', 'dsh-system-prompt'].includes(message.source.plugin));
++}
++/** Older text SDKs cannot encode assistant image parts. Carry them as explicitly labelled references. */
++export function projectAssistantImageHistory(options, model) {
++  if (!options.messages.some(m => m.role === 'assistant' && m.content.some(b => b.type === 'image'))) return options;
++  const messages = options.messages.flatMap(message => {
++    if (message.role !== 'assistant' || !message.content.some(b => b.type === 'image')) return [message];
++    const images = message.content.filter(b => b.type === 'image');
++    const content = message.content.filter(b => b.type !== 'image');
++    return [...(content.length ? [{ ...message, content }] : []), { ...message, role: 'user', source: { kind: 'plugin', plugin: 'dsh-image-history' }, content: [
++      { type: 'text', text: 'Reference images generated in the preceding assistant reply.' },
++      ...images.map(b => model.input.includes('image') ? b : { type: 'text', text: `[Generated image: ${b.attachment.attachmentId}]` }),
++    ] }];
++  });
++  return { ...options, messages };
++}
++async function messagesFor(options, attachments, profile, signal) {
++  const messages = []; let imageBytes = 0;
++  const read = async ref => {
++    const image = await attachments.readImageRequest(ref, { maxPixels: profile.requestImagePixelBudget, maxBytes: profile.requestImageMaxBytes }, signal);
++    abort(signal); imageBytes += image.data.byteLength;
++    if (imageBytes > profile.maxRequestImageBytes) throw new LlmError('Image references exceed the configured request size.', 'REQUEST_TOO_LARGE');
++    return `data:${image.mediaType};base64,${Buffer.from(image.data).toString('base64')}`;
++  };
++  for (const message of options.messages.filter(contextMessage)) {
++    const content = [];
++    for (const part of message.content) {
++      if (part.type === 'text' && part.text) content.push({ type: 'text', text: part.text });
++      else if (part.type === 'image') content.push({ type: 'image_url', image_url: { url: await read(part.attachment) } });
++      else if (part.type === 'tool-result') {
++        for (const block of part.content) {
++          if (block.type === 'text') content.push({ type: 'text', text: block.text });
++          else if (block.type === 'image') content.push({ type: 'image_url', image_url: { url: await read(block.attachment) } });
++        }
++      }
++    }
++    if (message.role === 'assistant' && content.some(p => p.type === 'image_url')) {
++      const text = content.filter(p => p.type === 'text'), images = content.filter(p => p.type === 'image_url');
++      if (text.length) messages.push({ role: 'assistant', content: text });
++      messages.push({ role: 'user', content: [{ type: 'text', text: 'Reference images from the preceding assistant reply.' }, ...images] });
++    } else if (content.length) messages.push({ role: message.role === 'assistant' ? 'assistant' : 'user', content });
++  }
++  return messages;
++}
++/** One native model request through its existing provider/auth snapshot. No tools, extra provider or route settings. */
++export async function* streamNativeImage(options, model, profile, models, attachments, explicitKey) {
++  if (!attachments?.saveImages) throw new LlmError('Image output requires the existing attachment store.', 'UNSUPPORTED_CONTENT');
++  const deadline = AbortSignal.timeout(profile.timeoutMs ?? profile.streamIdleTimeoutMs ?? 300000);
++  const signal = AbortSignal.any([...(options.signal ? [options.signal] : []), deadline]);
++  try {
++    abort(signal);
++    const resolved = await models.getAuth(model, { ...(explicitKey ? { apiKey: explicitKey } : {}), signal });
++    abort(signal);
++    const key = explicitKey ?? resolved?.auth.apiKey;
++    const base = (resolved?.auth.baseUrl ?? model.baseUrl).replace(/\/+$/, '');
++    const headers = new Headers({ ...model.headers, ...resolved?.auth.headers, ...profile.headers, ...attributionHeaders(), 'content-type': 'application/json' });
++    if (key) headers.set(model.imageGenerationApi === 'google-generative-ai' ? 'x-goog-api-key' : 'authorization', model.imageGenerationApi === 'google-generative-ai' ? key : `Bearer ${key}`);
++    if (!key && !headers.has('authorization')) throw new LlmError('The selected provider has no configured credential.', 'MISSING_CREDENTIAL');
++    const messages = await messagesFor(options, attachments, profile, signal);
++    let endpoint, body;
++    if (model.imageGenerationApi === 'google-generative-ai') {
++      endpoint = `${base}/models/${encodeURIComponent(model.id)}:generateContent`;
++      body = { contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: m.content.map(p => p.type === 'text' ? { text: p.text } : (() => { const image = inline(p.image_url.url); return { inlineData: { data: image.data.toString('base64'), mimeType: image.mediaType } } })()) })),
++        generationConfig: { responseModalities: model.outputModalities.map(x => x.toUpperCase()) },
++        ...(options.system ? { systemInstruction: { parts: [{ text: options.system }] } } : {}) };
++    } else if (model.imageGenerationApi === 'openrouter-images' || model.imageGenerationApi === 'openai-images') {
++      endpoint = `${base}/${model.imageGenerationApi === 'openrouter-images' ? 'images' : 'images/generations'}`;
++      const prompt = messages.map(m => m.content.filter(p => p.type === 'text').map(p => p.text).join('\n')).filter(Boolean).join('\n\n');
++      const references = messages.flatMap(m => m.content.filter(p => p.type === 'image_url'));
++      if (references.length && model.imageGenerationApi === 'openai-images') {
++        endpoint = `${base}/images/edits`;
++        body = new FormData(); body.set('model', model.id); body.set('prompt', prompt);
++        references.forEach((ref, index) => { const image = inline(ref.image_url.url); body.append(references.length === 1 ? 'image' : 'image[]', new Blob([image.data], { type: image.mediaType }), `reference-${index + 1}.${image.mediaType.slice(6)}`); });
++        headers.delete('content-type');
++      } else body = { model: model.id, prompt, ...(references.length ? { input_references: references } : {}), ...(/^dall-e-[23]$/.test(model.id) ? { response_format: 'b64_json' } : {}) };
++    } else if (model.imageGenerationApi === 'openai-responses') {
++      endpoint = `${base}/responses`;
++      body = { model: model.id, input: messages.map(m => m.role === 'assistant' ? { role: 'assistant', content: m.content.map(p => p.text ?? '').join('\n') } : { role: 'user', content: m.content.map(p => p.type === 'text' ? { type: 'input_text', text: p.text } : { type: 'input_image', image_url: p.image_url.url }) }),
++        ...(options.system ? { instructions: options.system } : {}), tools: [{ type: 'image_generation' }], stream: true };
++    } else if (model.imageGenerationApi === 'chat-completions') {
++      endpoint = `${base}/chat/completions`;
++      body = { model: model.id, messages: [...(options.system ? [{ role: 'system', content: options.system }] : []), ...messages], stream: true,
++        modalities: model.outputModalities, ...(options.maxTokens === undefined ? {} : { max_tokens: options.maxTokens }), ...(options.temperature === undefined ? {} : { temperature: options.temperature }) };
++    } else throw new LlmError(`Image output protocol is not supported for the selected model "${model.id}".`, 'UNSUPPORTED_PROTOCOL');
++    const response = await fetch(endpoint, { method: 'POST', headers, body: body instanceof FormData ? body : JSON.stringify(body), redirect: 'error', signal });
++    abort(signal);
++    if (!response.ok) {
++      let detail = '';
++      try { for await (const record of records(response, signal)) { detail = String(record.error?.message ?? record.message ?? ''); break; } } catch {}
++      if (key) detail = detail.split(key).join('[redacted]');
++      throw new LlmError(`Image model HTTP ${response.status}: ${detail.slice(0, 2000) || response.statusText}`, errorCode(response.status, detail), { status: response.status });
++    }
++    const parts = [], seen = new Set(); let usage, finishReason = 'stop', finished = !response.headers.get('content-type')?.includes('text/event-stream');
++    const text = value => { if (typeof value !== 'string' || !value) return; if (parts.at(-1)?.type === 'text') parts.at(-1).text += value; else parts.push({ type: 'text', text: value }); };
++    const image = value => { const id = value.data.toString('base64'); if (seen.has(id)) return; seen.add(id); parts.push({ type: 'image', value }); if (seen.size > (attachments.imageLimits?.maxImagesPerMessage ?? 8)) throw new LlmError('The model returned too many images for one message.', 'TOO_MANY_IMAGES'); };
++    for await (const record of records(response, signal)) {
++      abort(signal);
++      if (record.error) throw new LlmError(String(record.error.message ?? 'Image generation failed.').slice(0,2000), 'PROVIDER_ERROR');
++      if (record.done) finished = true;
++      const receivedUsage = record.usage ?? record.response?.usage;
++      if (receivedUsage) usage = { inputTokens: receivedUsage.prompt_tokens ?? receivedUsage.input_tokens ?? 0, outputTokens: receivedUsage.completion_tokens ?? receivedUsage.output_tokens ?? 0 };
++      for (const choice of record.choices ?? []) {
++        const delta = choice.delta ?? choice.message ?? {};
++        if (typeof delta.content === 'string') text(delta.content);
++        else for (const part of delta.content ?? []) { if (part.type === 'text') text(part.text); else if (part.type === 'image_url') image(inline(typeof part.image_url === 'string' ? part.image_url : part.image_url?.url)); }
++        for (const part of delta.images ?? []) image(inline(typeof part.image_url === 'string' ? part.image_url : part.image_url?.url));
++        if (choice.finish_reason) finished = true;
++        if (choice.finish_reason === 'length') finishReason = 'max-tokens';
++      }
++      for (const item of record.data ?? []) if (item.b64_json) image(raster(item.b64_json, item.media_type)); else if (item.url) image(inline(item.url));
++      for (const candidate of record.candidates ?? []) {
++        for (const part of candidate.content?.parts ?? []) { if (part.text && !part.thought) text(part.text); if (part.inlineData) image(raster(part.inlineData.data, part.inlineData.mimeType)); }
++        if (candidate.finishReason) finished = true;
++        if (candidate.finishReason === 'MAX_TOKENS') finishReason = 'max-tokens';
++      }
++      if (record.usageMetadata) usage = { inputTokens: record.usageMetadata.promptTokenCount ?? 0, outputTokens: (record.usageMetadata.candidatesTokenCount ?? 0) + (record.usageMetadata.thoughtsTokenCount ?? 0) };
++      if (record.type === 'response.output_text.delta') text(record.delta);
++      if (record.type === 'response.output_item.done' && record.item?.type === 'image_generation_call' && record.item.result) image(raster(record.item.result));
++      if (record.type === 'response.completed') { finished = true; for (const item of record.response?.output ?? []) if (item.type === 'image_generation_call' && item.result) image(raster(item.result)); }
++      if (record.type === 'image_generation.completed') { finished = true; if (record.b64_json) image(raster(record.b64_json, record.media_type)); }
++    }
++    abort(signal);
++    if (!finished) throw new LlmError('Image stream ended before a completed response.', 'STREAM_CLOSED');
++    if (!parts.length) throw new LlmError('The selected model returned no text or image content.', 'EMPTY_RESPONSE');
++    const images = parts.filter(p => p.type === 'image');
++    const refs = images.length ? await attachments.saveImages(images.map(p => p.value)) : [];
++    abort(signal);
++    if (refs.length !== images.length) throw new LlmError('Image storage returned an incomplete result.', 'ATTACHMENT_STORE_ERROR');
++    let imageIndex = 0;
++    for (let index = 0; index < parts.length; index++) {
++      const part = parts[index];
++      yield { type: 'block-start', index, blockType: part.type };
++      if (part.type === 'text') { yield { type: 'text-delta', index, text: part.text }; yield { type: 'block-end', index, block: { type: 'text', text: part.text } }; }
++      else yield { type: 'block-end', index, block: { type: 'image', attachment: refs[imageIndex++] } };
++    }
++    if (usage) yield { type: 'usage', usage };
++    yield { type: 'finish', reason: { kind: finishReason } };
++  } catch (error) {
++    if (options.signal?.aborted) throw new LlmError('Image model request cancelled.', 'ABORTED');
++    if (deadline.aborted) throw new LlmError('Image model request timed out.', 'TIMEOUT');
++    if (error instanceof LlmError) throw error;
++    if (error?.name === 'AttachmentError') throw new LlmError(error.message, error.code ?? 'ATTACHMENT_STORE_ERROR');
++    if (error instanceof SyntaxError) throw new LlmError('The selected model returned malformed response data.', 'INVALID_RESPONSE');
++    throw new LlmError('Could not read the selected model image response.', 'TRANSPORT');
++  }
++}
 diff --git a/lib/types/catalog.d.ts b/lib/types/catalog.d.ts
-index 2be4a6086efa33574fabefbe15c7a4b5f36a0557..7a49e25e7dd599d7c4596d91ebbfe4c4d9719557 100644
+index 2be4a6086efa33574fabefbe15c7a4b5f36a0557..28c6175f5a43fc3b57aaafb2cbd8e420f32940fa 100644
 --- a/lib/types/catalog.d.ts
 +++ b/lib/types/catalog.d.ts
-@@ -240,6 +240,8 @@ type UpstreamCompat = OpenAICompletionsCompat & OpenAIResponsesCompat & Anthropi
+@@ -240,6 +240,12 @@ type UpstreamCompat = OpenAICompletionsCompat & OpenAIResponsesCompat & Anthropi
  export type EveryProfileFieldMatchesUpstream = AssertTrue<PiAiCompatProfile extends Partial<Pick<UpstreamCompat, OfferedCompatField>> ? Partial<Pick<UpstreamCompat, OfferedCompatField>> extends PiAiCompatProfile ? true : false : false>;
  /** One configured model entry: an id plus the catalog fields it overrides. */
  export interface PiAiModelProfile {
 +    /** Evidence retained when the Models page adopts an automatic capability. */
++    /** Native output capability; omitted/empty means use provider metadata or the exact catalog. */
++    output?: PiAiModality[];
++    imageGenerationApi?: "chat-completions" | "openrouter-images" | "openai-images" | "google-generative-ai" | "openai-responses";
++    supportsTools?: boolean;
 +    inputCapabilitySource?: 'provider' | 'catalog' | 'name' | 'unknown';
      /** Model id sent to the provider and accepted by {@link GenerateOptions.model}. */
      id: string;
      /** Display name for selectors; defaults to the catalog name, then the id. */
+diff --git a/package.json b/package.json
+index 57d54814258112aa22e04217c55495936d5b845d..e9c3db78ebe33e33312c8a0f866f49818eb5d0ad 100644
+--- a/package.json
++++ b/package.json
+@@ -23,7 +23,11 @@
+   },
+   "files": [
+     "lib/index.js",
+-    "lib/types/**/*.d.ts"
++    "lib/types/**/*.d.ts",
++    "lib/model-input.js",
++    "lib/model-output.js",
++    "lib/model-output-catalog.js",
++    "lib/native-image.js"
+   ],
+   "license": "MIT",
+   "peerDependencies": {

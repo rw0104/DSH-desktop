@@ -1,5 +1,5 @@
 diff --git a/lib/client.js b/lib/client.js
-index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..7159d984f4a07272d4ba6a204498d99ab1c4557a 100644
+index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..8d476ec1e784058e7012ea1b5ba7beea938a4e81 100644
 --- a/lib/client.js
 +++ b/lib/client.js
 @@ -248,6 +248,13 @@ window.__ModuleLoader__.load({
@@ -39,7 +39,7 @@ index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..7159d984f4a07272d4ba6a204498d99a
  							}) : null]
  						}, index))
  					}),
-@@ -534,15 +555,50 @@ window.__ModuleLoader__.load({
+@@ -534,15 +555,54 @@ window.__ModuleLoader__.load({
  		function capacitySpelling(value) {
  			return value === void 0 ? "" : formatCapacity(value);
  		}
@@ -73,6 +73,9 @@ index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..7159d984f4a07272d4ba6a204498d99a
  			return {
  				id: candidate.id,
 +				...candidate.inputModalities === void 0 ? {} : { input: [...candidate.inputModalities] },
++				...candidate.outputModalities === void 0 ? {} : { output: [...candidate.outputModalities] },
++				...candidate.imageGenerationApi === void 0 ? {} : { imageGenerationApi: candidate.imageGenerationApi },
++				...candidate.supportsTools === void 0 ? {} : { supportsTools: candidate.supportsTools },
 +				...candidate.inputCapabilitySource === void 0 ? {} : { inputCapabilitySource: candidate.inputCapabilitySource },
  				...candidate.name === void 0 ? {} : { name: candidate.name },
  				...candidate.contextWindow === void 0 ? {} : { contextWindow: candidate.contextWindow },
@@ -81,6 +84,7 @@ index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..7159d984f4a07272d4ba6a204498d99a
  		}
 +		function mergeDiscoveredModel(existing, candidate) {
 +			if (existing === void 0) return adopt(candidate);
++			existing = { ...existing, ...candidate.outputModalities === void 0 ? {} : { output: [...candidate.outputModalities] }, ...candidate.imageGenerationApi === void 0 ? {} : { imageGenerationApi: candidate.imageGenerationApi }, ...candidate.supportsTools === void 0 ? {} : { supportsTools: candidate.supportsTools } };
 +			if (Array.isArray(existing.input) && existing.input.length > 0 && existing.inputCapabilitySource === void 0) return existing;
 +			if (candidate.inputModalities === void 0 && candidate.inputCapabilitySource === void 0) return existing;
 +			const { input, inputCapabilitySource, ...rest } = existing;
@@ -90,10 +94,11 @@ index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..7159d984f4a07272d4ba6a204498d99a
  		/**
  		* Render the model list with its fetch action.
  		* @param props - the drafted rows, probe target, wire face, and copy.
-@@ -585,6 +641,10 @@ window.__ModuleLoader__.load({
+@@ -585,6 +645,11 @@ window.__ModuleLoader__.load({
  			const patch = (index, next) => {
  				onChange(models.map((model, at) => {
  					if (at !== index) return model;
++					if (next.id !== void 0 && next.id !== model.id) { const { output, imageGenerationApi, supportsTools, ...rest } = model; model = rest; }
 +					if ((next.id !== void 0 && next.id !== model.id || next.name !== void 0 && next.name !== model.name && model.inputCapabilitySource === "name") && model.inputCapabilitySource !== void 0) {
 +						const { input, inputCapabilitySource, ...rest } = model;
 +						model = rest;
@@ -101,7 +106,7 @@ index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..7159d984f4a07272d4ba6a204498d99a
  					const cleared = new Set(Object.entries(next).filter(([, value]) => value === void 0 || value === "").map(([key]) => key));
  					return Object.fromEntries(Object.entries({
  						...model,
-@@ -630,7 +690,7 @@ window.__ModuleLoader__.load({
+@@ -630,7 +695,7 @@ window.__ModuleLoader__.load({
  				const byId = new Map(models.map((model) => [textOf(model, "id"), model]));
  				for (const candidate of candidates) {
  					if (!picked.has(candidate.id)) continue;
@@ -110,7 +115,7 @@ index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..7159d984f4a07272d4ba6a204498d99a
  				}
  				onChange([...byId.values()]);
  				closePicker();
-@@ -788,6 +848,15 @@ window.__ModuleLoader__.load({
+@@ -788,6 +853,15 @@ window.__ModuleLoader__.load({
  										editCapacity(index, "maxTokens", event.target.value);
  									}
  								})]
@@ -126,7 +131,7 @@ index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..7159d984f4a07272d4ba6a204498d99a
  							})]
  						}) : null]
  					}, index)),
-@@ -2659,6 +2728,15 @@ window.__ModuleLoader__.load({
+@@ -2659,6 +2733,15 @@ window.__ModuleLoader__.load({
  			model: "Model",
  			modelId: "Model ID",
  			modelName: "Display name",
@@ -142,7 +147,7 @@ index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..7159d984f4a07272d4ba6a204498d99a
  			modelNamePlaceholder: "Uses the model ID when empty",
  			contextWindow: "Context window",
  			contextWindowPlaceholder: "Uses the provider default",
-@@ -2676,6 +2754,7 @@ window.__ModuleLoader__.load({
+@@ -2676,6 +2759,7 @@ window.__ModuleLoader__.load({
  			modelNameInvalid: "Display name cannot be empty.",
  			modelContextInvalid: "Context window must be a positive count, like 131072, 256K, or 1M.",
  			modelMaxTokensInvalid: "Max output tokens must be a positive count, like 8192, 64K, or 1M.",
@@ -150,7 +155,7 @@ index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..7159d984f4a07272d4ba6a204498d99a
  			advancedHint: "Other fields live in settings.yaml; edit that section directly.",
  			modelCapacityInvalid: "A capacity must be a number, optionally suffixed K or M.",
  			modelDuplicate: "Each model ID may appear once.",
-@@ -2761,6 +2840,15 @@ window.__ModuleLoader__.load({
+@@ -2761,6 +2845,15 @@ window.__ModuleLoader__.load({
  			model: "模型",
  			modelId: "模型 ID",
  			modelName: "显示名称",
@@ -166,7 +171,7 @@ index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..7159d984f4a07272d4ba6a204498d99a
  			modelNamePlaceholder: "留空时使用模型 ID",
  			contextWindow: "上下文窗口",
  			contextWindowPlaceholder: "使用提供方默认值",
-@@ -2778,6 +2866,7 @@ window.__ModuleLoader__.load({
+@@ -2778,6 +2871,7 @@ window.__ModuleLoader__.load({
  			modelNameInvalid: "显示名称不能为空。",
  			modelContextInvalid: "上下文窗口必须是正数，例如 131072、256K 或 1M。",
  			modelMaxTokensInvalid: "最大输出 token 数必须是正数，例如 8192、64K 或 1M。",

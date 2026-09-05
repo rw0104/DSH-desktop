@@ -16,6 +16,7 @@
     "tests/client-workspace-folder-drop.spec.ts",
     "tests/theme-presenter.spec.ts",
     "tests/voice-ui.spec.ts",
-    "tests/voice-composer-click.spec.ts"
+    "tests/voice-composer-click.spec.ts",
+    "tests/advanced-frame-session.spec.ts"
   ]
 }

@@ -1,17 +1,44 @@
 diff --git a/lib/index.js b/lib/index.js
-index 9f8e63c093ebdf1505c79f3614280df794d77c04..00e388ab8ab8b617fb06fb8eee92549a70f09597 100644
+index 9f8e63c093ebdf1505c79f3614280df794d77c04..15221daeec930443188f999efe7b0fb8c57e8f2c 100644
 --- a/lib/index.js
 +++ b/lib/index.js
-@@ -1949,6 +1949,7 @@ async function buildModelCatalog(ctx, defaultSelection = ctx.agentDefaultModel.c
+@@ -1949,6 +1949,8 @@ async function buildModelCatalog(ctx, defaultSelection = ctx.agentDefaultModel.c
  					id: model.id,
  					name: model.name,
  					...model.description === void 0 ? {} : { description: model.description },
 +					...resolved.inputModalities === void 0 ? {} : { inputModalities: resolved.inputModalities },
++					...resolved.outputModalities === void 0 ? {} : { outputModalities: resolved.outputModalities },
  					...reasoning === void 0 ? {} : { reasoning }
  				};
  			}));
+diff --git a/lib/typert.host.js b/lib/typert.host.js
+index e3df281342e7f6faeca8505b08f947212dc7ecdf..d072460423e8faa1b305ad0e7ae2ebf027d6df3c 100644
+--- a/lib/typert.host.js
++++ b/lib/typert.host.js
+@@ -465,6 +465,8 @@ const _deepseek_ai_dsh_api_session_controller_session_modelCatalog_result$schema
+   'id': z.string().readonly(),
+   'name': z.string().readonly(),
+   'description': z.string().readonly().optional(),
++    'inputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
++    'outputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
+   'reasoning': z.object({
+   'efforts': z.array(z.object({
+   'id': z.string().readonly(),
+diff --git a/lib/typert.remote-client.js b/lib/typert.remote-client.js
+index 23217d24ad2030a876e4f519b85ad8ca76f6c639..9e648abffb6b2cf57ac14240ed6299ad4c054b7d 100644
+--- a/lib/typert.remote-client.js
++++ b/lib/typert.remote-client.js
+@@ -465,6 +465,8 @@ const _deepseek_ai_dsh_api_session_controller_session_modelCatalog_result$schema
+   'id': z.string().readonly(),
+   'name': z.string().readonly(),
+   'description': z.string().readonly().optional(),
++    'inputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
++    'outputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
+   'reasoning': z.object({
+   'efforts': z.array(z.object({
+   'id': z.string().readonly(),
 diff --git a/lib/types/types.d.ts b/lib/types/types.d.ts
-index bc420a9d4c816d9142e10f4ca5305f5aa7236935..0275f9315bf77b9222ee99b4f90dfbb2b701513f 100644
+index bc420a9d4c816d9142e10f4ca5305f5aa7236935..a692f19e889c44448c0bcb5f627bd4e594535768 100644
 --- a/lib/types/types.d.ts
 +++ b/lib/types/types.d.ts
 @@ -2,7 +2,7 @@
@@ -23,33 +50,12 @@ index bc420a9d4c816d9142e10f4ca5305f5aa7236935..0275f9315bf77b9222ee99b4f90dfbb2
  import type { ChunkRow } from '@deepseek-ai/dsh-session/chunk-rows';
  import type { SessionId } from '@deepseek-ai/dsh-session/types';
  import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/types';
-@@ -103,6 +103,7 @@ export interface ModelCatalogModel {
+@@ -103,6 +103,8 @@ export interface ModelCatalogModel {
      readonly id: string;
      readonly name: string;
      readonly description?: string;
 +    readonly inputModalities?: readonly ModelModality[];
++    readonly outputModalities?: readonly ModelModality[];
      readonly reasoning?: ModelReasoning;
  }
  /** One provider and its successfully loaded model catalog. */
-diff --git a/lib/typert.host.js b/lib/typert.host.js
---- a/lib/typert.host.js
-+++ b/lib/typert.host.js
-@@ -465,6 +465,7 @@
-   'id': z.string().readonly(),
-   'name': z.string().readonly(),
-   'description': z.string().readonly().optional(),
-+    'inputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
-   'reasoning': z.object({
-   'efforts': z.array(z.object({
-   'id': z.string().readonly(),
-diff --git a/lib/typert.remote-client.js b/lib/typert.remote-client.js
---- a/lib/typert.remote-client.js
-+++ b/lib/typert.remote-client.js
-@@ -465,6 +465,7 @@
-   'id': z.string().readonly(),
-   'name': z.string().readonly(),
-   'description': z.string().readonly().optional(),
-+    'inputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
-   'reasoning': z.object({
-   'efforts': z.array(z.object({
-   'id': z.string().readonly(),

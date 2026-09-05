@@ -30,6 +30,23 @@ function editorSeams(): Record<string, (...args: any[]) => any> {
 }
 
 describe('automatic custom-model image capabilities', () => {
+  it('retains separate image output capability through both Remote faces and actual editor adoption', async () => {
+    const candidates = [{ id: 'qwen/qwen-image-3', inputModalities: ['text', 'image'], outputModalities: ['image'], imageGenerationApi: 'openrouter-images', supportsTools: false }]
+    for (const raw of [TYPERT, TYPERT_REMOTE]) {
+      type Method = { method: string; result: { schema: { parse(value: unknown): unknown } } }
+      const value = raw as { invocations?: Method[]; descriptors?: Method[] }
+      const method = (value.invocations ?? value.descriptors ?? []).find(method => method.method === 'discoverModels')
+      expect(method?.result.schema.parse(candidates)).toEqual(candidates)
+    }
+    const adopted = editorSeams().adopt!(candidates[0])
+    expect(adopted).toMatchObject({ id: 'qwen/qwen-image-3', output: ['image'], imageGenerationApi: 'openrouter-images' })
+    const ctx = new Context()
+    try {
+      await ctx.plugin(LlmRuntime)
+      await ctx.plugin(PiAi, PiAi.Config({ providers: { openrouter: { models: [adopted] } } }))
+      expect(await ctx.llm.resolveModelInfo('openrouter', adopted.id)).toMatchObject({ inputModalities: ['text', 'image'], outputModalities: ['image'] })
+    } finally { await ctx.fiber.dispose() }
+  })
   it('asks the official OpenAI endpoint for image IDs when no custom URL is specified', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [{ id: 'gpt-image-2' }] })))
     vi.stubGlobal('fetch', fetch)

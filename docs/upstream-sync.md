@@ -1,5 +1,15 @@
 # Upstream synchronization ledger
 
+## 2026-09-05 模型原生图片输出修复前复核
+
+移除 2.2.4 的强制受控生成设计，并排查正式 LLM 适配器前，再次通过既有代理查询三条权威 remote 的 HEAD/heads/tags 及 npm：Harness master / `dsh-v0.1.3-alpha.1` 为 `d347e703908d0406b7a7ef80e3a0e594d86b2215`，RC1 tag `a66e4702047846cdaa10c66c9d3df3951f5ea70d`，latest/next `0.1.2-rc.1`；Sidebar main `a5c52b3f1bc450b04578bd9252f67b7d79c98502`，v0.18.0 tag `9e1a03452794532cda1f6ac677b72579dff48dfc`，npm latest `0.18.0`；Desktop reference master `bcaf1b4d9da56dad2a94ad64e4145d3d2e49e959`，v2.0.5 tag `423406fe225442995902015cb6f10eed670ff115`。本机 pi-ai 为 0.84.4，npm latest 为 0.85.1（modified `2026-09-05T12:05:48.401Z`）。
+
+本批次保持现有发布包和 submodule pin，针对已安装 RC1 适配器的图片输出、请求协议、历史重放及客户端显示链路建立证据；不以未审计的开发分支或升级包替代问题排查。回滚基线为 `8aa1aaa923`。2.2.4 中的 keyword/pre-step 拦截不是模型能力证明，本批次撤销该入口及其会话工具限制。
+
+该修复形成 2.2.5 本地测试候选。公开 OpenRouter 目录同轮查询：默认 `/api/v1/models` 为 431 项、11 项声明图片输出；`/api/v1/models?output_modalities=all` 为 582 项、52 项声明图片输出；独立 `/api/v1/images/models` 为 50 项，三种表示分别记录，不混用其总数。生产 discovery 和 Remote schema 对完整表示的重放保留全部 582 项及 52 项图片输出声明，未提高原有 4 MiB 响应限制。
+
+五份既有 RC1 Yarn patch 增加输出能力、原生图片响应/历史、已存凭据复用与明确的输入/输出标签；不升级 package family 或改动 submodule。移除 Desktop 自有强制生成设置、命令及工具锁。实际 Agent 与正式附件存储验证了原生图片交付，完整浏览器流程验证了二轮编辑、刷新读回和入口移除；高级布局的严格 details 插槽补齐上游 `SessionProvider`。供应商地区 403 独立标为 `REGION_UNAVAILABLE`，不会伪装成密钥配置错误。真实账号生成与地区可用性由用户使用测试包确认，本轮未发起计费生图。
+
 ## 2026-09-05 v2.2.4 本地测试安装包构建前复核
 
 经既有代理 `http://127.0.0.1:10808` 重新查询三个权威 GitHub remote 的 HEAD、heads、tags，以及 npm 的 version、dist-tags、time.modified：
