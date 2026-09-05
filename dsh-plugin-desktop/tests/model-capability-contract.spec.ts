@@ -42,7 +42,7 @@ class CapabilityAdapter extends LlmAdapter {
 }
 
 describe('upstream model capability wire contract', () => {
-  it('sends a declared custom-model image through the real adapter to an HTTP endpoint', async () => {
+  it('sends an automatically inferred custom-model image through the real adapter to an HTTP endpoint', async () => {
     const requests: unknown[] = []
     const server = createServer(async (req, res) => {
       const chunks: Buffer[] = []
@@ -65,7 +65,7 @@ describe('upstream model capability wire contract', () => {
       await ctx.plugin(LlmPiAi, { providers: {
         'image-test': {
           api: 'openai-completions', baseURL: `http://127.0.0.1:${address.port}/v1`, apiKeyEnv: key,
-          models: [{ id: 'vision', input: ['text', 'image'] }, { id: 'text-only', input: ['text'] }],
+          models: [{ id: 'vision' }, { id: 'text-only', input: ['text'] }],
         },
       } })
       ctx.provide('attachments', {

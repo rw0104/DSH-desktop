@@ -1,0 +1,111 @@
+diff --git a/lib/index.js b/lib/index.js
+index c25e5c7afcd9381dec2490fbff24910f173281d0..d824778d7d4b16862a6402dcecdd5542e63011d3 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -1,4 +1,5 @@
+ import { launchEnvironmentOf } from "@deepseek-ai/dsh-launch-environment";
++import { detectModelInput } from "./model-input.js";
+ import { CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, INVALID_CREDENTIAL_CODE, LlmAdapter, LlmError, QUOTA_EXCEEDED_CODE, ReasoningEffortId, RetryPolicySchema, assertUsableApiKey, attributionHeaders, contentHasImage, isContextWindowExceededError, isQuotaExceededError, normalizeApiKey, offloadRequestImagesWithPolicy, offloadedImageText, requestImageHandleText, resolveImageAttachmentAccess, resolveRetryPolicy } from "@deepseek-ai/dsh-llm";
+ import { deepEqualJson } from "@deepseek-ai/dsh-util-values";
+ import { createModels, createProvider, getSupportedThinkingLevels, isContextOverflow } from "@earendil-works/pi-ai";
+@@ -654,7 +655,7 @@ function resolveRouteModels(request) {
+ 			api,
+ 			provider,
+ 			baseUrl,
+-			input: declaredInput(entry.input) ?? base?.input ?? [...request.defaultInput],
++			input: declaredInput(entry.input) ?? base?.input ?? detectModelInput(entry).inputModalities ?? [...request.defaultInput],
+ 			cost: base?.cost ?? NO_COST,
+ 			contextWindow,
+ 			maxTokens,
+@@ -930,6 +931,7 @@ const modelFields = {
+ 	contextWindow: z.number().step(1).min(1),
+ 	maxTokens: z.number().step(1).min(1),
+ 	input: z.array(z.union(MODALITIES)),
++	inputCapabilitySource: z.union(["provider", "catalog", "name", "unknown"]),
+ 	reasoningEfforts: z.union([z.const(false), reasoningEfforts]),
+ 	compat: compatProfile
+ };
+@@ -2126,6 +2128,7 @@ function readListing(body) {
+ 		const maxTokens = capacity(entry?.max_output_tokens, entry?.max_tokens);
+ 		models.push({
+ 			id,
++			...detectModelInput(entry),
+ 			...name === void 0 ? {} : { name },
+ 			...contextWindow === void 0 ? {} : { contextWindow },
+ 			...maxTokens === void 0 ? {} : { maxTokens }
+@@ -2161,6 +2164,8 @@ async function discoverModels(request, storedProfile) {
+ 		const installed = catalogModels(request.provider);
+ 		if (installed.size > 0) return [...installed.values()].map((model) => ({
+ 			id: model.id,
++			inputModalities: [...model.input],
++			inputCapabilitySource: "catalog",
+ 			name: model.name,
+ 			contextWindow: model.contextWindow,
+ 			maxTokens: model.maxTokens
+diff --git a/lib/model-input.js b/lib/model-input.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..250552a478f597c3a79e909c4c12616d2c24ad44
+--- /dev/null
++++ b/lib/model-input.js
+@@ -0,0 +1,48 @@
++import { getBuiltinModels, getBuiltinProviders } from "@earendil-works/pi-ai/providers/all";
++
++// Desktop-owned inference: no network, active image probes, or profile writes.
++// Explicit model.input is resolved BEFORE this fallback.
++const VISUAL_NAME = /(?:^|[\s/:._-])(?:vision|vl)(?:$|[\s/:._-])/i;
++let installedInputs;
++function normalizedInput(value) {
++  if (!Array.isArray(value) || value.length === 0 || value.some(item => typeof item !== "string") || !value.includes("text")) return;
++  return value.includes("image") ? ["text", "image"] : ["text"];
++}
++function catalogInput(id) {
++  if (installedInputs === undefined) {
++    installedInputs = new Map();
++    for (const provider of getBuiltinProviders()) {
++      for (const model of getBuiltinModels(provider)) {
++        const input = normalizedInput(model.input);
++        if (input === undefined) continue;
++        if (!installedInputs.has(model.id)) installedInputs.set(model.id, input);
++        else if (JSON.stringify(installedInputs.get(model.id)) !== JSON.stringify(input)) installedInputs.set(model.id, null);
++      }
++    }
++  }
++  return installedInputs.get(id);
++}
++export function detectModelInput(entry) {
++  if (entry.inputCapabilitySource === "unknown") return {};
++  const candidates = [entry.inputModalities, entry.input_modalities, entry.architecture?.input_modalities];
++  // Schemastery materializes [] for missing model.input: it means automatic.
++  if (!Array.isArray(entry.input) || entry.input.length > 0) candidates.push(entry.input);
++  const advertised = candidates.filter(value => value !== undefined);
++  if (advertised.length > 0) {
++    const inputs = advertised.map(normalizedInput);
++    if (inputs.some(input => input === undefined) || inputs.some(input => JSON.stringify(input) !== JSON.stringify(inputs[0]))) return { inputCapabilitySource: "unknown" };
++    return { inputModalities: inputs[0], inputCapabilitySource: "provider" };
++  }
++  const flags = [entry.supports_image_input, entry.supportsImageInput, entry.capabilities?.vision].filter(value => value !== undefined);
++  if (flags.length > 0) {
++    if (flags.some(value => typeof value !== "boolean") || flags.some(value => value !== flags[0])) return { inputCapabilitySource: "unknown" };
++    return { inputModalities: flags[0] ? ["text", "image"] : ["text"], inputCapabilitySource: "provider" };
++  }
++  const known = catalogInput(entry.id);
++  if (known === null) return { inputCapabilitySource: "unknown" }; // Conflicting catalogs do not justify guessing.
++  if (known !== undefined) return { inputModalities: [...known], inputCapabilitySource: "catalog" };
++  if ([entry.id, entry.name, entry.display_name].some(value => typeof value === "string" && VISUAL_NAME.test(value))) {
++    return { inputModalities: ["text", "image"], inputCapabilitySource: "name" };
++  }
++  return {};
++}
+diff --git a/lib/types/catalog.d.ts b/lib/types/catalog.d.ts
+index 2be4a6086efa33574fabefbe15c7a4b5f36a0557..7a49e25e7dd599d7c4596d91ebbfe4c4d9719557 100644
+--- a/lib/types/catalog.d.ts
++++ b/lib/types/catalog.d.ts
+@@ -240,6 +240,8 @@ type UpstreamCompat = OpenAICompletionsCompat & OpenAIResponsesCompat & Anthropi
+ export type EveryProfileFieldMatchesUpstream = AssertTrue<PiAiCompatProfile extends Partial<Pick<UpstreamCompat, OfferedCompatField>> ? Partial<Pick<UpstreamCompat, OfferedCompatField>> extends PiAiCompatProfile ? true : false : false>;
+ /** One configured model entry: an id plus the catalog fields it overrides. */
+ export interface PiAiModelProfile {
++    /** Evidence retained when the Models page adopts an automatic capability. */
++    inputCapabilitySource?: 'provider' | 'catalog' | 'name' | 'unknown';
+     /** Model id sent to the provider and accepted by {@link GenerateOptions.model}. */
+     id: string;
+     /** Display name for selectors; defaults to the catalog name, then the id. */

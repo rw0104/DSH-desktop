@@ -1,0 +1,62 @@
+diff --git a/lib/index.js b/lib/index.js
+index 827dd906f5dc9b6b3d2dee436fdee8775245fa1c..5ed072181ece29b51de72d076bd6c179898ff2a2 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -1415,6 +1415,8 @@ let LlmRuntime = (() => {
+ 					id: model.id,
+ 					...model.name === void 0 ? {} : { name: model.name },
+ 					...model.contextWindow === void 0 ? {} : { contextWindow: model.contextWindow },
++					...model.inputModalities === void 0 ? {} : { inputModalities: [...model.inputModalities] },
++					...model.inputCapabilitySource === void 0 ? {} : { inputCapabilitySource: model.inputCapabilitySource },
+ 					...model.maxTokens === void 0 ? {} : { maxTokens: model.maxTokens }
+ 				});
+ 			}
+diff --git a/lib/typert.host.js b/lib/typert.host.js
+index 1ec83654de3bc42e7ddf6c12c970c4cdbd89d010..89ab461156f1c831d27ff116bf754dd91c7781be 100644
+--- a/lib/typert.host.js
++++ b/lib/typert.host.js
+@@ -9,6 +9,8 @@ const _deepseek_ai_dsh_llm_llm_discoverModels_parameter_1$schema = z.object({
+   'apiKey': z.string().optional(),
+ })
+ const _deepseek_ai_dsh_llm_llm_discoverModels_result$schema = z.array(z.object({
++  'inputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
++  'inputCapabilitySource': z.union([z.literal("provider"), z.literal("catalog"), z.literal("name"), z.literal("unknown")]).optional(),
+   'id': z.string(),
+   'name': z.string().optional(),
+   'contextWindow': z.number().optional(),
+@@ -308,7 +310,7 @@ export const TYPERT = {
+           },
+           {
+             "name": "LlmDiscoveredModel",
+-            "declaration": "export interface LlmDiscoveredModel {\n    id: string;\n    name?: string;\n    contextWindow?: number;\n    maxTokens?: number;\n}"
++            "declaration": "export interface LlmDiscoveredModel {\n    inputModalities?: readonly ModelModality[];\n    inputCapabilitySource?: 'provider' | 'catalog' | 'name' | 'unknown';\n    id: string;\n    name?: string;\n    contextWindow?: number;\n    maxTokens?: number;\n}"
+           },
+           {
+             "name": "LlmFailure",
+diff --git a/lib/typert.remote-client.js b/lib/typert.remote-client.js
+index 0c7ead7176a87972ddf763c28d2ee961a13ad3d0..8e4d6389e70123ddf9d4a0b6f939b7e25d4d0779 100644
+--- a/lib/typert.remote-client.js
++++ b/lib/typert.remote-client.js
+@@ -9,6 +9,8 @@ const _deepseek_ai_dsh_llm_llm_discoverModels_parameter_1$schema = z.object({
+   'apiKey': z.string().optional(),
+ })
+ const _deepseek_ai_dsh_llm_llm_discoverModels_result$schema = z.array(z.object({
++  'inputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
++  'inputCapabilitySource': z.union([z.literal("provider"), z.literal("catalog"), z.literal("name"), z.literal("unknown")]).optional(),
+   'id': z.string(),
+   'name': z.string().optional(),
+   'contextWindow': z.number().optional(),
+diff --git a/lib/types/types.d.ts b/lib/types/types.d.ts
+index 061528bdf49f80d82e07b46ebb94d2368f26eb3e..aa3d5bd917940c67c6019b84e3bb22282d8633b1 100644
+--- a/lib/types/types.d.ts
++++ b/lib/types/types.d.ts
+@@ -249,6 +249,9 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
+  * a surface adopting one of these still owes the capacities its adapter needs.
+  */
+ export interface LlmDiscoveredModel {
++    /** Input capability and its evidence, carried without promoting guesses to provider facts. */
++    inputModalities?: readonly ModelModality[];
++    inputCapabilitySource?: 'provider' | 'catalog' | 'name' | 'unknown';
+     /** Model id the endpoint accepts. */
+     id: string;
+     /** Human-readable name when the endpoint supplies one. */

@@ -47,7 +47,11 @@
     "@deepseek-ai/dsh@npm:0.1.2-rc.1": "patch:@deepseek-ai/dsh@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-npm-0.1.2-rc.1-d30c5ceb0c.patch",
     "@deepseek-ai/dsh@npm:^0.1.2-rc.1": "patch:@deepseek-ai/dsh@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-npm-0.1.2-rc.1-d30c5ceb0c.patch",
     "@deepseek-ai/dsh-agent-presets@npm:0.1.2-rc.1": "patch:@deepseek-ai/dsh-agent-presets@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-agent-presets-npm-0.1.2-rc.1-59c625fe39.patch",
-    "@deepseek-ai/dsh-agent-presets@npm:^0.1.2-rc.1": "patch:@deepseek-ai/dsh-agent-presets@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-agent-presets-npm-0.1.2-rc.1-59c625fe39.patch"
+    "@deepseek-ai/dsh-agent-presets@npm:^0.1.2-rc.1": "patch:@deepseek-ai/dsh-agent-presets@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-agent-presets-npm-0.1.2-rc.1-59c625fe39.patch",
+    "@deepseek-ai/dsh-llm-pi-ai@npm:^0.1.2-rc.1": "patch:@deepseek-ai/dsh-llm-pi-ai@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-pi-ai-npm-0.1.2-rc.1-60fc205c66.patch",
+    "@deepseek-ai/dsh-llm-pi-ai@npm:0.1.2-rc.1": "patch:@deepseek-ai/dsh-llm-pi-ai@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-pi-ai-npm-0.1.2-rc.1-60fc205c66.patch",
+    "@deepseek-ai/dsh-llm@npm:^0.1.2-rc.1": "patch:@deepseek-ai/dsh-llm@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-npm-0.1.2-rc.1-2c4c0a76ed.patch",
+    "@deepseek-ai/dsh-llm@npm:0.1.2-rc.1": "patch:@deepseek-ai/dsh-llm@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-npm-0.1.2-rc.1-2c4c0a76ed.patch"
   },
   "dependenciesMeta": {
     "@deepseek-ai/dsh-subprocess-local": {

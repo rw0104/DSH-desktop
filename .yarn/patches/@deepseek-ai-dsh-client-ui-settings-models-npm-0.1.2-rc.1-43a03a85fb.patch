@@ -1,5 +1,5 @@
 diff --git a/lib/client.js b/lib/client.js
-index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..24a8db869bd4f9fea7719e896bb9cbe1b67aaba7 100644
+index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..7159d984f4a07272d4ba6a204498d99ab1c4557a 100644
 --- a/lib/client.js
 +++ b/lib/client.js
 @@ -248,6 +248,13 @@ window.__ModuleLoader__.load({
@@ -39,7 +39,78 @@ index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..24a8db869bd4f9fea7719e896bb9cbe1
  							}) : null]
  						}, index))
  					}),
-@@ -788,6 +809,20 @@ window.__ModuleLoader__.load({
+@@ -534,15 +555,50 @@ window.__ModuleLoader__.load({
+ 		function capacitySpelling(value) {
+ 			return value === void 0 ? "" : formatCapacity(value);
+ 		}
++		/** Automatic is the default; manual modes only correct an endpoint or inference. */
++		function ModelInputControl({ model, field, t, disabled, onChange }) {
++			const input = model[field];
++			const source = model.inputCapabilitySource;
++			const manual = Array.isArray(input) && input.length > 0 && source === void 0;
++			const nameHint = [model.id, model.name].some(value => typeof value === "string" && /(?:^|[\s/:._-])(?:vision|vl)(?:$|[\s/:._-])/i.test(value));
++			const evidenceKey = manual ? "modelInputManual" : source === "unknown" ? "modelInputUnknown" : source === "provider" ? "modelInputProvider" : source === "catalog" ? "modelInputCatalog" : source === "name" || nameHint ? "modelInputName" : "modelInputUnknown";
++			return (0, react_jsx_runtime.jsxs)(react.Fragment, { children: [
++				(0, react_jsx_runtime.jsxs)("select", {
++					className: ModelsSection_module_css_default["input"],
++					"aria-label": t("modelImageInput"), disabled,
++					value: manual ? input.includes("image") ? "image" : "text" : "auto",
++					onChange: event => onChange({
++						[field]: event.target.value === "auto" ? void 0 : event.target.value === "image" ? ["text", "image"] : ["text"],
++						inputCapabilitySource: void 0
++					}),
++					children: [
++						(0, react_jsx_runtime.jsx)("option", { value: "auto", children: t("modelInputAuto") }),
++						(0, react_jsx_runtime.jsx)("option", { value: "image", children: t("modelInputForceImage") }),
++						(0, react_jsx_runtime.jsx)("option", { value: "text", children: t("modelInputForceText") })
++					]
++				}),
++				(0, react_jsx_runtime.jsx)("small", { children: t(evidenceKey) })
++			] });
++		}
+ 		/** Adopt a candidate, keeping whatever capacities the provider disclosed. */
+ 		function adopt(candidate) {
+ 			return {
+ 				id: candidate.id,
++				...candidate.inputModalities === void 0 ? {} : { input: [...candidate.inputModalities] },
++				...candidate.inputCapabilitySource === void 0 ? {} : { inputCapabilitySource: candidate.inputCapabilitySource },
+ 				...candidate.name === void 0 ? {} : { name: candidate.name },
+ 				...candidate.contextWindow === void 0 ? {} : { contextWindow: candidate.contextWindow },
+ 				...candidate.maxTokens === void 0 ? {} : { maxTokens: candidate.maxTokens }
+ 			};
+ 		}
++		function mergeDiscoveredModel(existing, candidate) {
++			if (existing === void 0) return adopt(candidate);
++			if (Array.isArray(existing.input) && existing.input.length > 0 && existing.inputCapabilitySource === void 0) return existing;
++			if (candidate.inputModalities === void 0 && candidate.inputCapabilitySource === void 0) return existing;
++			const { input, inputCapabilitySource, ...rest } = existing;
++			const adopted = adopt(candidate);
++			return { ...rest, ...adopted.input === void 0 ? {} : { input: adopted.input }, ...adopted.inputCapabilitySource === void 0 ? {} : { inputCapabilitySource: adopted.inputCapabilitySource } };
++		}
+ 		/**
+ 		* Render the model list with its fetch action.
+ 		* @param props - the drafted rows, probe target, wire face, and copy.
+@@ -585,6 +641,10 @@ window.__ModuleLoader__.load({
+ 			const patch = (index, next) => {
+ 				onChange(models.map((model, at) => {
+ 					if (at !== index) return model;
++					if ((next.id !== void 0 && next.id !== model.id || next.name !== void 0 && next.name !== model.name && model.inputCapabilitySource === "name") && model.inputCapabilitySource !== void 0) {
++						const { input, inputCapabilitySource, ...rest } = model;
++						model = rest;
++					}
+ 					const cleared = new Set(Object.entries(next).filter(([, value]) => value === void 0 || value === "").map(([key]) => key));
+ 					return Object.fromEntries(Object.entries({
+ 						...model,
+@@ -630,7 +690,7 @@ window.__ModuleLoader__.load({
+ 				const byId = new Map(models.map((model) => [textOf(model, "id"), model]));
+ 				for (const candidate of candidates) {
+ 					if (!picked.has(candidate.id)) continue;
+-					byId.set(candidate.id, byId.get(candidate.id) ?? adopt(candidate));
++					byId.set(candidate.id, mergeDiscoveredModel(byId.get(candidate.id), candidate));
+ 				}
+ 				onChange([...byId.values()]);
+ 				closePicker();
+@@ -788,6 +848,15 @@ window.__ModuleLoader__.load({
  										editCapacity(index, "maxTokens", event.target.value);
  									}
  								})]
@@ -48,27 +119,30 @@ index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..24a8db869bd4f9fea7719e896bb9cbe1
 +								children: [(0, react_jsx_runtime.jsx)("span", {
 +									className: ModelsSection_module_css_default["modelFieldLabel"],
 +									children: t("modelImageInput")
-+								}), (0, react_jsx_runtime.jsx)("input", {
-+									type: "checkbox",
-+									checked: Array.isArray(model.input) && model.input.includes("image"),
-+									"aria-label": `${t("modelImageInput")} ${index + 1}`,
-+									disabled,
-+									onChange: (event) => {
-+										patch(index, { input: event.target.checked ? ["text", "image"] : ["text"] });
-+									}
++								}), (0, react_jsx_runtime.jsx)(ModelInputControl, {
++									model, field: "input", t, disabled,
++									onChange: next => patch(index, next)
 +								})]
  							})]
  						}) : null]
  					}, index)),
-@@ -2659,6 +2694,7 @@ window.__ModuleLoader__.load({
+@@ -2659,6 +2728,15 @@ window.__ModuleLoader__.load({
  			model: "Model",
  			modelId: "Model ID",
  			modelName: "Display name",
 +			modelImageInput: "Accepts image input",
++			modelInputAuto: "Automatic (default)",
++			modelInputForceImage: "Override: text and images",
++			modelInputForceText: "Override: text only",
++			modelInputManual: "Manual override has priority.",
++			modelInputProvider: "Automatically detected: provider metadata",
++			modelInputCatalog: "Automatically detected: installed model catalog",
++			modelInputName: "Name inference: Vision / VL; actual endpoint support may differ.",
++			modelInputUnknown: "Automatic: match the catalog or name; otherwise capability is unconfirmed (text only).",
  			modelNamePlaceholder: "Uses the model ID when empty",
  			contextWindow: "Context window",
  			contextWindowPlaceholder: "Uses the provider default",
-@@ -2676,6 +2712,7 @@ window.__ModuleLoader__.load({
+@@ -2676,6 +2754,7 @@ window.__ModuleLoader__.load({
  			modelNameInvalid: "Display name cannot be empty.",
  			modelContextInvalid: "Context window must be a positive count, like 131072, 256K, or 1M.",
  			modelMaxTokensInvalid: "Max output tokens must be a positive count, like 8192, 64K, or 1M.",
@@ -76,15 +150,23 @@ index ee581769e0dfa8bab57c60ba712ea8b10c9c03e6..24a8db869bd4f9fea7719e896bb9cbe1
  			advancedHint: "Other fields live in settings.yaml; edit that section directly.",
  			modelCapacityInvalid: "A capacity must be a number, optionally suffixed K or M.",
  			modelDuplicate: "Each model ID may appear once.",
-@@ -2761,6 +2798,7 @@ window.__ModuleLoader__.load({
+@@ -2761,6 +2840,15 @@ window.__ModuleLoader__.load({
  			model: "模型",
  			modelId: "模型 ID",
  			modelName: "显示名称",
 +			modelImageInput: "支持图片输入",
++			modelInputAuto: "自动识别（默认）",
++			modelInputForceImage: "手动覆盖：文本和图片",
++			modelInputForceText: "手动覆盖：仅文本",
++			modelInputManual: "已手动指定，优先于自动识别。",
++			modelInputProvider: "自动识别：供应商能力信息",
++			modelInputCatalog: "自动识别：内置模型目录",
++			modelInputName: "名称推断：Vision / VL；以实际接口支持为准。",
++			modelInputUnknown: "自动匹配目录或名称；无法匹配时能力未确认，暂按仅文本处理。",
  			modelNamePlaceholder: "留空时使用模型 ID",
  			contextWindow: "上下文窗口",
  			contextWindowPlaceholder: "使用提供方默认值",
-@@ -2778,6 +2816,7 @@ window.__ModuleLoader__.load({
+@@ -2778,6 +2866,7 @@ window.__ModuleLoader__.load({
  			modelNameInvalid: "显示名称不能为空。",
  			modelContextInvalid: "上下文窗口必须是正数，例如 131072、256K 或 1M。",
  			modelMaxTokensInvalid: "最大输出 token 数必须是正数，例如 8192、64K 或 1M。",
