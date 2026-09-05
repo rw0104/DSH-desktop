@@ -748,14 +748,17 @@ describe('published package surface', () => {
     }
   })
 
-  it('ships explicit native image capability controls in the upstream model settings client', () => {
+  it('ships automatic custom-image detection with advanced override controls', () => {
     const require = createRequire(new URL('package.json', packageRoot))
     const webRequire = createRequire(require.resolve('@deepseek-ai/dsh-web-app/package.json'))
     const settingsModels = readFileSync(webRequire.resolve('@deepseek-ai/dsh-client-ui-settings-models/client'), 'utf8')
 
     expect(settingsModels).toContain('modelImageInput')
     expect(settingsModels).toContain('inputModalities')
-    expect(settingsModels).toContain('patch(index, { input: event.target.checked ? ["text", "image"] : ["text"] })')
+    expect(settingsModels).toContain('ModelInputControl')
+    expect(settingsModels).toContain('modelInputAuto')
+    expect(settingsModels).toContain('onChange: next => patch(index, next)')
+    expect(settingsModels).toContain('inputCapabilitySource')
   })
 
   it('shows native image capability in the upstream model selector', () => {
