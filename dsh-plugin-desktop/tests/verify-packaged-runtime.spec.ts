@@ -110,12 +110,14 @@ describe('packaged desktop runtime verification', () => {
       async (unpackedRoot) => { calls.push(unpackedRoot) },
       async () => { calls.push('materialize'); return {} as never },
       async () => { calls.push('manifest'); return {} as never },
+      () => { calls.push('clients'); return 1 },
     )
 
     expect(calls).toEqual([
       'materialize',
       'static',
       'manifest',
+      'clients',
       resolvePackagedUnpackedRoot(runtimeContext),
     ])
   })

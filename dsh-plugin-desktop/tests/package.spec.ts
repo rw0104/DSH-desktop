@@ -163,6 +163,17 @@ describe('published package surface', () => {
     expect(installedBoot).toContain(marker)
   })
 
+  it('keeps the patched model-selection client bundle syntactically valid', () => {
+    const clientPath = fileURLToPath(new URL(
+      'node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.js',
+      packageRoot,
+    ))
+    expect(() => execFileSync(process.execPath, ['--check', clientPath], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+    })).not.toThrow()
+  })
+
   it('patches the browse panel with the Windows native-picker icon bridge', () => {
     const patchPath = './.yarn/patches/@deepseek-ai-dsh-client-ui-directory-picker-browse-npm-0.1.2-rc.1-2f66bbf842.patch'
     expect(workspaceManifest.resolutions).toMatchObject({

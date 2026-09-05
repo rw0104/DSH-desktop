@@ -1,5 +1,23 @@
 # Upstream synchronization ledger
 
+## 2026-09-04 客户端加载修复前复核
+
+通过 `http://127.0.0.1:10808` 执行三条权威 remote 的 `git ls-remote`（HEAD、默认分支和当前固定 tag）及 `npm view <package> dist-tags --json`：
+
+| 来源 | 本次结果 | 本次处理 |
+| --- | --- | --- |
+| deepseek-ai/deepseek-harness | master `d347e703908d0406b7a7ef80e3a0e594d86b2215`；RC1 tag `a66e4702047846cdaa10c66c9d3df3951f5ea70d`；npm latest/next `0.1.2-rc.1`、alpha `0.1.2-alpha.5` | 保持 RC1 pin，修复 Desktop 自有 Yarn patch |
+| omdsh-dev/DSH-better-sidebar | main `a5c52b3f1bc450b04578bd9252f67b7d79c98502`；v0.18.0 tag `9e1a03452794532cda1f6ac677b72579dff48dfc`；npm latest `0.18.0`、alpha `0.18.0-alpha.0` | 保持正式 0.18.0 |
+| anywhere-labs/deepseek-harness-desktop | master `6f6227363e931acd9971289a8f334d88f1dbc3c9`；v2.0.4 tag `d29bf7a965fc68bf09750bc329905ecb17afe48b` | 只读参考，无 runtime 依赖 |
+
+开发分支均已领先固定版本，本修复不包含对其兼容性的评估或升级。后续迁移须重新审查 Host/Client 合同与打包闭包。
+
+GitHub API `/repos/rw0104/DSH-desktop/releases/tags/v2.1.0` 返回 `prerelease: true`。tag 解引用为 `525351f75e2acd0a483b0350a3e159c41f0335bb`；其安装器 SHA-256 为 `11f9aac795033da393157f7f723e7aa74edcf8acc632abb3fc9055d09ed412b1`。当前候选仍使用产品版本 `2.1.0`，因此必须结合文件名后缀和哈希区分，不能仅凭 About 版本号判断产物。
+
+已定位本次启动失败：提交 `523d152e14` 重写模型选择器 Vision 标签的下游 Yarn patch 时漏掉 `children` 数组，导致 patched `lib/client.js:673` 语法错误。RC1 把它与其他应用插件合并为 classic script，整批解析失败，Loader 随后把首个等待注册的 `dsh-typert-registry` 报为缺失。独立语法回归已先失败后通过；这不是官方原包缺少 Typert 注册，也不是代理故障。
+
+最终验证（2026-09-04）：immutable install 与 root check 均 exit 0；Desktop 91 文件 / 786 passed / 11 skipped，Market 19 文件 / 275 passed。afterPack 新增的客户端门禁验证全部 51 个物理 Web client；Profile smoke 获取的两批真实 HTTP combo 均解析和注册成功。安装器 `DSH-Desktop-2.1.0-x64-Setup-client-loader-fix.exe` 为 224,004,995 bytes，SHA-256 `BF2435CA419B10D26E4EF0B200A6D5BEF5C520629FAB5794E25750ED5B96BCD5`，未签名，未发布/tag。覆盖原 all-users 安装 exit 0；原 desktop Profile 启动记录 `rendererStatus=healthy`，Profile/settings 哈希未变，安装文件与 physical manifest 哈希一致。详见 [候选发布记录](releases/v2.1.0-rc.2.md)。
+
 更新时间：2026-09-03 07:14 -07:00
 
 本文件是 DSH Desktop 每次依赖、侧栏或发布变更前的上游审计入口。它区分“上游源码最新”“npm 最新发布”和“本产品当前经过验证的 pin”，不把未经回归的上游 HEAD 直接塞进安装包。

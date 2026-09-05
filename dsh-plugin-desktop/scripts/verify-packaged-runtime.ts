@@ -7,6 +7,7 @@ import { isAbsolute, join, relative, sep } from 'node:path'
 import { Worker } from 'node:worker_threads'
 import { listPackage } from '@electron/asar'
 import AdmZip from 'adm-zip'
+import { verifyPackagedClientBundles } from './verify-client-bundles.ts'
 import {
   FORBIDDEN_MACOS_UNIVERSAL_ENTRIES,
   MACOS_UNIVERSAL_NATIVE_ENTRIES,
@@ -419,12 +420,14 @@ export async function afterPack(
   smoke: PackagedDiagnosticWorkerSmoke = smokePackagedDiagnosticWorker,
   materialize: typeof materializePhysicalRuntime = materializePhysicalRuntime,
   verifyManifest: typeof verifyPhysicalRuntimeManifest = verifyPhysicalRuntimeManifest,
+  verifyClients: typeof verifyPackagedClientBundles = verifyPackagedClientBundles,
 ): Promise<void> {
   const archivePath = resolvePackagedAsarPath(context)
   const unpackedRoot = resolvePackagedUnpackedRoot(context)
   await materialize(archivePath, unpackedRoot)
   verify(context)
   await verifyManifest(unpackedRoot)
+  verifyClients(unpackedRoot)
   await smoke(unpackedRoot)
 }
 

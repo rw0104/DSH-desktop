@@ -15,6 +15,7 @@ import { installDesktopPnpmRuntime } from '../lib/desktop-runtime-environment.js
 import { installProfilePackageResolver } from '../lib/module-resolution.js'
 import { prepareDesktopProfile } from '../lib/profile.js'
 import { DesktopProfileService } from '../lib/profile-service.js'
+import { verifyClientRegistrations } from './verify-client-bundles.ts'
 
 const BIN_NAME = 'dsh-plugin-desktop-profile-smoke'
 const HOST_SERVICE_PLUGIN_NAME = 'dsh-desktop-host-services-smoke-plugin'
@@ -277,6 +278,12 @@ try {
     throw new Error('assembled Web root is missing window.__DSH_BOOT__')
   }
   const graph = JSON.parse(bootMatch[1])
+  for (const batch of graph.batches) {
+    const bundle = await fetch(new URL(batch.url, expectedUrl))
+    if (bundle.status !== 200) throw new Error(`client batch returned HTTP ${bundle.status}: ${batch.url}`)
+    verifyClientRegistrations(await bundle.text(), batch.entries, batch.url)
+  }
+  console.log(`verify-profile-client-batches: ${graph.batches.length} HTTP batches parsed and registered.`)
   const ids = new Set(graph.entries.map(entry => entry.id))
   for (const id of [
     'dsh-plugin-desktop',
