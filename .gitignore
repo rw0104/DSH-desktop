@@ -20,6 +20,8 @@ dsh-community-market/lib/
 !/docs/local/.gitkeep
 /docs/[0-9][0-9]-*.md
 /docs/20??-??-??_*.md
+/docs/20??-??-??-*.md
+/.tmp-*/
 /docs/evidence/**
 
 .env.yarn

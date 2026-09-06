@@ -48,6 +48,8 @@ jobs:
             product="$(git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" | node scripts/classify-ci-changes.mjs)"
           fi
           echo "product=$product" >> "$GITHUB_OUTPUT"
+      - name: Enforce documentation publication boundary
+        run: node scripts/verify-documentation-boundary.mjs
 
   # Full product gate: build, typecheck, unit tests, and every headless smoke.
   # A documentation-only change already passed diff validation in `changes`.

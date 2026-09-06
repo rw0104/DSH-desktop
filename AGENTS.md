@@ -121,6 +121,12 @@ restricted catalog HTTP client. Before merging or tagging such a change:
 - A GitHub Release may contain only verified versioned deliverables and
   explicitly required release metadata. Local development documents are not
   release artifacts.
+- Run `corepack yarn check:docs` before committing or publishing. The indexed
+  path check also rejects force-added local notes and generated dependency or
+  packaging trees. CI must run this check even for documentation-only changes.
+- Removing a document from the current tree does not erase older Git commits,
+  tags, remote branches, or previously published assets. Report historical
+  exposure explicitly; do not rewrite shared history as routine cleanup.
 
 ## Packaging cache and artifact hygiene
 
@@ -133,3 +139,16 @@ restricted catalog HTTP client. Before merging or tagging such a change:
 - A GitHub Release uploads only the verified versioned installer (and other
   explicitly required release artifacts), never unpacked directories, caches,
   diagnostic profiles, or `.tmp-*` trees.
+- After a verified package is delivered, run `corepack yarn clean:local` to
+  review cleanup and `corepack yarn clean:local -Apply` to keep one newest local
+  installer and remove older artifacts/staging. Use `-AllArtifacts` only when
+  the user requests all test packages removed. Do not prune the last verified
+  installer while a replacement is still unverified.
+- Keep Yarn's shared cache and the machine-level Electron cache reusable. Do
+  not create per-product-version download caches, wipe active node_modules on
+  every release, or treat different workspace dependency versions as duplicates.
+- Standard tests and Host smokes must use `scripts/run-isolated-check.mjs` so
+  `TEMP`, `TMP`, `TMPDIR`, and `DSH_HOME` belong to one disposable run. Normal
+  success/failure must clean that root. Interrupted runs may be reviewed with
+  `clean:local -IncludeLegacyTemp`; never follow directory links into installed
+  dependencies or touch the user's real Harness home during cleanup.
