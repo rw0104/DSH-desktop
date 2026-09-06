@@ -1,5 +1,11 @@
 # Upstream synchronization ledger
 
+## 2026-09-06 2.2.7 本地测试安装器准备
+
+用户请求完整开发文档与可安装的最新测试包。本轮复核：Harness HEAD / `dsh-v0.1.3-alpha.1` 为 `d347e703908d0406b7a7ef80e3a0e594d86b2215`，RC1 tag 为 `a66e4702047846cdaa10c66c9d3df3951f5ea70d`；Sidebar HEAD `2dc2dcf41815cb0cf930b30708564b300645d347`、v0.18.0 tag `9e1a03452794532cda1f6ac677b72579dff48dfc`；参考 Desktop HEAD `91b12fcd60fe85a39c6aa21dcd3056d89d0b69a4`、最新稳定 v2.0.5 tag `423406fe225442995902015cb6f10eed670ff115`。npm CLI latest/next `0.1.2-rc.1`、attachment next `0.1.2-rc.1`（latest 仍为 `0.0.1-rc.2`）、Sidebar latest `0.18.0`、参考 Desktop package latest `2.0.0`。
+
+保持官方 RC1 子模块、发布 family 和 Sidebar 0.18.0；不引入未完成兼容审查的 alpha 或开发分支。下一上游迁移需独立核对 session、attachment、slot 与 sidebar 合同，并单独提交 gitlink。本轮在 `f83318448b` 行为基线上将 Desktop 产品版本更新到 `2.2.7`，构建带 `test-client-experience` 文件名后缀的 Windows x64 NSIS 安装器；不推送、不创建 Release/tag、不自动安装或启动用户客户端。文档和一轮测试工作记录遵守 `docs/local/` 边界。
+
 ## 2026-09-06 保留附件既有交互的回归修正
 
 复核三方远端：Harness HEAD `d347e703908d0406b7a7ef80e3a0e594d86b2215`、RC1 tag `a66e4702047846cdaa10c66c9d3df3951f5ea70d`；Sidebar HEAD 已到 `2dc2dcf41815cb0cf930b30708564b300645d347`，稳定 v0.18.0 tag 仍为 `9e1a03452794532cda1f6ac677b72579dff48dfc`；参考 Desktop HEAD `91b12fcd60fe85a39c6aa21dcd3056d89d0b69a4`、v2.0.5 tag `423406fe225442995902015cb6f10eed670ff115`。npm CLI `latest=0.1.2-rc.1`、Sidebar `0.18.0`；附件 package 的 `latest=0.0.1-rc.2`、`next=0.1.2-rc.1`。继续保持已验证精确版本；Sidebar 新开发提交尚未审计其客户端合同，留到独立同步批次。
