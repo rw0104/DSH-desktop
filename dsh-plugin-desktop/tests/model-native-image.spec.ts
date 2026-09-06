@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import LlmRuntime, { BlockAssembler, createUserMessage, createAssistantMessage, type StreamChunk } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { BlockAssembler, createUserMessage, createAssistantMessage, type StreamChunk, type GenerateOptions } from '@deepseek-ai/dsh-llm'
+import type { ImageProtocol } from '@deepseek-ai/dsh-llm-pi-ai/image-protocols'
 import { AttachmentId, ImageVariantId } from '@deepseek-ai/dsh-attachment'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
@@ -19,7 +20,7 @@ const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGOQyLz0HwA
 const imageRef = { attachmentId: AttachmentId('sha256:' + 'a'.repeat(64)), mediaType: 'image/png' as const, bytes: Buffer.from(PNG, 'base64').length, width: 1, height: 1 }
 const contexts: Context[] = []
 afterEach(async () => { for (const ctx of contexts.splice(0)) await ctx.fiber.dispose(); vi.unstubAllGlobals(); vi.unstubAllEnvs() })
-async function setup(model = 'google/gemini-3.1-flash-image-preview', extra: Record<string, unknown> = {}, route: { provider?: string; api?: string; baseURL?: string } = {}) {
+async function setup(model = 'google/gemini-3.1-flash-image-preview', extra: Record<string, unknown> = {}, route: { provider?: string; api?: string; baseURL?: string; imageGenerationApi?: string; imageResultHosts?: string[] } = {}) {
   const ctx = new Context(); contexts.push(ctx)
   await ctx.plugin(LlmRuntime)
   ctx.provide('credentials', { resolve: vi.fn().mockResolvedValue({ value: 'fixture-key' }), readRecord: async () => undefined, listRecords: async () => [] } as never)
@@ -29,10 +30,10 @@ async function setup(model = 'google/gemini-3.1-flash-image-preview', extra: Rec
     readImage: async () => ({ attachment: imageRef, data: Buffer.from(PNG, 'base64') }),
     readImageRequest: async () => ({ attachment: imageRef, data: Buffer.from(PNG, 'base64'), mediaType: 'image/png', bytes: imageRef.bytes, width: 1, height: 1, variantId: ImageVariantId('sha256:' + 'b'.repeat(64)), depth: 'uchar', space: 'srgb', hasAlpha: true }),
   } as never)
-  await ctx.plugin(PiAi, { providers: { [route.provider ?? 'openrouter']: { apiKeyEnv: 'FIXTURE_KEY', ...(route.api ? { api: route.api } : {}), ...(route.baseURL ? { baseURL: route.baseURL } : {}), models: [{ id: model, ...extra }] } } })
+  await ctx.plugin(PiAi, { providers: { [route.provider ?? 'openrouter']: { apiKeyEnv: 'FIXTURE_KEY', ...(route.api ? { api: route.api } : {}), ...(route.baseURL ? { baseURL: route.baseURL } : {}), ...(route.imageGenerationApi ? { imageGenerationApi: route.imageGenerationApi } : {}), ...(route.imageResultHosts ? { imageResultHosts: route.imageResultHosts } : {}), models: [{ id: model, ...extra }] } } })
   return { ctx, saveImages }
 }
-async function run(ctx: Context, model = 'google/gemini-3.1-flash-image-preview', messages = [createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: '画一张灯塔图片' }] })], provider = 'openrouter') {
+async function run(ctx: Context, model = 'google/gemini-3.1-flash-image-preview', messages: GenerateOptions['messages'] = [createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: '画一张灯塔图片' }] })], provider = 'openrouter') {
   const chunks: StreamChunk[] = []
   for await (const chunk of ctx.llm.stream({ provider, model, messages, tools: [{ name: 'pwsh', description: 'fixture shell', parameters: { type: 'object' } }] })) chunks.push(chunk)
   return chunks
@@ -42,6 +43,87 @@ function imageReply() {
     + '\n\ndata: ' + JSON.stringify({ id: 'native-image', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 3, completion_tokens: 5 } }) + '\n\ndata: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } })
 }
 describe('selected model native image output', () => {
+  it.each(['vendor-a', 'vendor-b'])('reuses the same image protocol for %s with only provider metadata', async provider => {
+    const { ctx, saveImages } = await setup('new-image-model', { output: ['image'] }, { provider, api: 'openai-completions', baseURL: `https://${provider}.invalid/v1`, imageGenerationApi: 'openai-images', imageResultHosts: ['image-cdn.invalid'] })
+    const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(async url => String(url).includes('/images/generations')
+      ? new Response(JSON.stringify({ data: [{ url: 'https://image-cdn.invalid/result.png' }] }), { headers: { 'content-type': 'application/json' } })
+      : new Response(Buffer.from(PNG, 'base64'), { headers: { 'content-type': 'image/png' } }))
+    vi.stubGlobal('fetch', fetch)
+    const chunks = await run(ctx, 'new-image-model', undefined, provider)
+    expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'stop' } })
+    expect(fetch.mock.calls[0]?.[0]).toBe(`https://${provider}.invalid/v1/images/generations`)
+    expect(JSON.parse(fetch.mock.calls[0]?.[1]?.body as string).model).toBe('new-image-model')
+    expect(new Headers(fetch.mock.calls[1]?.[1]?.headers).has('authorization')).toBe(false)
+    expect(saveImages).toHaveBeenCalledTimes(1)
+  })
+  it('keeps text models on their chat route when a provider has an image protocol default', async () => {
+    const { ctx } = await setup('new-chat-model', { output: ['text'] }, { provider: 'vendor-a', api: 'openai-completions', baseURL: 'https://vendor-a.invalid/v1', imageGenerationApi: 'openai-images' })
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 400 })); vi.stubGlobal('fetch', fetch)
+    await run(ctx, 'new-chat-model', undefined, 'vendor-a')
+    expect(String(fetch.mock.calls[0]?.[0])).toBe('https://vendor-a.invalid/v1/chat/completions')
+  })
+  it('uses a registered async adapter without changing the Agent or submitting a second generation', async () => {
+    const unregister = PiAi.registerImageProtocol('fixture-async-images', {
+      prepare: ({ base, model }) => ({ endpoint: `${base}/jobs`, body: { model: model.id } }),
+      normalize: raw => {
+        const record = raw as { id: string; status: 'pending' | 'succeeded'; image?: string }
+        return { job: { id: record.id, status: record.status, retryAfterMs: 1 }, parts: record.image ? [{ type: 'image', data: record.image, mediaType: 'image/png' }] : [] }
+      },
+      poll: (job, { base }) => ({ endpoint: `${base}/jobs/${encodeURIComponent(job.id)}`, method: 'GET' }),
+    } satisfies ImageProtocol)
+    try {
+      const { ctx } = await setup('never-seen-before', { output: ['image'] }, { provider: 'future-vendor', api: 'openai-completions', baseURL: 'https://future-vendor.invalid/v1', imageGenerationApi: 'fixture-async-images' })
+      const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ id: 'job-1', status: 'pending' }), { headers: { 'content-type': 'application/json' } })).mockResolvedValueOnce(new Response(JSON.stringify({ id: 'job-1', status: 'succeeded', image: PNG }), { headers: { 'content-type': 'application/json' } })); vi.stubGlobal('fetch', fetch)
+      const chunks = await run(ctx, 'never-seen-before', undefined, 'future-vendor')
+      expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'stop' } })
+      expect(fetch).toHaveBeenCalledTimes(2)
+      expect(fetch.mock.calls.map(call => call[1]?.method)).toEqual(['POST', 'GET'])
+      expect(fetch.mock.calls[1]?.[0]).toBe('https://future-vendor.invalid/v1/jobs/job-1')
+    } finally { unregister() }
+  })
+  it('rejects unknown protocols explicitly without probing other endpoints', async () => {
+    const { ctx } = await setup('new-image-model', { output: ['image'] }, { provider: 'vendor-a', api: 'openai-completions', baseURL: 'https://vendor-a.invalid/v1', imageGenerationApi: 'missing-protocol' })
+    const fetch = vi.fn(); vi.stubGlobal('fetch', fetch)
+    const chunks = await run(ctx, 'new-image-model', undefined, 'vendor-a')
+    expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'error', failure: { code: 'UNSUPPORTED_PROTOCOL' } } })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+  it('prevents an async adapter from sending the provider credential to another origin', async () => {
+    const unregister = PiAi.registerImageProtocol('fixture-foreign-poll', {
+      prepare: ({ base }) => ({ endpoint: `${base}/jobs`, body: {} }),
+      normalize: () => ({ job: { id: 'job-1', status: 'pending', retryAfterMs: 1 } }),
+      poll: () => ({ endpoint: 'https://other-vendor.invalid/jobs/job-1', method: 'GET' }),
+    } satisfies ImageProtocol)
+    try {
+      const { ctx } = await setup('new-image-model', { output: ['image'] }, { provider: 'vendor-a', api: 'openai-completions', baseURL: 'https://vendor-a.invalid/v1', imageGenerationApi: 'fixture-foreign-poll' })
+      const fetch = vi.fn().mockResolvedValue(new Response('{}', { headers: { 'content-type': 'application/json' } })); vi.stubGlobal('fetch', fetch)
+      const chunks = await run(ctx, 'new-image-model', undefined, 'vendor-a')
+      expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'error', failure: { code: 'UNSUPPORTED_PROTOCOL' } } })
+      expect(fetch).toHaveBeenCalledTimes(1)
+    } finally { unregister() }
+  })
+  it('stops a pending async image task on cancellation without submitting or polling again', async () => {
+    const controller = new AbortController()
+    const unregister = PiAi.registerImageProtocol('fixture-cancel-job', {
+      prepare: ({ base }) => ({ endpoint: `${base}/jobs`, body: {} }),
+      normalize: () => { controller.abort(); return { job: { id: 'job-1', status: 'pending' } } },
+      poll: (job, { base }) => ({ endpoint: `${base}/jobs/${job.id}`, method: 'GET' }),
+    } satisfies ImageProtocol)
+    try {
+      const { ctx } = await setup('new-image-model', { output: ['image'] }, { provider: 'vendor-a', api: 'openai-completions', baseURL: 'https://vendor-a.invalid/v1', imageGenerationApi: 'fixture-cancel-job' })
+      const fetch = vi.fn().mockResolvedValue(new Response('{}', { headers: { 'content-type': 'application/json' } })); vi.stubGlobal('fetch', fetch)
+      const chunks: StreamChunk[] = []
+      for await (const chunk of ctx.llm.stream({ provider: 'vendor-a', model: 'new-image-model', messages: [createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'Draw a cat.' }] })], tools: [], signal: controller.signal })) chunks.push(chunk)
+      expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'aborted' } })
+      expect(fetch).toHaveBeenCalledTimes(1)
+    } finally { unregister() }
+  })
+  it('uses the registered Alibaba protocol for future image models declared by its catalog', async () => {
+    const { ctx } = await setup('future-image-model', { output: ['image'] }, { provider: 'aliyun', api: 'openai-completions', baseURL: 'https://llm-fixture.cn-beijing.maas.aliyuncs.com/compatible-mode/v1' })
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 'InvalidParameter', message: 'fixture rejection' }), { status: 400, headers: { 'content-type': 'application/json' } })); vi.stubGlobal('fetch', fetch)
+    await run(ctx, 'future-image-model', undefined, 'aliyun')
+    expect(fetch.mock.calls[0]?.[0]).toBe('https://llm-fixture.cn-beijing.maas.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation')
+  })
   it('routes a manually added Aliyun Qwen image model to the same workspace native API and saves its signed result URL', async () => {
     const baseURL = 'https://llm-fixture.cn-beijing.maas.aliyuncs.com/compatible-mode/v1'
     const imageURL = 'https://dashscope-result-sh.oss-cn-shanghai.aliyuncs.com/image.png?Expires=fixture'

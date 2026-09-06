@@ -36,8 +36,102 @@ index 0000000000000000000000000000000000000000..fe0f04c446550bf622d0c9954f4b321d
 +    : options.messages.slice(0, i).findLast(m => m.role === 'assistant' && m.content.some(b => b.type === 'image'));
 +  return { ...options, messages: [...(previous ? [{ ...previous, content: previous.content.filter(b => b.type === 'image') }] : []), current] };
 +}
+diff --git a/lib/image-protocols.js b/lib/image-protocols.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..601437d54069fe710d854fea56f5263e8719b5ab
+--- /dev/null
++++ b/lib/image-protocols.js
+@@ -0,0 +1,88 @@
++import { LlmError } from '@deepseek-ai/dsh-llm';
++import { aliyunImageTurn, aliyunImageURL, isAliyunImageEndpoint } from './aliyun-image.js';
++
++// Protocol adapters only describe requests and normalize responses. The shared runner owns
++// credentials, network calls, polling, cancellation, bounds, validation and persistence.
++const protocols = new Map();
++export function registerImageProtocol(id, adapter) {
++  if (!/^[a-z][a-z0-9-]{1,79}$/.test(id) || !adapter || typeof adapter.prepare !== 'function' || typeof adapter.normalize !== 'function')
++    throw new TypeError('An image protocol needs a stable ID, prepare() and normalize().');
++  if (protocols.has(id)) throw new Error(`Image protocol "${id}" is already registered.`);
++  const frozen = Object.freeze({ ...adapter }); protocols.set(id, frozen);
++  return () => { if (protocols.get(id) === frozen) protocols.delete(id); };
++}
++export function getImageProtocol(id) {
++  const adapter = protocols.get(id);
++  if (!adapter) throw new LlmError(`Image protocol "${id}" is not installed for the selected provider.`, 'UNSUPPORTED_PROTOCOL');
++  return adapter;
++}
++export function imageProtocolIds() { return [...protocols.keys()]; }
++
++/** Shared wire shapes used by OpenAI-compatible, Google, Responses and DashScope providers. */
++export function normalizeImageRecord(record) {
++  if (record.error || (record.code && !record.output)) {
++    const error = record.error ?? record;
++    throw new LlmError(String(error.message ?? 'Image generation failed.').slice(0, 2000), 'PROVIDER_ERROR');
++  }
++  const result = { parts: [], done: Boolean(record.done) };
++  const text = value => { if (typeof value === 'string' && value) result.parts.push({ type: 'text', text: value }); };
++  const url = value => result.parts.push({ type: 'image', url: value });
++  const bytes = (data, mediaType) => result.parts.push({ type: 'image', data, mediaType });
++  const usage = record.usage ?? record.response?.usage;
++  if (usage) result.usage = { inputTokens: usage.prompt_tokens ?? usage.input_tokens ?? 0, outputTokens: usage.completion_tokens ?? usage.output_tokens ?? 0 };
++  for (const choice of record.choices ?? []) {
++    const delta = choice.delta ?? choice.message ?? {};
++    if (typeof delta.content === 'string') text(delta.content);
++    else for (const part of delta.content ?? []) { if (part.type === 'text') text(part.text); else if (part.type === 'image_url') url(typeof part.image_url === 'string' ? part.image_url : part.image_url?.url); }
++    for (const part of delta.images ?? []) url(typeof part.image_url === 'string' ? part.image_url : part.image_url?.url);
++    if (choice.finish_reason) result.done = true;
++    if (choice.finish_reason === 'length') result.finishReason = 'max-tokens';
++  }
++  for (const item of record.data ?? []) if (item.b64_json) bytes(item.b64_json, item.media_type); else if (item.url) url(item.url);
++  for (const candidate of record.candidates ?? []) {
++    for (const part of candidate.content?.parts ?? []) { if (!part.thought) text(part.text); if (part.inlineData) bytes(part.inlineData.data, part.inlineData.mimeType); }
++    if (candidate.finishReason) result.done = true;
++    if (candidate.finishReason === 'MAX_TOKENS') result.finishReason = 'max-tokens';
++  }
++  if (record.usageMetadata) result.usage = { inputTokens: record.usageMetadata.promptTokenCount ?? 0, outputTokens: (record.usageMetadata.candidatesTokenCount ?? 0) + (record.usageMetadata.thoughtsTokenCount ?? 0) };
++  if (record.type === 'response.output_text.delta') text(record.delta);
++  if (record.type === 'response.output_item.done' && record.item?.type === 'image_generation_call' && record.item.result) bytes(record.item.result);
++  if (record.type === 'response.completed') { result.done = true; for (const item of record.response?.output ?? []) if (item.type === 'image_generation_call' && item.result) bytes(item.result); }
++  if (record.type === 'image_generation.completed') { result.done = true; if (record.b64_json) bytes(record.b64_json, record.media_type); }
++  for (const choice of record.output?.choices ?? []) for (const part of choice.message?.content ?? []) { if (part.image) url(part.image); text(part.text); }
++  return result;
++}
++const standard = { normalize: normalizeImageRecord };
++registerImageProtocol('chat-completions', { ...standard, prepare({ options, model, base, messages }) {
++  return { endpoint: `${base}/chat/completions`, body: { model: model.id, messages: [...(options.system ? [{ role: 'system', content: options.system }] : []), ...messages], stream: true,
++    modalities: model.outputModalities, ...(options.maxTokens === undefined ? {} : { max_tokens: options.maxTokens }), ...(options.temperature === undefined ? {} : { temperature: options.temperature }) } };
++} });
++registerImageProtocol('google-generative-ai', { ...standard, credentialHeader: 'x-goog-api-key', prepare({ options, model, base, messages, inline }) {
++  return { endpoint: `${base}/models/${encodeURIComponent(model.id)}:generateContent`, body: { contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: m.content.map(p => p.type === 'text' ? { text: p.text } : (() => { const image = inline(p.image_url.url); return { inlineData: { data: image.data.toString('base64'), mimeType: image.mediaType } } })()) })),
++    generationConfig: { responseModalities: model.outputModalities.map(x => x.toUpperCase()) }, ...(options.system ? { systemInstruction: { parts: [{ text: options.system }] } } : {}) } };
++} });
++function imagesRequest({ model, base, messages, inline }, openrouter) {
++  const prompt = messages.map(m => m.content.filter(p => p.type === 'text').map(p => p.text).join('\n')).filter(Boolean).join('\n\n');
++  const references = messages.flatMap(m => m.content.filter(p => p.type === 'image_url'));
++  if (references.length && !openrouter) {
++    const body = new FormData(); body.set('model', model.id); body.set('prompt', prompt);
++    references.forEach((ref, i) => { const image = inline(ref.image_url.url); body.append(references.length === 1 ? 'image' : 'image[]', new Blob([image.data], { type: image.mediaType }), `reference-${i + 1}.${image.mediaType.slice(6)}`); });
++    return { endpoint: `${base}/images/edits`, body };
++  }
++  return { endpoint: `${base}/${openrouter ? 'images' : 'images/generations'}`, body: { model: model.id, prompt, ...(references.length ? { input_references: references } : {}), ...(/^dall-e-[23]$/.test(model.id) ? { response_format: 'b64_json' } : {}) } };
++}
++registerImageProtocol('openai-images', { ...standard, prepare: ctx => imagesRequest(ctx, false) });
++registerImageProtocol('openrouter-images', { ...standard, prepare: ctx => imagesRequest(ctx, true) });
++registerImageProtocol('openai-responses', { ...standard, prepare({ options, model, base, messages }) {
++  return { endpoint: `${base}/responses`, body: { model: model.id, input: messages.map(m => m.role === 'assistant' ? { role: 'assistant', content: m.content.map(p => p.text ?? '').join('\n') } : { role: 'user', content: m.content.map(p => p.type === 'text' ? { type: 'input_text', text: p.text } : { type: 'input_image', image_url: p.image_url.url }) }),
++    ...(options.system ? { instructions: options.system } : {}), tools: [{ type: 'image_generation' }], stream: true } };
++} });
++registerImageProtocol('dashscope-images', { ...standard, history: aliyunImageTurn, inputMaxBytes: 10 * 1024 * 1024, assetURLAllowed: aliyunImageURL, prepare({ options, model, base, messages }) {
++  if (!isAliyunImageEndpoint(base)) throw new LlmError('The selected DashScope image endpoint is not a documented Alibaba workspace URL.', 'UNSUPPORTED_PROTOCOL');
++  const prompt = options.messages.at(-1)?.content.filter(p => p.type === 'text').map(p => p.text).join('\n');
++  if (!prompt) throw new LlmError('An image prompt is required.', 'INVALID_REQUEST');
++  const references = messages.flatMap(m => m.content.filter(p => p.type === 'image_url'));
++  if (references.length > 3) throw new LlmError('This image model accepts at most three reference images.', 'TOO_MANY_IMAGES');
++  return { endpoint: new URL('/api/v1/services/aigc/multimodal-generation/generation', base).href,
++    body: { model: model.id, input: { messages: [{ role: 'user', content: [...references.map(p => ({ image: p.image_url.url })), { text: prompt }] }] } } };
++} });
 diff --git a/lib/index.js b/lib/index.js
-index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b7472d47c2de 100644
+index c25e5c7afcd9381dec2490fbff24910f173281d0..97a2b17895f04f578f0d882cda46144e8b862f3d 100644
 --- a/lib/index.js
 +++ b/lib/index.js
 @@ -1,4 +1,7 @@
@@ -53,7 +147,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  			provider,
  			baseUrl,
 -			input: declaredInput(entry.input) ?? base?.input ?? [...request.defaultInput],
-+			...detectModelOutput(entry, { provider, api, baseURL: baseUrl }),
++			...detectModelOutput(entry, { provider, api, baseURL: baseUrl, imageGenerationApi: request.imageGenerationApi }),
 +			input: declaredInput(entry.input) ?? base?.input ?? detectModelInput(entry, { provider, api, baseURL: baseUrl }).inputModalities ?? [...request.defaultInput],
  			cost: base?.cost ?? NO_COST,
  			contextWindow,
@@ -63,13 +157,30 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  	maxTokens: z.number().step(1).min(1),
  	input: z.array(z.union(MODALITIES)),
 +	output: z.array(z.union(MODALITIES)),
-+	imageGenerationApi: z.union(IMAGE_APIS),
++	imageGenerationApi: z.string(),
 +	supportsTools: z.boolean(),
 +	inputCapabilitySource: z.union(["provider", "catalog", "name", "unknown"]),
  	reasoningEfforts: z.union([z.const(false), reasoningEfforts]),
  	compat: compatProfile
  };
-@@ -1057,6 +1065,7 @@ function resolveProfiles(providers) {
+@@ -940,6 +948,8 @@ const modelProfile = z.object({
+ /** A {@link modelProfile} whose id lives in the `modelOverrides` dict key. */
+ const modelOverride = z.object(modelFields);
+ const profile = z.object({
++	imageGenerationApi: z.string().description("Default image protocol for models declaring image output; leaves chat models unchanged."),
++	imageResultHosts: z.array(z.string()).description("Reviewed image result storage hostnames for this provider."),
+ 	apiKeyEnv: z.string().role("credential-ref"),
+ 	displayName: z.string(),
+ 	api: z.union(supportedProtocols()),
+@@ -1034,6 +1044,7 @@ function resolveProfiles(providers) {
+ 		const displayName = source.displayName ?? provider;
+ 		const catalog = resolveRouteModels({
+ 			provider,
++			imageGenerationApi: source.imageGenerationApi,
+ 			...source.api === void 0 ? {} : { api: source.api },
+ 			...source.baseURL === void 0 ? {} : { baseURL: source.baseURL },
+ 			...source.models === void 0 ? {} : { models: source.models },
+@@ -1057,6 +1068,7 @@ function resolveProfiles(providers) {
  			...rest.headers === void 0 ? {} : { headers: { ...rest.headers } },
  			...rest.thinkingBudgets === void 0 ? {} : { thinkingBudgets: { ...rest.thinkingBudgets } },
  			configuredMaxTokens: catalog.configuredMaxTokens,
@@ -77,7 +188,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  			piProvider: buildProvider({
  				provider,
  				displayName,
-@@ -1289,6 +1298,7 @@ function mapUsage(usage) {
+@@ -1289,6 +1301,7 @@ function mapUsage(usage) {
  	};
  }
  function classifyPiAiError(message) {
@@ -85,7 +196,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  	if (/\b(?:401|403)\b/.test(message)) return "AUTH";
  	if (isQuotaExceededError(message)) return QUOTA_EXCEEDED_CODE;
  	if (/\b429\b|rate.?limit/i.test(message)) return "RATE_LIMIT";
-@@ -1311,7 +1321,9 @@ function classifyPiAiError(message) {
+@@ -1311,7 +1324,9 @@ function classifyPiAiError(message) {
  *   to non-retryable `PI_AI_ERROR` failures.
  */
  function mapStopReason(message, contextWindow) {
@@ -96,7 +207,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  	const harnessOverflow = message.stopReason === "error" && message.errorMessage !== void 0 && isContextWindowExceededError(message.errorMessage);
  	if (piAiOverflow || harnessOverflow) return {
  		kind: "error",
-@@ -1376,10 +1388,18 @@ function mapStopReason(message, contextWindow) {
+@@ -1376,10 +1391,18 @@ function mapStopReason(message, contextWindow) {
  * @returns the harness chunks, ending with `usage` then `finish`; throws
  *   `LlmError` (`STREAM_CLOSED`) if the source ends without a terminal event.
  */
@@ -116,7 +227,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  		case "text_start":
  			yield {
  				type: "block-start",
-@@ -1474,7 +1494,7 @@ async function* toStreamChunks(events, contextWindow, callerSignal) {
+@@ -1474,7 +1497,7 @@ async function* toStreamChunks(events, contextWindow, callerSignal) {
  			yield {
  				type: "finish",
  				reason: mapStopReason(event.message, contextWindow),
@@ -125,7 +236,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  			};
  			return;
  		case "error":
-@@ -1711,7 +1731,8 @@ var PiAiAdapter = class extends LlmAdapter {
+@@ -1711,7 +1734,8 @@ var PiAiAdapter = class extends LlmAdapter {
  				provider,
  				id: model.id,
  				name: model.name,
@@ -135,7 +246,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  			}));
  		});
  	}
-@@ -1731,6 +1752,7 @@ var PiAiAdapter = class extends LlmAdapter {
+@@ -1731,6 +1755,7 @@ var PiAiAdapter = class extends LlmAdapter {
  			id: model,
  			name: resolvedModel.name,
  			inputModalities: [...resolvedModel.input],
@@ -143,7 +254,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  			context: { contextWindow: resolvedModel.contextWindow },
  			...configuredMaxTokens === void 0 ? {} : { defaultMaxTokens: configuredMaxTokens },
  			...reasoningInfo(resolvedModel, defaultLevel)
-@@ -1756,6 +1778,13 @@ var PiAiAdapter = class extends LlmAdapter {
+@@ -1756,6 +1781,13 @@ var PiAiAdapter = class extends LlmAdapter {
  			if (options.stop !== void 0) throw new LlmError("llm-pi-ai does not support GenerateOptions.stop", "UNSUPPORTED_OPTION");
  			const profile = this.profileOf(snapshot, options.provider);
  			const model = this.modelOf(snapshot, options.provider, options.model);
@@ -157,7 +268,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  			const reasoning = resolveReasoningLevel(model, options.reasoningEffort ?? profile.reasoning);
  			const apiKey = await this.config.resolveApiKey(options.provider, profile);
  			const consumer = new AbortController();
-@@ -1793,7 +1822,7 @@ var PiAiAdapter = class extends LlmAdapter {
+@@ -1793,7 +1825,7 @@ var PiAiAdapter = class extends LlmAdapter {
  					...options.sessionId === void 0 ? {} : { sessionId: String(options.sessionId) },
  					signal: watchdog.signal,
  					headers: requestHeaders(profile.headers)
@@ -166,7 +277,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  				let exhausted = false;
  				try {
  					while (true) {
-@@ -2068,7 +2097,8 @@ function label(...candidates) {
+@@ -2068,7 +2100,8 @@ function label(...candidates) {
  * them to `URL` resolution.
  */
  function listingUrl(baseURL) {
@@ -176,7 +287,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  }
  /**
  * Read a reply body, refusing one that outgrows the ceiling. A declared length
-@@ -2113,7 +2143,7 @@ async function readBounded(response, url) {
+@@ -2113,7 +2146,7 @@ async function readBounded(response, url) {
  * skipped rather than failing the whole interrogation: a single malformed row
  * should not deny the user the rest of a working endpoint's catalog.
  */
@@ -185,7 +296,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  	const data = body?.data;
  	if (!Array.isArray(data)) throw new LlmError("the endpoint's model listing has no \"data\" array; enter this provider's models by hand", "DISCOVERY_FAILED");
  	const models = [];
-@@ -2126,6 +2156,8 @@ function readListing(body) {
+@@ -2126,6 +2159,8 @@ function readListing(body) {
  		const maxTokens = capacity(entry?.max_output_tokens, entry?.max_tokens);
  		models.push({
  			id,
@@ -194,7 +305,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  			...name === void 0 ? {} : { name },
  			...contextWindow === void 0 ? {} : { contextWindow },
  			...maxTokens === void 0 ? {} : { maxTokens }
-@@ -2157,10 +2189,15 @@ function usableProbeKey(raw) {
+@@ -2157,10 +2192,15 @@ function usableProbeKey(raw) {
  *   refuses or fails the request, or the reply is not a model listing.
  */
  async function discoverModels(request, storedProfile) {
@@ -212,7 +323,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  			name: model.name,
  			contextWindow: model.contextWindow,
  			maxTokens: model.maxTokens
-@@ -2202,7 +2239,7 @@ async function discoverModels(request, storedProfile) {
+@@ -2202,7 +2242,7 @@ async function discoverModels(request, storedProfile) {
  	} catch (error) {
  		throw new LlmError(`${url} did not answer with JSON`, "DISCOVERY_FAILED", { cause: error });
  	}
@@ -221,7 +332,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  }
  //#endregion
  //#region lib/types/login.js
-@@ -2518,7 +2555,12 @@ function apply(ctx, config) {
+@@ -2518,7 +2558,12 @@ function apply(ctx, config) {
  		if (profile === void 0) return void 0;
  		return {
  			headers: profile.headers,
@@ -235,6 +346,12 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b747
  		};
  	};
  	ctx.llm.registerModelDiscovery(NS, (request, signal) => discoverModels({
+@@ -2566,3 +2611,5 @@ function apply(ctx, config) {
+ }
+ //#endregion
+ export { Config, PiAiAdapter, apply, inject, name, recordKeyFor, supportedProtocols };
++
++export { registerImageProtocol, getImageProtocol, imageProtocolIds, normalizeImageRecord } from "./image-protocols.js";
 diff --git a/lib/model-input.js b/lib/model-input.js
 new file mode 100644
 index 0000000000000000000000000000000000000000..ece3424fc4bd5f1aef20f133481a322e2ffc9871
@@ -835,14 +952,15 @@ index 0000000000000000000000000000000000000000..66c558f97b32e773609260e1dac2b462
 +};
 diff --git a/lib/model-output.js b/lib/model-output.js
 new file mode 100644
-index 0000000000000000000000000000000000000000..f365bd642f452bb7941c36d3660ae3bc95d877d8
+index 0000000000000000000000000000000000000000..7e26007411489b076ee42a3bb354b97ab497fe25
 --- /dev/null
 +++ b/lib/model-output.js
-@@ -0,0 +1,36 @@
+@@ -0,0 +1,38 @@
 +import catalog from './model-output-catalog.js';
-+import { aliyunImageModel } from './aliyun-image.js';
++import { imageProtocolIds } from './image-protocols.js';
++import { aliyunImageModel, isAliyunImageEndpoint } from './aliyun-image.js';
 +
-+export const IMAGE_APIS = ['chat-completions', 'openrouter-images', 'openai-images', 'google-generative-ai', 'openai-responses', 'dashscope-images'];
++export const IMAGE_APIS = imageProtocolIds();
 +function modalities(value) {
 +  if (!Array.isArray(value) || value.length === 0 || value.some(item => typeof item !== 'string')) return;
 +  const result = ['text', 'image'].filter(item => value.includes(item));
@@ -860,12 +978,13 @@ index 0000000000000000000000000000000000000000..f365bd642f452bb7941c36d3660ae3bc
 +  if (normalized.some(value => value === undefined) || normalized.some(value => JSON.stringify(value) !== JSON.stringify(normalized[0]))) return {};
 +  const known = aliyunImageModel(entry.id, route) ?? catalog[entry.id] ?? (route.api === 'google-generative-ai' ? catalog['google/' + entry.id] : undefined)
 +    ?? (route.provider === 'openai' ? catalog['openai/' + entry.id] : undefined);
-+  const output = normalized[0] ?? known?.outputModalities;
++  const output = normalized[0] ?? known?.outputModalities ?? (entry.imageGenerationApi ? ['image'] : undefined);
 +  if (!output) return {};
 +  const result = { outputModalities: [...output] };
 +  if (!output.includes('image')) return result;
-+  if (IMAGE_APIS.includes(entry.imageGenerationApi)) result.imageGenerationApi = entry.imageGenerationApi;
-+  else if (known?.imageGenerationApi === 'dashscope-images') result.imageGenerationApi = 'dashscope-images';
++  if (entry.imageGenerationApi) result.imageGenerationApi = entry.imageGenerationApi;
++  else if (route.imageGenerationApi) result.imageGenerationApi = route.imageGenerationApi;
++  else if (isAliyunImageEndpoint(route.baseURL)) result.imageGenerationApi = 'dashscope-images';
 +  else if (route.api === 'google-generative-ai') result.imageGenerationApi = 'google-generative-ai';
 +  else if ((route.provider === 'openrouter' || isOpenRouterEndpoint(route.baseURL)) && !output.includes('text')) result.imageGenerationApi = 'openrouter-images';
 +  else if (route.provider === 'openai' && !output.includes('text')) result.imageGenerationApi = 'openai-images';
@@ -877,12 +996,13 @@ index 0000000000000000000000000000000000000000..f365bd642f452bb7941c36d3660ae3bc
 +}
 diff --git a/lib/native-image.js b/lib/native-image.js
 new file mode 100644
-index 0000000000000000000000000000000000000000..b043df67210a628cdf3a9a71177a287390aaa612
+index 0000000000000000000000000000000000000000..9f39f0f3e7f575273f6f5f24c8cee78305e71383
 --- /dev/null
 +++ b/lib/native-image.js
-@@ -0,0 +1,259 @@
+@@ -0,0 +1,233 @@
 +import { LlmError, attributionHeaders } from '@deepseek-ai/dsh-llm';
-+import { aliyunImageURL, aliyunImageTurn, isAliyunImageEndpoint } from './aliyun-image.js';
++import { getImageProtocol } from './image-protocols.js';
++import { setTimeout as delay } from 'node:timers/promises';
 +
 +const MAX_BODY = 64 * 1024 * 1024;
 +const MAX_IMAGE = 20 * 1024 * 1024;
@@ -950,9 +1070,13 @@ index 0000000000000000000000000000000000000000..b043df67210a628cdf3a9a71177a2873
 +  if (!ref) throw new LlmError('Generated image could not be persisted.', 'INVALID_IMAGE');
 +  return ref;
 +}
-+/** Download only documented DashScope result storage; never forward the API credential. */
-+async function aliyunResult(url, signal) {
-+  if (!aliyunImageURL(url)) throw new LlmError('The image model returned an unsupported result host.', 'UNSUPPORTED_IMAGE_RESPONSE');
++/** Shared result download boundary: declared storage hosts only, no credentials or redirects. */
++async function downloadImage(url, signal, protocol, context) {
++  let target;
++  try { target = new URL(url); } catch { throw new LlmError('The image model returned an invalid result URL.', 'UNSUPPORTED_IMAGE_RESPONSE'); }
++  const allowed = protocol.assetURLAllowed ? protocol.assetURLAllowed(url, context)
++    : target.origin === new URL(context.base).origin || context.profile.imageResultHosts?.includes(target.hostname);
++  if (target.protocol !== 'https:' || target.username || target.password || target.port || target.hash || !allowed) throw new LlmError('The image model returned an unsupported result host.', 'UNSUPPORTED_IMAGE_RESPONSE');
 +  const response = await fetch(url, { method: 'GET', headers: { accept: 'image/png,image/jpeg,image/webp,image/gif' }, redirect: 'error', credentials: 'omit', signal });
 +  const reader = response.body?.getReader();
 +  if (!reader) throw new LlmError('Generated image download returned no body.', 'EMPTY_RESPONSE');
@@ -1024,6 +1148,7 @@ index 0000000000000000000000000000000000000000..b043df67210a628cdf3a9a71177a2873
 +/** One native model request through its existing provider/auth snapshot. No tools, extra provider or route settings. */
 +export async function* streamNativeImage(options, model, profile, models, attachments, explicitKey) {
 +  if (!attachments?.saveImages) throw new LlmError('Image output requires the existing attachment store.', 'UNSUPPORTED_CONTENT');
++  const protocol = getImageProtocol(model.imageGenerationApi);
 +  const deadline = AbortSignal.timeout(profile.timeoutMs ?? profile.streamIdleTimeoutMs ?? 300000);
 +  const signal = AbortSignal.any([...(options.signal ? [options.signal] : []), deadline]);
 +  try {
@@ -1033,45 +1158,21 @@ index 0000000000000000000000000000000000000000..b043df67210a628cdf3a9a71177a2873
 +    const key = explicitKey ?? resolved?.auth.apiKey;
 +    const base = (resolved?.auth.baseUrl ?? model.baseUrl).replace(/\/+$/, '');
 +    const headers = new Headers({ ...model.headers, ...resolved?.auth.headers, ...profile.headers, ...attributionHeaders(), 'content-type': 'application/json' });
-+    if (key) headers.set(model.imageGenerationApi === 'google-generative-ai' ? 'x-goog-api-key' : 'authorization', model.imageGenerationApi === 'google-generative-ai' ? key : `Bearer ${key}`);
++    if (key) headers.set(protocol.credentialHeader ?? 'authorization', protocol.credentialHeader ? key : `Bearer ${key}`);
 +    if (!key && !headers.has('authorization')) throw new LlmError('The selected provider has no configured credential.', 'MISSING_CREDENTIAL');
-+    const imageOptions = model.imageGenerationApi === 'dashscope-images' ? aliyunImageTurn(options) : options;
-+    const imageProfile = model.imageGenerationApi === 'dashscope-images' ? { ...profile, requestImageMaxBytes: Math.min(profile.requestImageMaxBytes ?? 10 * 1024 * 1024, 10 * 1024 * 1024) } : profile;
++    const imageOptions = protocol.history?.(options) ?? options;
++    const imageProfile = protocol.inputMaxBytes ? { ...profile, requestImageMaxBytes: Math.min(profile.requestImageMaxBytes ?? protocol.inputMaxBytes, protocol.inputMaxBytes) } : profile;
 +    const messages = await messagesFor(imageOptions, attachments, imageProfile, signal);
-+    let endpoint, body;
-+    if (model.imageGenerationApi === 'dashscope-images') {
-+      if (!isAliyunImageEndpoint(base)) throw new LlmError('The selected DashScope image endpoint is not a documented Alibaba workspace URL.', 'UNSUPPORTED_PROTOCOL');
-+      endpoint = new URL('/api/v1/services/aigc/multimodal-generation/generation', base).href;
-+      const prompt = imageOptions.messages.at(-1)?.content.filter(p => p.type === 'text').map(p => p.text).join('\n');
-+      if (!prompt) throw new LlmError('An image prompt is required.', 'INVALID_REQUEST');
-+      const references = messages.flatMap(m => m.content.filter(p => p.type === 'image_url'));
-+      if (references.length > 3) throw new LlmError('This image model accepts at most three reference images.', 'TOO_MANY_IMAGES');
-+      body = { model: model.id, input: { messages: [{ role: 'user', content: [...references.map(p => ({ image: p.image_url.url })), { text: prompt }] }] } };
-+    } else if (model.imageGenerationApi === 'google-generative-ai') {
-+      endpoint = `${base}/models/${encodeURIComponent(model.id)}:generateContent`;
-+      body = { contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: m.content.map(p => p.type === 'text' ? { text: p.text } : (() => { const image = inline(p.image_url.url); return { inlineData: { data: image.data.toString('base64'), mimeType: image.mediaType } } })()) })),
-+        generationConfig: { responseModalities: model.outputModalities.map(x => x.toUpperCase()) },
-+        ...(options.system ? { systemInstruction: { parts: [{ text: options.system }] } } : {}) };
-+    } else if (model.imageGenerationApi === 'openrouter-images' || model.imageGenerationApi === 'openai-images') {
-+      endpoint = `${base}/${model.imageGenerationApi === 'openrouter-images' ? 'images' : 'images/generations'}`;
-+      const prompt = messages.map(m => m.content.filter(p => p.type === 'text').map(p => p.text).join('\n')).filter(Boolean).join('\n\n');
-+      const references = messages.flatMap(m => m.content.filter(p => p.type === 'image_url'));
-+      if (references.length && model.imageGenerationApi === 'openai-images') {
-+        endpoint = `${base}/images/edits`;
-+        body = new FormData(); body.set('model', model.id); body.set('prompt', prompt);
-+        references.forEach((ref, index) => { const image = inline(ref.image_url.url); body.append(references.length === 1 ? 'image' : 'image[]', new Blob([image.data], { type: image.mediaType }), `reference-${index + 1}.${image.mediaType.slice(6)}`); });
-+        headers.delete('content-type');
-+      } else body = { model: model.id, prompt, ...(references.length ? { input_references: references } : {}), ...(/^dall-e-[23]$/.test(model.id) ? { response_format: 'b64_json' } : {}) };
-+    } else if (model.imageGenerationApi === 'openai-responses') {
-+      endpoint = `${base}/responses`;
-+      body = { model: model.id, input: messages.map(m => m.role === 'assistant' ? { role: 'assistant', content: m.content.map(p => p.text ?? '').join('\n') } : { role: 'user', content: m.content.map(p => p.type === 'text' ? { type: 'input_text', text: p.text } : { type: 'input_image', image_url: p.image_url.url }) }),
-+        ...(options.system ? { instructions: options.system } : {}), tools: [{ type: 'image_generation' }], stream: true };
-+    } else if (model.imageGenerationApi === 'chat-completions') {
-+      endpoint = `${base}/chat/completions`;
-+      body = { model: model.id, messages: [...(options.system ? [{ role: 'system', content: options.system }] : []), ...messages], stream: true,
-+        modalities: model.outputModalities, ...(options.maxTokens === undefined ? {} : { max_tokens: options.maxTokens }), ...(options.temperature === undefined ? {} : { temperature: options.temperature }) };
-+    } else throw new LlmError(`Image output protocol is not supported for the selected model "${model.id}".`, 'UNSUPPORTED_PROTOCOL');
-+    const response = await fetch(endpoint, { method: 'POST', headers, body: body instanceof FormData ? body : JSON.stringify(body), redirect: 'error', signal });
++    const context = { options: imageOptions, model, profile, base, messages, inline };
++    const request = await protocol.prepare(context);
++    const perform = async spec => {
++      const target = new URL(spec.endpoint, base);
++      if (target.origin !== new URL(base).origin || target.username || target.password) throw new LlmError('Image protocol attempted to leave the selected provider endpoint.', 'UNSUPPORTED_PROTOCOL');
++      const requestHeaders = new Headers(headers);
++      if (spec.body instanceof FormData) requestHeaders.delete('content-type');
++      return fetch(target.href, { method: spec.method ?? 'POST', headers: requestHeaders, ...(spec.body === undefined ? {} : { body: spec.body instanceof FormData ? spec.body : JSON.stringify(spec.body) }), redirect: 'error', signal });
++    };
++    let response = await perform(request);
 +    abort(signal);
 +    if (!response.ok) {
 +      let detail = '';
@@ -1082,39 +1183,31 @@ index 0000000000000000000000000000000000000000..b043df67210a628cdf3a9a71177a2873
 +    const parts = [], seen = new Set(); let usage, finishReason = 'stop', finished = !response.headers.get('content-type')?.includes('text/event-stream');
 +    const text = value => { if (typeof value !== 'string' || !value) return; if (parts.at(-1)?.type === 'text') parts.at(-1).text += value; else parts.push({ type: 'text', text: value }); };
 +    const image = value => { const id = value.data.toString('base64'); if (seen.has(id)) return; seen.add(id); parts.push({ type: 'image', value }); if (seen.size > (attachments.imageLimits?.maxImagesPerMessage ?? 8)) throw new LlmError('The model returned too many images for one message.', 'TOO_MANY_IMAGES'); };
-+    for await (const record of records(response, signal)) {
-+      abort(signal);
-+      if (model.imageGenerationApi === 'dashscope-images' && record.code && !record.output) throw new LlmError(`${record.code}: ${String(record.message ?? 'Image generation failed.').slice(0, 1500)}`, 'PROVIDER_ERROR');
-+      if (record.error) throw new LlmError(String(record.error.message ?? 'Image generation failed.').slice(0,2000), 'PROVIDER_ERROR');
-+      if (record.done) finished = true;
-+      const receivedUsage = record.usage ?? record.response?.usage;
-+      if (receivedUsage) usage = { inputTokens: receivedUsage.prompt_tokens ?? receivedUsage.input_tokens ?? 0, outputTokens: receivedUsage.completion_tokens ?? receivedUsage.output_tokens ?? 0 };
-+      if (model.imageGenerationApi === 'dashscope-images') {
-+        for (const choice of record.output?.choices ?? []) for (const part of choice.message?.content ?? []) {
-+          if (part.image) image(await aliyunResult(part.image, signal));
-+          if (part.text) text(part.text);
++    let job, polls = 0;
++    do {
++      job = undefined;
++      for await (const record of records(response, signal)) {
++        abort(signal);
++        const normalized = await protocol.normalize(record);
++        if (normalized.usage) usage = normalized.usage;
++        if (normalized.done) finished = true;
++        if (normalized.finishReason) finishReason = normalized.finishReason;
++        if (normalized.job) job = normalized.job;
++        for (const part of normalized.parts ?? []) {
++          if (part.type === 'text') text(part.text);
++          else if (part.type === 'image') image(part.url === undefined ? raster(part.data, part.mediaType)
++            : typeof part.url === 'string' && part.url.startsWith('data:') ? inline(part.url) : await downloadImage(part.url, signal, protocol, context));
 +        }
 +      }
-+      for (const choice of record.choices ?? []) {
-+        const delta = choice.delta ?? choice.message ?? {};
-+        if (typeof delta.content === 'string') text(delta.content);
-+        else for (const part of delta.content ?? []) { if (part.type === 'text') text(part.text); else if (part.type === 'image_url') image(inline(typeof part.image_url === 'string' ? part.image_url : part.image_url?.url)); }
-+        for (const part of delta.images ?? []) image(inline(typeof part.image_url === 'string' ? part.image_url : part.image_url?.url));
-+        if (choice.finish_reason) finished = true;
-+        if (choice.finish_reason === 'length') finishReason = 'max-tokens';
-+      }
-+      for (const item of record.data ?? []) if (item.b64_json) image(raster(item.b64_json, item.media_type)); else if (item.url) image(inline(item.url));
-+      for (const candidate of record.candidates ?? []) {
-+        for (const part of candidate.content?.parts ?? []) { if (part.text && !part.thought) text(part.text); if (part.inlineData) image(raster(part.inlineData.data, part.inlineData.mimeType)); }
-+        if (candidate.finishReason) finished = true;
-+        if (candidate.finishReason === 'MAX_TOKENS') finishReason = 'max-tokens';
-+      }
-+      if (record.usageMetadata) usage = { inputTokens: record.usageMetadata.promptTokenCount ?? 0, outputTokens: (record.usageMetadata.candidatesTokenCount ?? 0) + (record.usageMetadata.thoughtsTokenCount ?? 0) };
-+      if (record.type === 'response.output_text.delta') text(record.delta);
-+      if (record.type === 'response.output_item.done' && record.item?.type === 'image_generation_call' && record.item.result) image(raster(record.item.result));
-+      if (record.type === 'response.completed') { finished = true; for (const item of record.response?.output ?? []) if (item.type === 'image_generation_call' && item.result) image(raster(item.result)); }
-+      if (record.type === 'image_generation.completed') { finished = true; if (record.b64_json) image(raster(record.b64_json, record.media_type)); }
-+    }
++      if (job?.status === 'failed') throw new LlmError(String(job.message ?? 'Image generation task failed.').slice(0, 2000), 'PROVIDER_ERROR');
++      if (job?.status === 'pending' || job?.status === 'running') {
++        if (!protocol.poll) throw new LlmError('The selected image protocol does not support task polling.', 'UNSUPPORTED_PROTOCOL');
++        if (++polls > 120) throw new LlmError('Image task exceeded its polling limit.', 'TIMEOUT');
++        await delay(Math.max(1, Math.min(job.retryAfterMs ?? 1000, 5000)), undefined, { signal });
++        response = await perform(await protocol.poll(job, context));
++        if (!response.ok) throw new LlmError(`Image task HTTP ${response.status}.`, errorCode(response.status, ''), { status: response.status });
++      } else break;
++    } while (true);
 +    abort(signal);
 +    if (!finished) throw new LlmError('Image stream ended before a completed response.', 'STREAM_CLOSED');
 +    if (!parts.length) throw new LlmError('The selected model returned no text or image content.', 'EMPTY_RESPONSE');
@@ -1141,7 +1234,7 @@ index 0000000000000000000000000000000000000000..b043df67210a628cdf3a9a71177a2873
 +  }
 +}
 diff --git a/lib/types/catalog.d.ts b/lib/types/catalog.d.ts
-index 2be4a6086efa33574fabefbe15c7a4b5f36a0557..28c6175f5a43fc3b57aaafb2cbd8e420f32940fa 100644
+index 2be4a6086efa33574fabefbe15c7a4b5f36a0557..fd9709d14df5ca1fc3601006801074a22c6ada13 100644
 --- a/lib/types/catalog.d.ts
 +++ b/lib/types/catalog.d.ts
 @@ -240,6 +240,12 @@ type UpstreamCompat = OpenAICompletionsCompat & OpenAIResponsesCompat & Anthropi
@@ -1151,17 +1244,89 @@ index 2be4a6086efa33574fabefbe15c7a4b5f36a0557..28c6175f5a43fc3b57aaafb2cbd8e420
 +    /** Evidence retained when the Models page adopts an automatic capability. */
 +    /** Native output capability; omitted/empty means use provider metadata or the exact catalog. */
 +    output?: PiAiModality[];
-+    imageGenerationApi?: "chat-completions" | "openrouter-images" | "openai-images" | "google-generative-ai" | "openai-responses";
++    imageGenerationApi?: string;
 +    supportsTools?: boolean;
 +    inputCapabilitySource?: 'provider' | 'catalog' | 'name' | 'unknown';
      /** Model id sent to the provider and accepted by {@link GenerateOptions.model}. */
      id: string;
      /** Display name for selectors; defaults to the catalog name, then the id. */
+diff --git a/lib/types/config.d.ts b/lib/types/config.d.ts
+index b45a28255f54c10f386a8ea822e7977fe6ab2880..c87aefac78d8f73d11e404a42457f6702dbc64a5 100644
+--- a/lib/types/config.d.ts
++++ b/lib/types/config.d.ts
+@@ -52,6 +52,10 @@ export declare const DEFAULT_INPUT: readonly PiAiModality[];
+ export type { PiAiCompatProfile, PiAiModality, PiAiModelOverride, PiAiModelProfile, PiAiReasoningEfforts, PiAiThinkingFormat, } from './catalog.ts';
+ /** Configuration for one pi-ai provider route; the `providers` dict key IS the route. */
+ export interface PiAiProviderProfile {
++    /** Default image protocol, applied only to models with image output. */
++    imageGenerationApi?: string;
++    /** Reviewed storage hostnames; downloads omit API credentials and reject redirects. */
++    imageResultHosts?: string[];
+     /** Credential reference (environment-variable name) resolved per request through `ctx.credentials`. */
+     apiKeyEnv?: string;
+     /** Name shown by configuration surfaces; defaults to the route key. */
+diff --git a/lib/types/image-protocols.d.ts b/lib/types/image-protocols.d.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..24eeeedc4423dcf43326acd82255f0f8fcae391b
+--- /dev/null
++++ b/lib/types/image-protocols.d.ts
+@@ -0,0 +1,32 @@
++import type { GenerateOptions } from '@deepseek-ai/dsh-llm';
++export interface ImageProtocolRequest { endpoint: string; method?: 'GET' | 'POST'; body?: unknown | FormData }
++export interface ImageProtocolJob { id: string; status: 'pending' | 'running' | 'succeeded' | 'failed'; retryAfterMs?: number; message?: string; data?: unknown }
++export interface ImageProtocolReply {
++  parts?: readonly ({ type: 'text'; text: string } | { type: 'image'; url: string } | { type: 'image'; data: string; mediaType?: string })[];
++  done?: boolean;
++  finishReason?: 'stop' | 'max-tokens';
++  usage?: { inputTokens: number; outputTokens: number };
++  job?: ImageProtocolJob;
++}
++export interface ImageProtocolContext {
++  options: GenerateOptions;
++  model: { id: string; outputModalities: readonly string[] };
++  profile: { imageResultHosts?: readonly string[] };
++  base: string;
++  messages: readonly { role: string; content: readonly ({ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } })[] }[];
++  inline(url: string): { data: Buffer; mediaType: string };
++}
++/** Trusted Host plugins register adapters before configuring models. Network access stays in the shared runner. */
++export interface ImageProtocol {
++  prepare(context: ImageProtocolContext): ImageProtocolRequest | Promise<ImageProtocolRequest>;
++  normalize(record: unknown): ImageProtocolReply | Promise<ImageProtocolReply>;
++  poll?(job: ImageProtocolJob, context: ImageProtocolContext): ImageProtocolRequest | Promise<ImageProtocolRequest>;
++  history?(options: GenerateOptions): GenerateOptions;
++  inputMaxBytes?: number;
++  credentialHeader?: string;
++  assetURLAllowed?(url: string, context: ImageProtocolContext): boolean;
++}
++export declare function registerImageProtocol(id: string, adapter: ImageProtocol): () => void;
++export declare function getImageProtocol(id: string): Readonly<ImageProtocol>;
++export declare function imageProtocolIds(): string[];
++export declare function normalizeImageRecord(record: unknown): ImageProtocolReply;
+diff --git a/lib/types/index.d.ts b/lib/types/index.d.ts
+index c5c05b80fedf78b6ceebcd39682f3e7e8b843426..1f9b6e2e0723128697f29876a0cc5f9b6628f4f2 100644
+--- a/lib/types/index.d.ts
++++ b/lib/types/index.d.ts
+@@ -67,3 +67,5 @@ export declare const inject: string[];
+ /** Register one generic pi-ai adapter for all configured provider routes. */
+ export declare function apply(ctx: Context, config: Config): void;
+ //# sourceMappingURL=index.d.ts.map
++export { registerImageProtocol, getImageProtocol, imageProtocolIds, normalizeImageRecord } from "./image-protocols.js";
++export type { ImageProtocol, ImageProtocolContext, ImageProtocolReply, ImageProtocolRequest, ImageProtocolJob } from "./image-protocols.js";
 diff --git a/package.json b/package.json
-index 57d54814258112aa22e04217c55495936d5b845d..e9c3db78ebe33e33312c8a0f866f49818eb5d0ad 100644
+index 57d54814258112aa22e04217c55495936d5b845d..5a26d354a1d8095ca8cc4232a39769e6f804dee5 100644
 --- a/package.json
 +++ b/package.json
-@@ -23,7 +23,11 @@
+@@ -19,11 +19,21 @@
+       "default": "./lib/index.js"
+     },
+     "./src/*": "./src/*",
+-    "./package.json": "./package.json"
++    "./package.json": "./package.json",
++    "./image-protocols": {
++      "types": "./lib/types/image-protocols.d.ts",
++      "default": "./lib/image-protocols.js"
++    }
    },
    "files": [
      "lib/index.js",
@@ -1170,7 +1335,9 @@ index 57d54814258112aa22e04217c55495936d5b845d..e9c3db78ebe33e33312c8a0f866f4981
 +    "lib/model-input.js",
 +    "lib/model-output.js",
 +    "lib/model-output-catalog.js",
-+    "lib/native-image.js"
++    "lib/native-image.js",
++    "lib/aliyun-image.js",
++    "lib/image-protocols.js"
    ],
    "license": "MIT",
    "peerDependencies": {
