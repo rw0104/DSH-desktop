@@ -10,6 +10,8 @@
 
 进一步通过实际 Agent 和正式 `llm-retry` 插件复现：任务查询 HTTP 500 会令聊天重试再次 POST 创建任务。修复后图片模型的 prepared call 禁用整次自动重试，文本模型保留供应商策略；对应回归由 `POST, GET, POST, GET` 变为 `POST, GET`。最终专项 45 项，候选需按该源码重新打包，早于此修复的构建不得交付。
 
+最终安装器已按 `a7e02445ee32` 完成：immutable install、完整 root check（Desktop 857 passed / 11 skipped，Market 275 passed）、包内 Profile 和 51 项客户端注册通过。实际 ASAR Host/Client 使用阿里云协议的回环 fixture 验证两轮图片、URL 下载、后续引用、刷新读回和输入/输出标签，页面异常 0，图片下载不携带 API 密钥。`DSH-Desktop-2.2.6-x64-Setup.exe` 为 224,117,189 bytes，SHA-256 `1C0338C0709913E9806877061B788E203277261728CF4036045B1B46648CC95E`，Authenticode `NotSigned`。版本/PE、物理/ASAR manifest、前端和七个关键适配文件哈希、`latest.yml` SHA-512 均通过；没有发起真实账号生图、覆盖用户安装目录或发布 Release/tag。
+
 ## 2026-09-05 模型原生图片输出修复前复核
 
 移除 2.2.4 的强制受控生成设计，并排查正式 LLM 适配器前，再次通过既有代理查询三条权威 remote 的 HEAD/heads/tags 及 npm：Harness master / `dsh-v0.1.3-alpha.1` 为 `d347e703908d0406b7a7ef80e3a0e594d86b2215`，RC1 tag `a66e4702047846cdaa10c66c9d3df3951f5ea70d`，latest/next `0.1.2-rc.1`；Sidebar main `a5c52b3f1bc450b04578bd9252f67b7d79c98502`，v0.18.0 tag `9e1a03452794532cda1f6ac677b72579dff48dfc`，npm latest `0.18.0`；Desktop reference master `bcaf1b4d9da56dad2a94ad64e4145d3d2e49e959`，v2.0.5 tag `423406fe225442995902015cb6f10eed670ff115`。本机 pi-ai 为 0.84.4，npm latest 为 0.85.1（modified `2026-09-05T12:05:48.401Z`）。
