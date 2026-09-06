@@ -2,6 +2,8 @@
 
 ## 2026-09-05 阿里云图片错误与通用适配复核
 
+代码与说明推送前再次复核三条 remote 的 HEAD、对应 heads/tags 及 npm dist-tags，结果与下文记录的本轮基线一致；不新增依赖或 submodule 更新。此次同步面向 `origin/codex/qwen-e2e-agent-orchestration`，包含已验证的 2.2.4—2.2.6 累计修复和接入说明。运行时代码与安装器编译基线 `a7e02445ee32` 一致，后续提交仅整理文档；本地诊断、会话日志、截图和安装包不随 Git 分支提交。
+
 再次检查三条权威 remote HEAD/heads/tags 和 registry：Harness master/alpha tag 为 `d347e703908d0406b7a7ef80e3a0e594d86b2215`，RC1 tag `a66e4702047846cdaa10c66c9d3df3951f5ea70d`，npm latest/next `0.1.2-rc.1`；Sidebar main `a5c52b3f1bc450b04578bd9252f67b7d79c98502`，v0.18.0 tag `9e1a03452794532cda1f6ac677b72579dff48dfc`，npm latest `0.18.0`；Desktop reference HEAD 已到 `91b12fcd60fe85a39c6aa21dcd3056d89d0b69a4`，v2.0.5 tag 仍为 `423406fe225442995902015cb6f10eed670ff115`；pi-ai latest 0.85.1。本批次保留 RC1、Sidebar 和 pi-ai 0.84.4 pin，参考仓库新提交未经过本产品兼容性审查，不混入行为修复。下一次上游迁移仍须单独审查 Host/Client 和打包合同并单独提交 gitlink。
 
 阿里云官方图片接口使用同一 workspace 的原生多模态生成路径，并返回临时 OSS URL；2.2.5 普通聊天请求未覆盖该合同，且 pi-ai 的 Cerebras 无正文 400/413 特例错误地泛化到了自定义供应商。本批次以此为回归案例，先修复请求与错误分类，再将供应商能力解析、协议适配、图片结果和任务轮询从 Agent 主流程分离。初始专项 36 项通过，完整验证和最终产物将在完成后记录。
