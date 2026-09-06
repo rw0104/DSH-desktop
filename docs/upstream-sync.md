@@ -6,6 +6,10 @@
 
 保持官方 RC1 子模块、发布 family 和 Sidebar 0.18.0；不引入未完成兼容审查的 alpha 或开发分支。下一上游迁移需独立核对 session、attachment、slot 与 sidebar 合同，并单独提交 gitlink。本轮在 `f83318448b` 行为基线上将 Desktop 产品版本更新到 `2.2.7`，构建带 `test-client-experience` 文件名后缀的 Windows x64 NSIS 安装器；不推送、不创建 Release/tag、不自动安装或启动用户客户端。文档和一轮测试工作记录遵守 `docs/local/` 边界。
 
+本地测试安装器已按 `fd05dd7ea8b1d1b399f40d04229a5395e0891f86` 完成。immutable install、完整 root check（Desktop 882 passed / 11 skipped、Market 275 passed）、14 项包装脚本测试、CLI/Loader/Profile 与许可证检查通过。包内 DSH `0.1.2-rc.1`、pnpm `11.7.0`、51 个客户端模块注册通过；36 个编译 JS 文件及 attachment/conversation 客户端补丁与构建逐字节匹配。实际 ASAR 的 Advanced 15 项共存验收及独立 Compatibility 验收均为页面异常 0。
+
+交付文件 `DSH-Desktop-2.2.7-x64-Setup-test-client-experience.exe` 为 **224,127,847 bytes**，SHA-256 `0b0e80387e22edf73a860ac8cd0b66e6f3d79a5a244c3b340558ea8af3cb4c5c`，Authenticode `NotSigned`。安装器 PE 版本为 2.2.7，应用 ProductVersion 为 2.2.7.0 / FileVersion 为 2.2.7；latest.yml 的版本、目标文件及 SHA-512 匹配。直接提取安装器内 `app-64.zip`，确认 865 个文件 / 680,763,747 bytes 与已验证 unpacked 全树逐文件 SHA-256 一致。临时解包工具与载荷副本、隔离测试 Profile 均已清理；保留一个 `win-unpacked` 作为本地验证目录。没有执行安装或发布 Release。
+
 ## 2026-09-06 保留附件既有交互的回归修正
 
 复核三方远端：Harness HEAD `d347e703908d0406b7a7ef80e3a0e594d86b2215`、RC1 tag `a66e4702047846cdaa10c66c9d3df3951f5ea70d`；Sidebar HEAD 已到 `2dc2dcf41815cb0cf930b30708564b300645d347`，稳定 v0.18.0 tag 仍为 `9e1a03452794532cda1f6ac677b72579dff48dfc`；参考 Desktop HEAD `91b12fcd60fe85a39c6aa21dcd3056d89d0b69a4`、v2.0.5 tag `423406fe225442995902015cb6f10eed670ff115`。npm CLI `latest=0.1.2-rc.1`、Sidebar `0.18.0`；附件 package 的 `latest=0.0.1-rc.2`、`next=0.1.2-rc.1`。继续保持已验证精确版本；Sidebar 新开发提交尚未审计其客户端合同，留到独立同步批次。
