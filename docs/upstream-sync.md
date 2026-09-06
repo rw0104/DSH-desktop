@@ -8,6 +8,8 @@
 
 2.2.6 候选已将六种既有图片协议迁入注册表，新增类型化 Host 接入子路径、供应商级图片默认协议及结果存储域名声明。共用执行器处理图片数据、URL、取消及有界异步查询；新增两个仅配置不同的供应商和一个不修改 Agent 的异步适配器作为合同回归。专项 44 项通过，未知协议、跨 origin 查询、取消和真实上下文错误均有覆盖；没有调用真实账号计费接口。
 
+进一步通过实际 Agent 和正式 `llm-retry` 插件复现：任务查询 HTTP 500 会令聊天重试再次 POST 创建任务。修复后图片模型的 prepared call 禁用整次自动重试，文本模型保留供应商策略；对应回归由 `POST, GET, POST, GET` 变为 `POST, GET`。最终专项 45 项，候选需按该源码重新打包，早于此修复的构建不得交付。
+
 ## 2026-09-05 模型原生图片输出修复前复核
 
 移除 2.2.4 的强制受控生成设计，并排查正式 LLM 适配器前，再次通过既有代理查询三条权威 remote 的 HEAD/heads/tags 及 npm：Harness master / `dsh-v0.1.3-alpha.1` 为 `d347e703908d0406b7a7ef80e3a0e594d86b2215`，RC1 tag `a66e4702047846cdaa10c66c9d3df3951f5ea70d`，latest/next `0.1.2-rc.1`；Sidebar main `a5c52b3f1bc450b04578bd9252f67b7d79c98502`，v0.18.0 tag `9e1a03452794532cda1f6ac677b72579dff48dfc`，npm latest `0.18.0`；Desktop reference master `bcaf1b4d9da56dad2a94ad64e4145d3d2e49e959`，v2.0.5 tag `423406fe225442995902015cb6f10eed670ff115`。本机 pi-ai 为 0.84.4，npm latest 为 0.85.1（modified `2026-09-05T12:05:48.401Z`）。

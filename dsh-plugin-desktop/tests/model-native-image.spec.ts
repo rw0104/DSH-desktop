@@ -20,7 +20,7 @@ const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGOQyLz0HwA
 const imageRef = { attachmentId: AttachmentId('sha256:' + 'a'.repeat(64)), mediaType: 'image/png' as const, bytes: Buffer.from(PNG, 'base64').length, width: 1, height: 1 }
 const contexts: Context[] = []
 afterEach(async () => { for (const ctx of contexts.splice(0)) await ctx.fiber.dispose(); vi.unstubAllGlobals(); vi.unstubAllEnvs() })
-async function setup(model = 'google/gemini-3.1-flash-image-preview', extra: Record<string, unknown> = {}, route: { provider?: string; api?: string; baseURL?: string; imageGenerationApi?: string; imageResultHosts?: string[] } = {}) {
+async function setup(model = 'google/gemini-3.1-flash-image-preview', extra: Record<string, unknown> = {}, route: { provider?: string; api?: string; baseURL?: string; imageGenerationApi?: string; imageResultHosts?: string[]; retryPolicy?: Record<string, unknown> } = {}) {
   const ctx = new Context(); contexts.push(ctx)
   await ctx.plugin(LlmRuntime)
   ctx.provide('credentials', { resolve: vi.fn().mockResolvedValue({ value: 'fixture-key' }), readRecord: async () => undefined, listRecords: async () => [] } as never)
@@ -30,7 +30,7 @@ async function setup(model = 'google/gemini-3.1-flash-image-preview', extra: Rec
     readImage: async () => ({ attachment: imageRef, data: Buffer.from(PNG, 'base64') }),
     readImageRequest: async () => ({ attachment: imageRef, data: Buffer.from(PNG, 'base64'), mediaType: 'image/png', bytes: imageRef.bytes, width: 1, height: 1, variantId: ImageVariantId('sha256:' + 'b'.repeat(64)), depth: 'uchar', space: 'srgb', hasAlpha: true }),
   } as never)
-  await ctx.plugin(PiAi, { providers: { [route.provider ?? 'openrouter']: { apiKeyEnv: 'FIXTURE_KEY', ...(route.api ? { api: route.api } : {}), ...(route.baseURL ? { baseURL: route.baseURL } : {}), ...(route.imageGenerationApi ? { imageGenerationApi: route.imageGenerationApi } : {}), ...(route.imageResultHosts ? { imageResultHosts: route.imageResultHosts } : {}), models: [{ id: model, ...extra }] } } })
+  await ctx.plugin(PiAi, { providers: { [route.provider ?? 'openrouter']: { apiKeyEnv: 'FIXTURE_KEY', ...(route.api ? { api: route.api } : {}), ...(route.baseURL ? { baseURL: route.baseURL } : {}), ...(route.imageGenerationApi ? { imageGenerationApi: route.imageGenerationApi } : {}), ...(route.imageResultHosts ? { imageResultHosts: route.imageResultHosts } : {}), ...(route.retryPolicy ? { retryPolicy: route.retryPolicy } : {}), models: [{ id: model, ...extra }] } } })
   return { ctx, saveImages }
 }
 async function run(ctx: Context, model = 'google/gemini-3.1-flash-image-preview', messages: GenerateOptions['messages'] = [createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: '画一张灯塔图片' }] })], provider = 'openrouter') {
@@ -43,6 +43,28 @@ function imageReply() {
     + '\n\ndata: ' + JSON.stringify({ id: 'native-image', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 3, completion_tokens: 5 } }) + '\n\ndata: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } })
 }
 describe('selected model native image output', () => {
+  it('does not resubmit a failed async image job through the production Agent retry plugin', async () => {
+    const unregister = PiAi.registerImageProtocol('fixture-poll-error', {
+      prepare: ({ base }) => ({ endpoint: `${base}/jobs`, body: {} }),
+      normalize: () => ({ job: { id: 'accepted-job', status: 'pending', retryAfterMs: 1 } }),
+      poll: (job, { base }) => ({ endpoint: `${base}/jobs/${job.id}`, method: 'GET' }),
+    } satisfies ImageProtocol)
+    try {
+      const { ctx } = await setup('new-image-model', { output: ['image'] }, { provider: 'vendor-a', api: 'openai-completions', baseURL: 'https://vendor-a.invalid/v1', imageGenerationApi: 'fixture-poll-error', retryPolicy: { mode: 'normal', maxRetries: 1, backoff: { initialDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 } } })
+      await ctx.plugin(SessionStore); await ctx.plugin(SessionProjectionRegistry); await ctx.plugin(SystemPrompt, { persona: 'fixture' })
+      await ctx.plugin(ToolRuntime); await ctx.plugin(AgentRegistry); await ctx.plugin(AgentLoop, { agents: [] })
+      const Retry = await import(pathToFileURL(createRequire(import.meta.url).resolve('@deepseek-ai/dsh-llm-retry')).href)
+      await ctx.plugin(Retry)
+      const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(async (_url, options) => options?.method === 'POST'
+        ? new Response('{}', { headers: { 'content-type': 'application/json' } }) : new Response(null, { status: 500 }))
+      vi.stubGlobal('fetch', fetch)
+      const { agent } = await ctx.agents.create({ sessionId: SessionId('no-image-resubmit'), agentOptions: { provider: 'vendor-a', model: 'new-image-model' } })
+      agent.followup(createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'Draw a cat.' }] }))
+      await agent.whenIdle()
+      expect(fetch.mock.calls.map(call => call[1]?.method)).toEqual(['POST', 'GET'])
+      expect(JSON.stringify(agent.session.snapshotEvents())).not.toContain('llm-retry/scheduled')
+    } finally { unregister() }
+  })
   it.each(['vendor-a', 'vendor-b'])('reuses the same image protocol for %s with only provider metadata', async provider => {
     const { ctx, saveImages } = await setup('new-image-model', { output: ['image'] }, { provider, api: 'openai-completions', baseURL: `https://${provider}.invalid/v1`, imageGenerationApi: 'openai-images', imageResultHosts: ['image-cdn.invalid'] })
     const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(async url => String(url).includes('/images/generations')

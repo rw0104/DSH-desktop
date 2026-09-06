@@ -1,5 +1,5 @@
 diff --git a/lib/index.js b/lib/index.js
-index 827dd906f5dc9b6b3d2dee436fdee8775245fa1c..066dd00d81ae07fc6bbfdf7b48ccba65de76ac48 100644
+index 827dd906f5dc9b6b3d2dee436fdee8775245fa1c..c24c824aaad358551337289b603abe3d5b4151e4 100644
 --- a/lib/index.js
 +++ b/lib/index.js
 @@ -1415,6 +1415,11 @@ let LlmRuntime = (() => {
@@ -34,7 +34,13 @@ index 827dd906f5dc9b6b3d2dee436fdee8775245fa1c..066dd00d81ae07fc6bbfdf7b48ccba65
  				...context === void 0 ? {} : { context: { contextWindow: context.contextWindow } },
  				...defaultMaxTokens === void 0 ? {} : { defaultMaxTokens }
  			};
-@@ -1610,6 +1619,8 @@ let LlmRuntime = (() => {
+@@ -1606,10 +1615,13 @@ let LlmRuntime = (() => {
+ 			let dispatched = false;
+ 			return Object.freeze({
+ 				config: resolvedConfig,
+-				retryPolicy: registration.retryPolicy,
++				// Image generation has side effects and cannot be replayed as a chat request.
++				retryPolicy: modelInfo.outputModalities?.includes("image") ? resolveRetryPolicy({ mode: "normal", maxRetries: 0 }, "llm: image generation") : registration.retryPolicy,
  				adapterDefaults,
  				...context === void 0 ? {} : { context },
  				...modelInfo.inputModalities === void 0 ? {} : { inputModalities: Object.freeze([...modelInfo.inputModalities]) },

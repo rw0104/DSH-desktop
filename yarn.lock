@@ -2796,7 +2796,7 @@ __metadata:
 
 "@deepseek-ai/dsh-llm@patch:@deepseek-ai/dsh-llm@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-npm-0.1.2-rc.1-2c4c0a76ed.patch::locator=deepseek-harness-desktop%40workspace%3A.":
   version: 0.1.2-rc.1
-  resolution: "@deepseek-ai/dsh-llm@patch:@deepseek-ai/dsh-llm@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-npm-0.1.2-rc.1-2c4c0a76ed.patch::version=0.1.2-rc.1&hash=599bd2&locator=deepseek-harness-desktop%40workspace%3A."
+  resolution: "@deepseek-ai/dsh-llm@patch:@deepseek-ai/dsh-llm@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-llm-npm-0.1.2-rc.1-2c4c0a76ed.patch::version=0.1.2-rc.1&hash=ea47b7&locator=deepseek-harness-desktop%40workspace%3A."
   dependencies:
     "@deepseek-ai/dsh-brand": "npm:^0.1.2-rc.1"
     "@deepseek-ai/dsh-timeout": "npm:^0.1.2-rc.1"
@@ -2807,7 +2807,7 @@ __metadata:
     zod: "npm:^4.4.3"
   peerDependencies:
     "@deepseek-ai/cordis": ^4.0.2
-  checksum: 10c0/9348dacf0ffe71a5776d8b76bb4726c3dc7d6b8b7c8d52f61a3c7691c27d84b964ec4ab3bfeba52c2c3a1b0a260852983adf48a85b3d3bd7438038143cc455e2
+  checksum: 10c0/3a03b39fe2f3953902a527a8c249700810b948571eabb668026c558ee12770ca80a84236faec6d3dec6a91ed7721b329fdbf1841c46841f19126c97b1175cd88
   languageName: node
   linkType: hard
 
