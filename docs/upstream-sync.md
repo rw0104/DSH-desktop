@@ -1,5 +1,15 @@
 # Upstream synchronization ledger
 
+## 2026-09-06 保留附件既有交互的回归修正
+
+复核三方远端：Harness HEAD `d347e703908d0406b7a7ef80e3a0e594d86b2215`、RC1 tag `a66e4702047846cdaa10c66c9d3df3951f5ea70d`；Sidebar HEAD 已到 `2dc2dcf41815cb0cf930b30708564b300645d347`，稳定 v0.18.0 tag 仍为 `9e1a03452794532cda1f6ac677b72579dff48dfc`；参考 Desktop HEAD `91b12fcd60fe85a39c6aa21dcd3056d89d0b69a4`、v2.0.5 tag `423406fe225442995902015cb6f10eed670ff115`。npm CLI `latest=0.1.2-rc.1`、Sidebar `0.18.0`；附件 package 的 `latest=0.0.1-rc.2`、`next=0.1.2-rc.1`。继续保持已验证精确版本；Sidebar 新开发提交尚未审计其客户端合同，留到独立同步批次。
+
+发现 `848970f30f` 的三个 Desktop 附件显示替换遗漏了原组件的加载失败重试、单图/多图尺寸规则、水平附件栏与拖放提示。修正使用原 `ui-attachment` 组件，只通过受审查的可释放 preview renderer 注册接口接入 Desktop 原图保存窗口；不再注册高优先级的附件/消息图片替换。原有 Workspace 拖放补丁继续保留。Commands 与语音入口另行进行共存验证。
+
+共存回归确认原七项 Commands（compact/export/feedback/goal/permission/plan/model）与开启后的语音按钮仍然存在；补齐 Add → Commands 的编辑器焦点承接，键盘激活与 Escape 均可用。真实前端验证原附件栏横向滚轮、溢出箭头、尺寸变化、拖放提示、失败重试，以及新增保存/上传/右键功能。完整 `corepack yarn check` 通过：Desktop 882 passed / 11 skipped、Market 275 passed；新增测试禁止 Desktop 再占用原三个附件显示 slot，并验证 preview renderer 的幂等释放与原单/多图渲染规则。没有更改用户语音设置或发起真实语音请求。
+
+修正后的 Windows unpacked smoke 通过：861 个文件 / 680,544,539 bytes，DSH `0.1.2-rc.1` 与 pnpm `11.7.0` 验证通过。36 个编译 JS 文件及包内 attachment 客户端分别与构建/受审查补丁逐字节一致；实际 ASAR 的 Advanced 共存验收 15 项通过，独立 compatibility 验收通过，均为页面异常 0。所有模型响应与语音启用设置均位于隔离测试 profile；没有新 installer 或发布。
+
 ## 2026-09-06 客户端体验修复与验证
 
 三方仓库使用 `git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref <official-url> HEAD <branch> <tag>` 验证；直连 GitHub 曾连接失败，代理重试成功。GitHub 页面确认参考仓库官方地址重定向到 `anywhere-labs/dsh-desktop`，仍作为只读比较来源。

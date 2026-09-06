@@ -1,13 +1,19 @@
 import { writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import { showContentMenu, type ContentAction } from './content-menu.ts'
 import { DESKTOP_CONTENT_BRIDGE, type DesktopContentBridge } from '../content-actions-contract.ts'
+import { exportImage } from './image-export.ts'
 
 /** Reuse the message's existing copy action, which knows its original Markdown. */
 export function conversationActions(target: Element, zh: boolean): ContentAction[] {
   const row = target.closest('[data-chat-flow-kind]')
-  if (!row) return []
-  if (target.closest('input,textarea,[contenteditable="true"]')) return []
+  const attachment = target.closest('[data-slot="conversation.input.attachments"],[data-slot="conversation.message.images"],[data-slot="conversation.trajectory.images"]')
+  const image = attachment ? (target.closest('img') ?? target.closest('button')?.querySelector('img')) as HTMLImageElement | null : null
   const actions: ContentAction[] = []
+  if (image?.src?.startsWith(`blob:${location.origin}/`)) {
+    actions.push({ label: zh ? '保存图片' : 'Save image', run: async () => { await exportImage(image.src, image.alt) } })
+  }
+  if (!row) return actions
+  if (target.closest('input,textarea,[contenteditable="true"]')) return []
   const selection = window.getSelection()?.toString()
   if (selection) actions.push({ label: zh ? '复制选中文本' : 'Copy selected text', run: async () => { await writeClipboard(selection) } })
   const code = target.closest('pre')?.querySelector('code')?.textContent ?? target.closest('pre')?.textContent

@@ -5,7 +5,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-trajectory/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import { DesktopComposerAttachments, DesktopMessageImages } from './experience-images.tsx'
+import { DesktopImagePreview } from './experience-images.tsx'
 import { installExperienceStyles } from './experience-styles.ts'
 import { showContentMenu, closeContentMenu } from './content-menu.ts'
 import { installConversationContextMenu } from './conversation-context-menu.ts'
@@ -88,12 +88,18 @@ function AddButton({ locked, onAddImages, onCommands, controller, language }: Pr
   const zh = lang === 'zh'
   const state = useSyncExternalStore(controller?.subscribe ?? (() => () => {}), controller?.snapshot ?? (() => EMPTY))
   return <div className="dsh-add">
-    <button type="button" aria-label={zh ? '添加图片或文件' : 'Add images or files'} aria-haspopup="menu" disabled={locked || state.busy || !controller} onClick={event => {
+    <button type="button" aria-label={zh ? '添加图片或文件' : 'Add images or files'} aria-haspopup="menu" disabled={locked || state.busy || !controller} onMouseDown={event => event.preventDefault()} onClick={event => {
       const rect = event.currentTarget.getBoundingClientRect()
       showContentMenu([
         { label: zh ? '添加图片…' : 'Add images…', run: () => imageInput.current?.click() },
         { label: zh ? '上传文件到工作区…' : 'Upload files to workspace…', run: () => fileInput.current?.click() },
-        { label: zh ? '指令 /' : 'Commands /', run: onCommands },
+        { label: zh ? '指令 /' : 'Commands /', run: () => {
+          // The original command keymap belongs to this composer's editor.
+          // Restore its focus after either mouse or keyboard activation of Add.
+          imageInput.current?.closest('[data-slot="conversation.composer.bar"]')
+            ?.querySelector<HTMLElement>('[data-composer-input]')?.focus({ preventScroll: true })
+          onCommands()
+        } },
       ], { x: rect.left, y: rect.top - 140 })
     }}>+</button>
     <input ref={imageInput} type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden aria-label="Desktop image picker" onChange={event => { onAddImages([...event.currentTarget.files ?? []]); event.currentTarget.value = '' }} />
@@ -120,10 +126,10 @@ export function installClientExperience(ctx: Context): void {
     return { controller, language }
   }
   ctx.effect(installExperienceStyles, 'desktop: file interaction styles')
+  ctx.inject(['attachmentPresentation'], previewCtx => {
+    previewCtx.effect(() => previewCtx.attachmentPresentation.registerPreview(DesktopImagePreview), 'desktop: original image preview actions')
+  })
   ctx.effect(() => { const off = installConversationContextMenu(() => language.getSnapshot() === 'zh'); return () => { off(); controllers.clear(); closeContentMenu() } }, 'desktop: conversation content actions')
   ctx.slots.inject('conversation.input.add', () => ctx.slots.register({ name: 'conversation.input.add', inject: forSession }, AddButton))
-  ctx.slots.inject('conversation.input.attachments', () => ctx.slots.register({ name: 'conversation.input.attachments', priority: -10, locale: 'conversation' }, DesktopComposerAttachments))
-  ctx.slots.inject('conversation.message.images', () => ctx.slots.register({ name: 'conversation.message.images', priority: -10, locale: 'conversation' }, DesktopMessageImages))
-  ctx.slots.inject('conversation.trajectory.images', () => ctx.slots.register({ name: 'conversation.trajectory.images', priority: -10, locale: 'conversation' }, DesktopMessageImages))
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({ name: 'conversation.input.dock', id: 'desktop-upload-status', inject: forSession }, UploadStatus))
 }

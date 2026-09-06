@@ -1,5 +1,5 @@
 diff --git a/lib/client.js b/lib/client.js
-index 61aa9865fd42af82bf6e18e97b6264b8a22eefe2..82aa89d8a6f37321b37d76b5cdd014abb25e9753 100644
+index 61aa9865fd42af82bf6e18e97b6264b8a22eefe2..7e8b2c0a4f18a950ce868d206b3a00b67390c53c 100644
 --- a/lib/client.js
 +++ b/lib/client.js
 @@ -225,8 +225,11 @@ window.__ModuleLoader__.load({
@@ -23,7 +23,38 @@ index 61aa9865fd42af82bf6e18e97b6264b8a22eefe2..82aa89d8a6f37321b37d76b5cdd014ab
  		}
  		/** Tilted photo-and-note cards (DeepSeek Chat upload illustration). */
  		const UploadIllustration = () => (0, react_jsx_runtime.jsxs)("svg", {
-@@ -537,12 +540,18 @@ window.__ModuleLoader__.load({
+@@ -409,7 +412,29 @@ window.__ModuleLoader__.load({
+ 		* @param props.onClose - dismiss callback owned by the opener.
+ 		* @returns the modal preview dialog.
+ 		*/
+-		function ImageLightbox({ src, alt, labels, onClose }) {
++		// Optional preview-only extension. Intake, rail, gallery and retry remain upstream-owned.
++		let previewRenderer = null;
++		const previewListeners = new Set();
++		const previewSnapshot = () => previewRenderer;
++		const subscribePreview = listener => { previewListeners.add(listener); return () => previewListeners.delete(listener); };
++		function registerPreview(renderer) {
++			if (previewRenderer !== null) throw new Error("attachment preview renderer is already registered");
++			let active = true;
++			previewRenderer = renderer;
++			for (const listener of previewListeners) listener();
++			return () => {
++				if (!active) return;
++				active = false;
++				if (previewRenderer !== renderer) return;
++				previewRenderer = null;
++				for (const listener of previewListeners) listener();
++			};
++		}
++		function ImageLightbox(props) {
++			const renderer = (0, react.useSyncExternalStore)(subscribePreview, previewSnapshot, previewSnapshot);
++			return (0, react_jsx_runtime.jsx)(renderer ?? DefaultImageLightbox, props);
++		}
++		function DefaultImageLightbox({ src, alt, labels, onClose }) {
+ 			const closeRef = (0, react.useRef)(null);
+ 			const restoreRef = (0, react.useRef)(null);
+ 			(0, react.useEffect)(() => {
+@@ -537,12 +562,18 @@ window.__ModuleLoader__.load({
  					if (dataTransfer === null || !dataTransfer.types.includes("Files")) return null;
  					return dataTransfer;
  				};
@@ -42,7 +73,7 @@ index 61aa9865fd42af82bf6e18e97b6264b8a22eefe2..82aa89d8a6f37321b37d76b5cdd014ab
  					event.preventDefault();
  					dragDepth.current += 1;
  					setDragActive(true);
-@@ -551,10 +560,12 @@ window.__ModuleLoader__.load({
+@@ -551,10 +582,12 @@ window.__ModuleLoader__.load({
  					const dataTransfer = fileTransfer(event);
  					if (dataTransfer === null) return;
  					event.preventDefault();
@@ -55,7 +86,7 @@ index 61aa9865fd42af82bf6e18e97b6264b8a22eefe2..82aa89d8a6f37321b37d76b5cdd014ab
  					dragDepth.current = Math.max(0, dragDepth.current - 1);
  					if (dragDepth.current === 0) setDragActive(false);
  					const leftViewport = event.clientX <= 0 || event.clientY <= 0 || event.clientX >= window.innerWidth || event.clientY >= window.innerHeight;
-@@ -565,6 +576,7 @@ window.__ModuleLoader__.load({
+@@ -565,6 +598,7 @@ window.__ModuleLoader__.load({
  					if (dataTransfer === null) return;
  					event.preventDefault();
  					reset();
@@ -63,3 +94,32 @@ index 61aa9865fd42af82bf6e18e97b6264b8a22eefe2..82aa89d8a6f37321b37d76b5cdd014ab
  					if (canAcceptDrop) onAddImages([...dataTransfer.files]);
  				};
  				document.addEventListener("dragenter", onDragEnter);
+@@ -784,6 +818,7 @@ window.__ModuleLoader__.load({
+ 		const inject = ["slots"];
+ 		/** Register attachment presentation without exporting React components as package values. */
+ 		function apply(ctx) {
++			ctx.provide("attachmentPresentation", { registerPreview });
+ 			ctx.slots.inject("conversation.input.attachments", () => ctx.slots.register({
+ 				name: "conversation.input.attachments",
+ 				locale: "conversation"
+diff --git a/lib/types/client/index.d.ts b/lib/types/client/index.d.ts
+index 883b0d46740d03bf35c0ac56f320623a4fbc8be7..28a10dc760b7a3c3c80c04ad34b83a10f18fba6d 100644
+--- a/lib/types/client/index.d.ts
++++ b/lib/types/client/index.d.ts
+@@ -5,3 +5,16 @@ export declare const inject: string[];
+ /** Register attachment presentation without exporting React components as package values. */
+ export declare function apply(ctx: ClientContext): void;
+ //# sourceMappingURL=index.d.ts.map
++/** Optional preview-only extension; the plugin retains its intake and gallery components. */
++export interface AttachmentPreviewProps {
++    src: string;
++    alt: string;
++    labels: { dialog: string; close: string };
++    onClose(): void;
++}
++export interface AttachmentPresentation {
++    registerPreview(renderer: import('react').ComponentType<AttachmentPreviewProps>): () => void;
++}
++declare module '@deepseek-ai/cordis' {
++    interface Context { attachmentPresentation: AttachmentPresentation; }
++}

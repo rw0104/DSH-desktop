@@ -1,10 +1,23 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { conversationActions } from '../src/client/conversation-context-menu.ts'
+import { installClientExperience } from '../src/client/experience.tsx'
+import type { Context } from '@deepseek-ai/cordis'
 
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({ writeClipboard: vi.fn(async () => true) }))
 afterEach(() => vi.unstubAllGlobals())
 
 describe('conversation semantic copy routing', () => {
+  it('keeps Desktop enhancements out of the three upstream attachment display slots', () => {
+    const registered: string[] = []
+    installClientExperience({
+      effect: vi.fn(), inject: vi.fn(),
+      slots: { inject: (_name: string, install: () => void) => install(), register: ({ name }: { name: string }) => { registered.push(name); return () => {} } },
+    } as unknown as Context)
+    for (const slot of ['conversation.input.attachments', 'conversation.message.images', 'conversation.trajectory.images']) {
+      expect(registered).not.toContain(slot)
+    }
+    expect(registered).toContain('conversation.input.add')
+  })
   it('routes a closing assistant body to the separate tail in the same turn', async () => {
     vi.stubGlobal('window', { getSelection: () => null })
     const copyCurrent = vi.fn()

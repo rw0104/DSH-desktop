@@ -1633,12 +1633,12 @@ __metadata:
 
 "@deepseek-ai/dsh-client-ui-attachment@patch:@deepseek-ai/dsh-client-ui-attachment@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-client-ui-attachment-npm-0.1.2-rc.1-d0fc3a3050.patch::locator=deepseek-harness-desktop%40workspace%3A.":
   version: 0.1.2-rc.1
-  resolution: "@deepseek-ai/dsh-client-ui-attachment@patch:@deepseek-ai/dsh-client-ui-attachment@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-client-ui-attachment-npm-0.1.2-rc.1-d0fc3a3050.patch::version=0.1.2-rc.1&hash=aa04c9&locator=deepseek-harness-desktop%40workspace%3A."
+  resolution: "@deepseek-ai/dsh-client-ui-attachment@patch:@deepseek-ai/dsh-client-ui-attachment@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-client-ui-attachment-npm-0.1.2-rc.1-d0fc3a3050.patch::version=0.1.2-rc.1&hash=de6161&locator=deepseek-harness-desktop%40workspace%3A."
   dependencies:
     clsx: "npm:^2.0.0"
   peerDependencies:
     "@deepseek-ai/cordis": ^4.0.2
-  checksum: 10c0/d66cee79be5967f71c711987aeb6c54252540c49f0c4d7c5489dcccf76765bc85fc5a2c24bd3a9b0cef06d7eb68ddb046d3bc2f340c8a7552b37864379b5569d
+  checksum: 10c0/f572c3c76ae4e629cc6e79b59aceb33f3098bdfed7a99d0192fc448b674d31f464adc2f776637f4f79499ff60d24f8b4de2a38af57cbc443c00d979f76927d49
   languageName: node
   linkType: hard
 

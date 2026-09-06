@@ -11,12 +11,6 @@ export function installExperienceStyles(): () => void {
   .dsh-file-status>div { margin:3px 0 }
   .dsh-file-status button { border:0; border-radius:5px; padding:3px 7px; margin-left:4px; background:transparent; color:var(--dsw-alias-label-link,#1965cf); font:inherit; cursor:pointer }
   .dsh-file-status button:hover { background:var(--dsw-alias-interactive-bg-hover,#8882) }
-  .dsh-images { display:flex; flex-wrap:wrap; gap:8px; padding:6px 0 }
-  .dsh-images[data-align=end] { justify-content:flex-end }
-  .dsh-image-tile { position:relative; max-width:240px; border:1px solid #8884; border-radius:10px; overflow:hidden; background:transparent; color:inherit }
-  .dsh-image-tile>button { display:block; border:0; padding:0; background:transparent; color:inherit; cursor:zoom-in }
-  .dsh-image-tile img { display:block; max-width:230px; max-height:200px; min-width:48px; min-height:48px; object-fit:contain }
-  .dsh-image-tile .dsh-remove-image { position:absolute; top:3px; right:3px; width:24px; height:24px; border-radius:50%; color:white; background:#222b; cursor:pointer }
   .dsh-image-dialog { padding:0; border:0; background:#171717; color:white; border-radius:12px; width:min(94vw,1400px); max-width:94vw; max-height:94vh; box-shadow:0 16px 70px #0008 }
   .dsh-image-dialog::backdrop { background:#000b }
   .dsh-image-toolbar { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #ffffff20 }
