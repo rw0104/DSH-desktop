@@ -1,5 +1,43 @@
+diff --git a/lib/aliyun-image.js b/lib/aliyun-image.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..fe0f04c446550bf622d0c9954f4b321d20a80461
+--- /dev/null
++++ b/lib/aliyun-image.js
+@@ -0,0 +1,32 @@
++// Model Studio native image contracts: help.aliyun.com/zh/model-studio/qwen-image-api
++// Endpoint inference is limited to documented Alibaba hosts; custom gateways retain their selected protocol.
++const IMAGE_MODELS = new Set(['qwen-image-2.0-pro', 'qwen-image-2.0-pro-2026-03-03', 'qwen-image-2.0-pro-2026-04-22', 'qwen-image-2.0-pro-2026-06-22', 'qwen-image-2.0', 'qwen-image-2.0-2026-03-03']);
++export function isAliyunImageEndpoint(baseURL) {
++  try {
++    const u = new URL(baseURL);
++    return u.protocol === 'https:' && !u.port && !u.username && !u.password && !u.search && !u.hash
++      && (/^[a-z0-9-]+\.(?:cn-beijing|ap-southeast-1|eu-central-1|ap-northeast-1)\.maas\.aliyuncs\.com$/.test(u.hostname)
++        || ['dashscope.aliyuncs.com', 'dashscope-intl.aliyuncs.com'].includes(u.hostname))
++      && ['/compatible-mode/v1', '/api/v1'].includes(u.pathname.replace(/\/+$/, ''));
++  } catch { return false; }
++}
++export function aliyunImageModel(id, route = {}) {
++  return isAliyunImageEndpoint(route.baseURL) && IMAGE_MODELS.has(id)
++    ? { inputModalities: ['text', 'image'], outputModalities: ['image'], imageGenerationApi: 'dashscope-images', supportsTools: false } : undefined;
++}
++export function aliyunImageURL(value) {
++  try {
++    const u = new URL(value);
++    return u.protocol === 'https:' && !u.port && !u.username && !u.password && !u.hash
++      && /^dashscope-[a-z0-9-]+\.oss-[a-z0-9-]+\.aliyuncs\.com$/.test(u.hostname);
++  } catch { return false; }
++}
++// The synchronous image API accepts one user message, not the Agent system/skill/tool history.
++export function aliyunImageTurn(options) {
++  const i = options.messages.findLastIndex(m => m.role === 'user' && m.source?.kind === 'user');
++  if (i < 0) return { ...options, messages: [] };
++  const current = options.messages[i];
++  const previous = current.content.some(b => b.type === 'image') ? undefined
++    : options.messages.slice(0, i).findLast(m => m.role === 'assistant' && m.content.some(b => b.type === 'image'));
++  return { ...options, messages: [...(previous ? [{ ...previous, content: previous.content.filter(b => b.type === 'image') }] : []), current] };
++}
 diff --git a/lib/index.js b/lib/index.js
-index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf95483a3d8 100644
+index c25e5c7afcd9381dec2490fbff24910f173281d0..81542681be280194bdfb78a2b260b7472d47c2de 100644
 --- a/lib/index.js
 +++ b/lib/index.js
 @@ -1,4 +1,7 @@
@@ -16,7 +54,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf9
  			baseUrl,
 -			input: declaredInput(entry.input) ?? base?.input ?? [...request.defaultInput],
 +			...detectModelOutput(entry, { provider, api, baseURL: baseUrl }),
-+			input: declaredInput(entry.input) ?? base?.input ?? detectModelInput(entry).inputModalities ?? [...request.defaultInput],
++			input: declaredInput(entry.input) ?? base?.input ?? detectModelInput(entry, { provider, api, baseURL: baseUrl }).inputModalities ?? [...request.defaultInput],
  			cost: base?.cost ?? NO_COST,
  			contextWindow,
  			maxTokens,
@@ -47,7 +85,18 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf9
  	if (/\b(?:401|403)\b/.test(message)) return "AUTH";
  	if (isQuotaExceededError(message)) return QUOTA_EXCEEDED_CODE;
  	if (/\b429\b|rate.?limit/i.test(message)) return "RATE_LIMIT";
-@@ -1376,10 +1386,18 @@ function mapStopReason(message, contextWindow) {
+@@ -1311,7 +1321,9 @@ function classifyPiAiError(message) {
+ *   to non-retryable `PI_AI_ERROR` failures.
+ */
+ function mapStopReason(message, contextWindow) {
+-	const piAiOverflow = isContextOverflow(message, contextWindow);
++	// pi-ai's bodyless 400/413 heuristic is specific to Cerebras, not every compatible gateway.
++	const ambiguousBodyless = message.provider !== "cerebras" && /^4(?:00|13)\s*(?:status code)?\s*\(no body\)/i.test(message.errorMessage ?? "");
++	const piAiOverflow = !ambiguousBodyless && isContextOverflow(message, contextWindow);
+ 	const harnessOverflow = message.stopReason === "error" && message.errorMessage !== void 0 && isContextWindowExceededError(message.errorMessage);
+ 	if (piAiOverflow || harnessOverflow) return {
+ 		kind: "error",
+@@ -1376,10 +1388,18 @@ function mapStopReason(message, contextWindow) {
  * @returns the harness chunks, ending with `usage` then `finish`; throws
  *   `LlmError` (`STREAM_CLOSED`) if the source ends without a terminal event.
  */
@@ -67,7 +116,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf9
  		case "text_start":
  			yield {
  				type: "block-start",
-@@ -1474,7 +1492,7 @@ async function* toStreamChunks(events, contextWindow, callerSignal) {
+@@ -1474,7 +1494,7 @@ async function* toStreamChunks(events, contextWindow, callerSignal) {
  			yield {
  				type: "finish",
  				reason: mapStopReason(event.message, contextWindow),
@@ -76,7 +125,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf9
  			};
  			return;
  		case "error":
-@@ -1711,7 +1729,8 @@ var PiAiAdapter = class extends LlmAdapter {
+@@ -1711,7 +1731,8 @@ var PiAiAdapter = class extends LlmAdapter {
  				provider,
  				id: model.id,
  				name: model.name,
@@ -86,7 +135,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf9
  			}));
  		});
  	}
-@@ -1731,6 +1750,7 @@ var PiAiAdapter = class extends LlmAdapter {
+@@ -1731,6 +1752,7 @@ var PiAiAdapter = class extends LlmAdapter {
  			id: model,
  			name: resolvedModel.name,
  			inputModalities: [...resolvedModel.input],
@@ -94,7 +143,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf9
  			context: { contextWindow: resolvedModel.contextWindow },
  			...configuredMaxTokens === void 0 ? {} : { defaultMaxTokens: configuredMaxTokens },
  			...reasoningInfo(resolvedModel, defaultLevel)
-@@ -1756,6 +1776,13 @@ var PiAiAdapter = class extends LlmAdapter {
+@@ -1756,6 +1778,13 @@ var PiAiAdapter = class extends LlmAdapter {
  			if (options.stop !== void 0) throw new LlmError("llm-pi-ai does not support GenerateOptions.stop", "UNSUPPORTED_OPTION");
  			const profile = this.profileOf(snapshot, options.provider);
  			const model = this.modelOf(snapshot, options.provider, options.model);
@@ -108,7 +157,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf9
  			const reasoning = resolveReasoningLevel(model, options.reasoningEffort ?? profile.reasoning);
  			const apiKey = await this.config.resolveApiKey(options.provider, profile);
  			const consumer = new AbortController();
-@@ -1793,7 +1820,7 @@ var PiAiAdapter = class extends LlmAdapter {
+@@ -1793,7 +1822,7 @@ var PiAiAdapter = class extends LlmAdapter {
  					...options.sessionId === void 0 ? {} : { sessionId: String(options.sessionId) },
  					signal: watchdog.signal,
  					headers: requestHeaders(profile.headers)
@@ -117,7 +166,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf9
  				let exhausted = false;
  				try {
  					while (true) {
-@@ -2068,7 +2095,8 @@ function label(...candidates) {
+@@ -2068,7 +2097,8 @@ function label(...candidates) {
  * them to `URL` resolution.
  */
  function listingUrl(baseURL) {
@@ -127,7 +176,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf9
  }
  /**
  * Read a reply body, refusing one that outgrows the ceiling. A declared length
-@@ -2113,7 +2141,7 @@ async function readBounded(response, url) {
+@@ -2113,7 +2143,7 @@ async function readBounded(response, url) {
  * skipped rather than failing the whole interrogation: a single malformed row
  * should not deny the user the rest of a working endpoint's catalog.
  */
@@ -136,16 +185,16 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf9
  	const data = body?.data;
  	if (!Array.isArray(data)) throw new LlmError("the endpoint's model listing has no \"data\" array; enter this provider's models by hand", "DISCOVERY_FAILED");
  	const models = [];
-@@ -2126,6 +2154,8 @@ function readListing(body) {
+@@ -2126,6 +2156,8 @@ function readListing(body) {
  		const maxTokens = capacity(entry?.max_output_tokens, entry?.max_tokens);
  		models.push({
  			id,
-+			...detectModelInput(entry),
++			...detectModelInput(entry, route),
 +			...detectModelOutput(entry, route),
  			...name === void 0 ? {} : { name },
  			...contextWindow === void 0 ? {} : { contextWindow },
  			...maxTokens === void 0 ? {} : { maxTokens }
-@@ -2157,10 +2187,15 @@ function usableProbeKey(raw) {
+@@ -2157,10 +2189,15 @@ function usableProbeKey(raw) {
  *   refuses or fails the request, or the reply is not a model listing.
  */
  async function discoverModels(request, storedProfile) {
@@ -163,7 +212,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf9
  			name: model.name,
  			contextWindow: model.contextWindow,
  			maxTokens: model.maxTokens
-@@ -2202,7 +2237,7 @@ async function discoverModels(request, storedProfile) {
+@@ -2202,7 +2239,7 @@ async function discoverModels(request, storedProfile) {
  	} catch (error) {
  		throw new LlmError(`${url} did not answer with JSON`, "DISCOVERY_FAILED", { cause: error });
  	}
@@ -172,7 +221,7 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf9
  }
  //#endregion
  //#region lib/types/login.js
-@@ -2518,7 +2553,12 @@ function apply(ctx, config) {
+@@ -2518,7 +2555,12 @@ function apply(ctx, config) {
  		if (profile === void 0) return void 0;
  		return {
  			headers: profile.headers,
@@ -188,11 +237,12 @@ index c25e5c7afcd9381dec2490fbff24910f173281d0..ab2a1cf2ceed5d28e0c6f11d0eae9cf9
  	ctx.llm.registerModelDiscovery(NS, (request, signal) => discoverModels({
 diff --git a/lib/model-input.js b/lib/model-input.js
 new file mode 100644
-index 0000000000000000000000000000000000000000..9f0cabbdc095d71eb6f01981eebc2904035e6a6c
+index 0000000000000000000000000000000000000000..ece3424fc4bd5f1aef20f133481a322e2ffc9871
 --- /dev/null
 +++ b/lib/model-input.js
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,51 @@
 +import { getBuiltinModels, getBuiltinProviders } from "@earendil-works/pi-ai/providers/all";
++import { aliyunImageModel } from "./aliyun-image.js";
 +import imageCatalog from "./model-output-catalog.js";
 +
 +// Desktop-owned inference: no network, active image probes, or profile writes.
@@ -217,7 +267,7 @@ index 0000000000000000000000000000000000000000..9f0cabbdc095d71eb6f01981eebc2904
 +  }
 +  return installedInputs.get(id);
 +}
-+export function detectModelInput(entry) {
++export function detectModelInput(entry, route = {}) {
 +  if (entry.inputCapabilitySource === "unknown") return {};
 +  const candidates = [entry.inputModalities, entry.input_modalities, entry.architecture?.input_modalities];
 +  // Schemastery materializes [] for missing model.input: it means automatic.
@@ -234,7 +284,7 @@ index 0000000000000000000000000000000000000000..9f0cabbdc095d71eb6f01981eebc2904
 +    return { inputModalities: flags[0] ? ["text", "image"] : ["text"], inputCapabilitySource: "provider" };
 +  }
 +  const imageInput = (imageCatalog[entry.id] ?? imageCatalog['google/' + entry.id] ?? imageCatalog['openai/' + entry.id])?.inputModalities;
-+  const known = imageInput ?? catalogInput(entry.id);
++  const known = aliyunImageModel(entry.id, route)?.inputModalities ?? imageInput ?? catalogInput(entry.id);
 +  if (known === null) return { inputCapabilitySource: "unknown" }; // Conflicting catalogs do not justify guessing.
 +  if (known !== undefined) return { inputModalities: [...known], inputCapabilitySource: "catalog" };
 +  if ([entry.id, entry.name, entry.display_name].some(value => typeof value === "string" && VISUAL_NAME.test(value))) {
@@ -785,13 +835,14 @@ index 0000000000000000000000000000000000000000..66c558f97b32e773609260e1dac2b462
 +};
 diff --git a/lib/model-output.js b/lib/model-output.js
 new file mode 100644
-index 0000000000000000000000000000000000000000..1daba85a79b8c795b986ac321ae9af74420c0296
+index 0000000000000000000000000000000000000000..f365bd642f452bb7941c36d3660ae3bc95d877d8
 --- /dev/null
 +++ b/lib/model-output.js
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,36 @@
 +import catalog from './model-output-catalog.js';
++import { aliyunImageModel } from './aliyun-image.js';
 +
-+export const IMAGE_APIS = ['chat-completions', 'openrouter-images', 'openai-images', 'google-generative-ai', 'openai-responses'];
++export const IMAGE_APIS = ['chat-completions', 'openrouter-images', 'openai-images', 'google-generative-ai', 'openai-responses', 'dashscope-images'];
 +function modalities(value) {
 +  if (!Array.isArray(value) || value.length === 0 || value.some(item => typeof item !== 'string')) return;
 +  const result = ['text', 'image'].filter(item => value.includes(item));
@@ -807,13 +858,14 @@ index 0000000000000000000000000000000000000000..1daba85a79b8c795b986ac321ae9af74
 +  const declared = raw.filter(value => value !== undefined);
 +  const normalized = declared.map(modalities);
 +  if (normalized.some(value => value === undefined) || normalized.some(value => JSON.stringify(value) !== JSON.stringify(normalized[0]))) return {};
-+  const known = catalog[entry.id] ?? (route.api === 'google-generative-ai' ? catalog['google/' + entry.id] : undefined)
++  const known = aliyunImageModel(entry.id, route) ?? catalog[entry.id] ?? (route.api === 'google-generative-ai' ? catalog['google/' + entry.id] : undefined)
 +    ?? (route.provider === 'openai' ? catalog['openai/' + entry.id] : undefined);
 +  const output = normalized[0] ?? known?.outputModalities;
 +  if (!output) return {};
 +  const result = { outputModalities: [...output] };
 +  if (!output.includes('image')) return result;
 +  if (IMAGE_APIS.includes(entry.imageGenerationApi)) result.imageGenerationApi = entry.imageGenerationApi;
++  else if (known?.imageGenerationApi === 'dashscope-images') result.imageGenerationApi = 'dashscope-images';
 +  else if (route.api === 'google-generative-ai') result.imageGenerationApi = 'google-generative-ai';
 +  else if ((route.provider === 'openrouter' || isOpenRouterEndpoint(route.baseURL)) && !output.includes('text')) result.imageGenerationApi = 'openrouter-images';
 +  else if (route.provider === 'openai' && !output.includes('text')) result.imageGenerationApi = 'openai-images';
@@ -825,11 +877,12 @@ index 0000000000000000000000000000000000000000..1daba85a79b8c795b986ac321ae9af74
 +}
 diff --git a/lib/native-image.js b/lib/native-image.js
 new file mode 100644
-index 0000000000000000000000000000000000000000..1b688198ee67626ccfabc3f4e9da0eb448768864
+index 0000000000000000000000000000000000000000..b043df67210a628cdf3a9a71177a287390aaa612
 --- /dev/null
 +++ b/lib/native-image.js
-@@ -0,0 +1,220 @@
+@@ -0,0 +1,259 @@
 +import { LlmError, attributionHeaders } from '@deepseek-ai/dsh-llm';
++import { aliyunImageURL, aliyunImageTurn, isAliyunImageEndpoint } from './aliyun-image.js';
 +
 +const MAX_BODY = 64 * 1024 * 1024;
 +const MAX_IMAGE = 20 * 1024 * 1024;
@@ -897,6 +950,27 @@ index 0000000000000000000000000000000000000000..1b688198ee67626ccfabc3f4e9da0eb4
 +  if (!ref) throw new LlmError('Generated image could not be persisted.', 'INVALID_IMAGE');
 +  return ref;
 +}
++/** Download only documented DashScope result storage; never forward the API credential. */
++async function aliyunResult(url, signal) {
++  if (!aliyunImageURL(url)) throw new LlmError('The image model returned an unsupported result host.', 'UNSUPPORTED_IMAGE_RESPONSE');
++  const response = await fetch(url, { method: 'GET', headers: { accept: 'image/png,image/jpeg,image/webp,image/gif' }, redirect: 'error', credentials: 'omit', signal });
++  const reader = response.body?.getReader();
++  if (!reader) throw new LlmError('Generated image download returned no body.', 'EMPTY_RESPONSE');
++  const buffers = []; let size = 0;
++  try {
++    if (!response.ok) throw new LlmError(`Generated image download HTTP ${response.status}.`, 'IMAGE_DOWNLOAD_FAILED');
++    if (Number(response.headers.get('content-length')) > MAX_IMAGE) throw new LlmError('Generated image exceeds 20 MiB.', 'INVALID_IMAGE');
++    for (;;) {
++      const { done, value } = await reader.read(); abort(signal);
++      if (done) break;
++      size += value.byteLength;
++      if (size > MAX_IMAGE) throw new LlmError('Generated image exceeds 20 MiB.', 'INVALID_IMAGE');
++      buffers.push(value);
++    }
++    const mime = response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase();
++    return raster(Buffer.concat(buffers).toString('base64'), mime === 'application/octet-stream' ? undefined : mime);
++  } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
++}
 +function inline(url) {
 +  const match = typeof url === 'string' && /^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(url);
 +  if (!match) throw new LlmError('The selected model returned an image URL instead of inline image bytes.', 'UNSUPPORTED_IMAGE_RESPONSE');
@@ -961,9 +1035,19 @@ index 0000000000000000000000000000000000000000..1b688198ee67626ccfabc3f4e9da0eb4
 +    const headers = new Headers({ ...model.headers, ...resolved?.auth.headers, ...profile.headers, ...attributionHeaders(), 'content-type': 'application/json' });
 +    if (key) headers.set(model.imageGenerationApi === 'google-generative-ai' ? 'x-goog-api-key' : 'authorization', model.imageGenerationApi === 'google-generative-ai' ? key : `Bearer ${key}`);
 +    if (!key && !headers.has('authorization')) throw new LlmError('The selected provider has no configured credential.', 'MISSING_CREDENTIAL');
-+    const messages = await messagesFor(options, attachments, profile, signal);
++    const imageOptions = model.imageGenerationApi === 'dashscope-images' ? aliyunImageTurn(options) : options;
++    const imageProfile = model.imageGenerationApi === 'dashscope-images' ? { ...profile, requestImageMaxBytes: Math.min(profile.requestImageMaxBytes ?? 10 * 1024 * 1024, 10 * 1024 * 1024) } : profile;
++    const messages = await messagesFor(imageOptions, attachments, imageProfile, signal);
 +    let endpoint, body;
-+    if (model.imageGenerationApi === 'google-generative-ai') {
++    if (model.imageGenerationApi === 'dashscope-images') {
++      if (!isAliyunImageEndpoint(base)) throw new LlmError('The selected DashScope image endpoint is not a documented Alibaba workspace URL.', 'UNSUPPORTED_PROTOCOL');
++      endpoint = new URL('/api/v1/services/aigc/multimodal-generation/generation', base).href;
++      const prompt = imageOptions.messages.at(-1)?.content.filter(p => p.type === 'text').map(p => p.text).join('\n');
++      if (!prompt) throw new LlmError('An image prompt is required.', 'INVALID_REQUEST');
++      const references = messages.flatMap(m => m.content.filter(p => p.type === 'image_url'));
++      if (references.length > 3) throw new LlmError('This image model accepts at most three reference images.', 'TOO_MANY_IMAGES');
++      body = { model: model.id, input: { messages: [{ role: 'user', content: [...references.map(p => ({ image: p.image_url.url })), { text: prompt }] }] } };
++    } else if (model.imageGenerationApi === 'google-generative-ai') {
 +      endpoint = `${base}/models/${encodeURIComponent(model.id)}:generateContent`;
 +      body = { contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: m.content.map(p => p.type === 'text' ? { text: p.text } : (() => { const image = inline(p.image_url.url); return { inlineData: { data: image.data.toString('base64'), mimeType: image.mediaType } } })()) })),
 +        generationConfig: { responseModalities: model.outputModalities.map(x => x.toUpperCase()) },
@@ -1000,10 +1084,17 @@ index 0000000000000000000000000000000000000000..1b688198ee67626ccfabc3f4e9da0eb4
 +    const image = value => { const id = value.data.toString('base64'); if (seen.has(id)) return; seen.add(id); parts.push({ type: 'image', value }); if (seen.size > (attachments.imageLimits?.maxImagesPerMessage ?? 8)) throw new LlmError('The model returned too many images for one message.', 'TOO_MANY_IMAGES'); };
 +    for await (const record of records(response, signal)) {
 +      abort(signal);
++      if (model.imageGenerationApi === 'dashscope-images' && record.code && !record.output) throw new LlmError(`${record.code}: ${String(record.message ?? 'Image generation failed.').slice(0, 1500)}`, 'PROVIDER_ERROR');
 +      if (record.error) throw new LlmError(String(record.error.message ?? 'Image generation failed.').slice(0,2000), 'PROVIDER_ERROR');
 +      if (record.done) finished = true;
 +      const receivedUsage = record.usage ?? record.response?.usage;
 +      if (receivedUsage) usage = { inputTokens: receivedUsage.prompt_tokens ?? receivedUsage.input_tokens ?? 0, outputTokens: receivedUsage.completion_tokens ?? receivedUsage.output_tokens ?? 0 };
++      if (model.imageGenerationApi === 'dashscope-images') {
++        for (const choice of record.output?.choices ?? []) for (const part of choice.message?.content ?? []) {
++          if (part.image) image(await aliyunResult(part.image, signal));
++          if (part.text) text(part.text);
++        }
++      }
 +      for (const choice of record.choices ?? []) {
 +        const delta = choice.delta ?? choice.message ?? {};
 +        if (typeof delta.content === 'string') text(delta.content);

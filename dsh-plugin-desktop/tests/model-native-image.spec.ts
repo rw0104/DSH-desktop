@@ -42,6 +42,63 @@ function imageReply() {
     + '\n\ndata: ' + JSON.stringify({ id: 'native-image', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 3, completion_tokens: 5 } }) + '\n\ndata: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } })
 }
 describe('selected model native image output', () => {
+  it('routes a manually added Aliyun Qwen image model to the same workspace native API and saves its signed result URL', async () => {
+    const baseURL = 'https://llm-fixture.cn-beijing.maas.aliyuncs.com/compatible-mode/v1'
+    const imageURL = 'https://dashscope-result-sh.oss-cn-shanghai.aliyuncs.com/image.png?Expires=fixture'
+    const { ctx, saveImages } = await setup('qwen-image-2.0-pro', {}, { provider: 'aliyun', api: 'openai-completions', baseURL })
+    const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(async (url) => {
+      if (String(url).endsWith('/api/v1/services/aigc/multimodal-generation/generation')) return new Response(JSON.stringify({ output: { choices: [{ message: { role: 'assistant', content: [{ image: imageURL }] }, finish_reason: 'stop' }] } }), { headers: { 'content-type': 'application/json' } })
+      if (String(url) === imageURL) return new Response(Buffer.from(PNG, 'base64'), { headers: { 'content-type': 'image/png' } })
+      return new Response(null, { status: 400 })
+    }); vi.stubGlobal('fetch', fetch)
+    const messages = [createUserMessage({ source: { kind: 'plugin', plugin: '@deepseek-ai/dsh-system-prompt' }, content: [{ type: 'text', text: 'irrelevant Agent instructions '.repeat(600) }] }), createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: '生成一张小猫坐在充满阳光的餐桌上的图像' }] })]
+    const chunks = await run(ctx, 'qwen-image-2.0-pro', messages, 'aliyun')
+    expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'stop' } })
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch.mock.calls[0]?.[0]).toBe('https://llm-fixture.cn-beijing.maas.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation')
+    expect(JSON.parse(fetch.mock.calls[0]?.[1]?.body as string)).toEqual({ model: 'qwen-image-2.0-pro', input: { messages: [{ role: 'user', content: [{ text: '生成一张小猫坐在充满阳光的餐桌上的图像' }] }] } })
+    expect(new Headers(fetch.mock.calls[0]?.[1]?.headers).get('authorization')).toBe('Bearer fixture-key')
+    expect(new Headers(fetch.mock.calls[1]?.[1]?.headers).has('authorization')).toBe(false)
+    expect(fetch.mock.calls[1]?.[1]).toMatchObject({ redirect: 'error', credentials: 'omit' })
+    expect(saveImages).toHaveBeenCalledTimes(1)
+  })
+  it.each([400, 413])('does not misclassify an empty HTTP %s from a custom provider as context overflow', async status => {
+    const { ctx } = await setup('ordinary-chat', {}, { provider: 'custom', api: 'openai-completions', baseURL: 'https://fixture.invalid/v1' })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status })))
+    const chunks = await run(ctx, 'ordinary-chat', undefined, 'custom')
+    expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'error', failure: { code: 'INVALID_REQUEST' } } })
+  })
+  it('retains explicit context-overflow errors on compatible providers', async () => {
+    const { ctx } = await setup('ordinary-chat', {}, { provider: 'custom', api: 'openai-completions', baseURL: 'https://fixture.invalid/v1' })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { message: 'Your input exceeds the context window of this model' } }), { status: 400, headers: { 'content-type': 'application/json' } })))
+    const chunks = await run(ctx, 'ordinary-chat', undefined, 'custom')
+    expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'error', failure: { code: 'CONTEXT_WINDOW_EXCEEDED' } } })
+  })
+  it('sends one Aliyun editing instruction and the preceding image while omitting older Agent history', async () => {
+    const { ctx } = await setup('qwen-image-2.0-pro-2026-03-03', {}, { provider: 'aliyun', api: 'openai-completions', baseURL: 'https://llm-fixture.cn-beijing.maas.aliyuncs.com/compatible-mode/v1' })
+    const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(async url => String(url).includes('/generation')
+      ? new Response(JSON.stringify({ output: { choices: [{ message: { content: [{ image: 'https://dashscope-result-sh.oss-cn-shanghai.aliyuncs.com/image.png' }] } }] } }), { headers: { 'content-type': 'application/json' } })
+      : new Response(Buffer.from(PNG, 'base64'), { headers: { 'content-type': 'image/png' } }))
+    vi.stubGlobal('fetch', fetch)
+    const messages = [createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'old prompt' }] }), createAssistantMessage({ source: { provider: 'aliyun', model: 'qwen-image-2.0-pro-2026-03-03' }, content: [{ type: 'image', attachment: imageRef }] }), createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'Make the background blue.' }] })]
+    const chunks = await run(ctx, 'qwen-image-2.0-pro-2026-03-03', messages as never, 'aliyun')
+    expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'stop' } })
+    expect(JSON.parse(fetch.mock.calls[0]?.[1]?.body as string).input.messages).toEqual([{ role: 'user', content: [{ image: 'data:image/png;base64,' + PNG }, { text: 'Make the background blue.' }] }])
+  })
+  it.each(['https://127.0.0.1/private.png', 'https://dashscope-result-sh.oss-cn-shanghai.aliyuncs.com.evil.invalid/image.png'])('rejects an unexpected Aliyun result host without requesting it: %s', async image => {
+    const { ctx, saveImages } = await setup('qwen-image-2.0-pro', {}, { provider: 'aliyun', api: 'openai-completions', baseURL: 'https://llm-fixture.cn-beijing.maas.aliyuncs.com/compatible-mode/v1' })
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ output: { choices: [{ message: { content: [{ image }] } }] } }), { headers: { 'content-type': 'application/json' } })); vi.stubGlobal('fetch', fetch)
+    const chunks = await run(ctx, 'qwen-image-2.0-pro', undefined, 'aliyun')
+    expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'error', failure: { code: 'UNSUPPORTED_IMAGE_RESPONSE' } } })
+    expect(fetch).toHaveBeenCalledTimes(1); expect(saveImages).not.toHaveBeenCalled()
+  })
+  it('does not force the Alibaba image protocol on another gateway using the same model ID', async () => {
+    const { ctx } = await setup('qwen-image-2.0-pro', {}, { provider: 'other', api: 'openai-completions', baseURL: 'https://fixture.invalid/v1' })
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 400 })); vi.stubGlobal('fetch', fetch)
+    await run(ctx, 'qwen-image-2.0-pro', undefined, 'other')
+    expect(String(fetch.mock.calls[0]?.[0])).toBe('https://fixture.invalid/v1/chat/completions')
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
   it('preserves an actual image returned by an unlisted model without requiring output metadata', async () => {
     const { ctx } = await setup('private-image-alias')
     const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(async () => imageReply()); vi.stubGlobal('fetch', fetch)
