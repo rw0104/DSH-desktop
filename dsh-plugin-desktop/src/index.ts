@@ -32,13 +32,15 @@ import {
 import type { DesktopLocale, DesktopPlatform, DesktopShellMode } from './runtime.ts'
 import type {} from './runtime.ts'
 import { installWorkspaceWorkbench } from './workspace-workbench.ts'
+import { installDesktopProductContext } from './product-context.ts'
+import { installWorkspaceUploadRoute } from './workspace-upload.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'desktop-shell'
 
 /** Services required before the shell can register its renderer generation. */
 /** Services required by the desktop shell; `desktopRuntime` is probed, not required. */
-export const inject = ['webServer', 'webRuntime', 'appExit', 'settings', 'agents', 'connection']
+export const inject = ['webServer', 'webRuntime', 'appExit', 'settings', 'agents', 'connection', 'systemPrompt']
 
 /** Standard settings namespace shared by tray and configuration surfaces. */
 export const DESKTOP_SETTINGS_NAMESPACE = 'dsh-desktop'
@@ -177,6 +179,15 @@ export function apply(ctx: Context, config: Config): void {
     throw new Error('dsh-plugin-desktop: desktop shell requires a loopback Web server')
   }
   installWorkspaceWorkbench(ctx)
+  if (config.mode === 'advanced' && ctx.workspaceWorkbench !== undefined) {
+    ctx.effect(() => installWorkspaceUploadRoute(ctx, ctx.workspaceWorkbench!), 'desktop: workspace file upload')
+  }
+  installDesktopProductContext(ctx, {
+    version: runtime.updates.currentVersion,
+    platform: runtime.platform,
+    mode: config.mode,
+    workspaceFiles: config.mode === 'advanced',
+  })
   const iconFilename = runtime.platform === 'darwin'
     ? 'app-icon-mac.png'
     : 'app-icon.png'

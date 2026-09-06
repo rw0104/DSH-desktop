@@ -138,6 +138,7 @@ function createHarness(platform: DesktopRuntime['platform'] = 'darwin'): PluginH
     get: vi.fn((key: unknown) => {
        if (String(key) === 'desktopRuntime') return runtime
        if (String(key) === 'connection') return { authenticatedUrl }
+       if (String(key) === 'systemPrompt') return { section: vi.fn() }
        return () => {}
      }),
     effect: vi.fn((register: () => unknown) => register()),

@@ -6,6 +6,8 @@
     "emitDeclarationOnly": false
   },
   "include": [
+    "tests/conversation-context-menu.spec.ts",
+    "tests/workspace-file-reference.spec.ts",
     "src/client/**/*.ts",
     "src/client/**/*.tsx",
     "tests/client-about-section.spec.ts",

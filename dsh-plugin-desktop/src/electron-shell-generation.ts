@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   Menu,
@@ -10,6 +11,10 @@ import {
   shell,
   Tray,
 } from 'electron'
+import { writeFile } from 'node:fs/promises'
+import { saveImageBytes } from './image-export.ts'
+import { DESKTOP_SAVE_IMAGE_CHANNEL, DESKTOP_OPEN_CONTENT_LINK_CHANNEL } from './content-actions-contract.ts'
+import { contentMenuTemplate, externalContentUrl } from './content-menu.ts'
 import { formatDesktopExitCode } from './desktop-logger.ts'
 import type { ElectronPlatformStrategy } from './electron-platform.ts'
 import type { DesktopNotification, DesktopShellSpec } from './runtime.ts'
@@ -152,6 +157,42 @@ export class ElectronShellGeneration {
     }
 
     app.on('activate', show)
+    const contentMenu = (_event: Electron.Event, params: Electron.ContextMenuParams): void => {
+      const template = contentMenuTemplate(params, origin, {
+        copy: text => clipboard.writeText(text),
+        open: url => { void shell.openExternal(url).catch(error => this.options.logError(String(error))) },
+        save: url => { window.webContents.downloadURL(url) },
+      }, spec.readLocalePreference() === 'zh')
+      if (template.length) Menu.buildFromTemplate(template).popup({ window })
+    }
+    const download = (_event: Electron.Event, item: Electron.DownloadItem, contents: Electron.WebContents): void => {
+      if (contents !== window.webContents) return
+      try { const url = new URL(item.getURL()); if (url.protocol !== 'blob:' || url.origin !== origin) return } catch { return }
+      item.setSaveDialogOptions({ title: spec.readLocalePreference() === 'zh' ? '图片另存为' : 'Save image as' })
+      item.once('done', (_event, state) => {
+        if (state === 'interrupted') this.options.logError('dsh-plugin-desktop: image download interrupted')
+      })
+    }
+    window.webContents.on('context-menu', contentMenu)
+    window.webContents.session?.on('will-download', download)
+    ipcMain.handle(DESKTOP_SAVE_IMAGE_CHANNEL, async (event, bytes: unknown, name: unknown) => {
+      if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame
+        || new URL(event.senderFrame!.url).origin !== origin) throw new Error('Image export sender rejected')
+      return saveImageBytes(bytes, name, {
+        choose: async defaultPath => {
+          const result = await dialog.showSaveDialog(window, { defaultPath, title: spec.readLocalePreference() === 'zh' ? '图片另存为' : 'Save image as' })
+          return result.canceled ? undefined : result.filePath
+        },
+        write: async (path, data) => { await writeFile(path, data) },
+      })
+    })
+    ipcMain.handle(DESKTOP_OPEN_CONTENT_LINK_CHANNEL, async (event, raw: unknown) => {
+      if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame
+        || new URL(event.senderFrame!.url).origin !== origin) throw new Error('Content link sender rejected')
+      const url = typeof raw === 'string' ? externalContentUrl(raw) : undefined
+      if (!url) throw new Error('Only HTTP and HTTPS links can be opened')
+      await shell.openExternal(url)
+    })
     window.on('close', close)
     window.on('focus', clearAttention)
     window.on('page-title-updated', preserveBlankTitle)
@@ -190,6 +231,10 @@ export class ElectronShellGeneration {
       window.off('page-title-updated', preserveBlankTitle)
       window.off('ready-to-show', show)
       window.webContents.off('before-input-event', handleZoomShortcut)
+      window.webContents.off('context-menu', contentMenu)
+      window.webContents.session?.off('will-download', download)
+      ipcMain.removeHandler(DESKTOP_SAVE_IMAGE_CHANNEL)
+      ipcMain.removeHandler(DESKTOP_OPEN_CONTENT_LINK_CHANNEL)
       window.webContents.off('will-frame-navigate', navigate)
       window.webContents.off('will-redirect', redirect)
       window.webContents.off('render-process-gone', rendererGone)

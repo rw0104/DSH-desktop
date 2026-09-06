@@ -1,5 +1,5 @@
 diff --git a/lib/client.js b/lib/client.js
-index cf573281c9248bd21fcdbd81e0b91ba922980578..3562a46cbc0d71a07e661cd907fd9c665ce3aef7 100644
+index cf573281c9248bd21fcdbd81e0b91ba922980578..b495a70a72eac172a47e380a4b3fe93849898cda 100644
 --- a/lib/client.js
 +++ b/lib/client.js
 @@ -14479,6 +14479,8 @@ window.__ModuleLoader__.load({
@@ -11,3 +11,29 @@ index cf573281c9248bd21fcdbd81e0b91ba922980578..3562a46cbc0d71a07e661cd907fd9c66
  				"data-phase": phase,
  				children: [sessionId === void 0 ? null : renderSlot("conversation.session.header", {}), (0, react_jsx_runtime.jsxs)("div", {
  					className: ConversationRoot_module_css_default.body,
+@@ -15614,7 +15616,7 @@ window.__ModuleLoader__.load({
+ 								children: [(0, react_jsx_runtime.jsxs)("div", {
+ 									className: InputBar_module_css_default.tools,
+ 									children: [
+-										(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
++										renderSlot("conversation.input.add", { locked: locked || machineBusy, onAddImages: intakeImages, onCommands: onToggleCommandMenu }, { fallback: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
+ 											label: t("input.commands"),
+ 											side: "top",
+ 											delayMs: 500,
+@@ -15629,7 +15631,7 @@ window.__ModuleLoader__.load({
+ 												onClick: onToggleCommandMenu,
+ 												children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutline16, { size: 14 })
+ 											})
+-										}),
++										}) }),
+ 										(0, react_jsx_runtime.jsxs)("div", {
+ 											className: InputBar_module_css_default.modes,
+ 											children: [accessSelect, sessionId === void 0 ? null : renderSlot("conversation.input.plan", { locked })]
+@@ -16161,6 +16163,7 @@ window.__ModuleLoader__.load({
+ 				name: "conversation.composer.bar",
+ 				locale: NS,
+ 				children: {
++					"conversation.input.add": { kind: "single", scope: "session-maybe" },
+ 					"conversation.input.attachments": {
+ 						kind: "single",
+ 						scope: "session-maybe"

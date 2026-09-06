@@ -29,5 +29,5 @@
   config:
     openBrowser: false
     printUrl: false
-    surfaceContext: true
+    surfaceContext: false
     trustedHosts: []

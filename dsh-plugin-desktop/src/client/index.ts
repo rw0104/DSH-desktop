@@ -12,6 +12,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import { DesktopAboutSection, DESKTOP_ABOUT_LOCALE } from './about-section.tsx'
 import { applyAdvancedShell } from './advanced-shell.ts'
+import { installClientExperience } from './experience.tsx'
 import { startRendererBootReporter } from './boot-health.ts'
 import { installDesktopDirectoryPickerBridge, requestDesktopDirectoryValidation } from './directory-picker.ts'
 import { installWindowsDrivePickerEnhancement } from './drive-picker-enhancement.ts'
@@ -81,6 +82,7 @@ export const inject = [
   'remote.credentials',
   'locale',
   'sessions',
+  'conversation',
   'settingsScope',
   'theme',
   'workspaces',
@@ -194,5 +196,8 @@ export function apply(ctx: ClientContext): void {
       removeStyles()
     }
   }, 'desktop: About settings section')
-  if (environment.mode === 'advanced') applyAdvancedShell(ctx, environment)
+  if (environment.mode === 'advanced') {
+    applyAdvancedShell(ctx, environment)
+    installClientExperience(ctx)
+  }
 }

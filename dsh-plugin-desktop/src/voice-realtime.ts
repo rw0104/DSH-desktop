@@ -920,7 +920,7 @@ export function registerVoiceRealtimeHost(ctx: Context): void {
         ttsVoice: current.provider === 'qwen' ? current.qwenTtsVoice.trim() : current.doubaoTtsVoice.trim(),
         ttsEndpoint: current.provider === 'qwen' ? '' : current.doubaoTtsEndpoint.trim(),
         ttsResourceId: current.provider === 'qwen' ? '' : current.doubaoTtsResourceId.trim(),
-        systemPrompt: current.systemPrompt,
+        systemPrompt: [ctx.get('desktopProductContext')?.(), current.systemPrompt].filter(Boolean).join('\n'),
         agentSessionId: sessionId,
         sessionId: bridgeSessionId,
         expiresAt: Date.now() + 60_000,

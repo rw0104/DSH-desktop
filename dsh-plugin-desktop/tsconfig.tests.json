@@ -7,6 +7,8 @@
   },
   "include": ["scripts/**/*.ts", "src/*.ts", "tests/**/*.ts", "tests/**/*.tsx"],
   "exclude": [
+    "tests/conversation-context-menu.spec.ts",
+    "tests/workspace-file-reference.spec.ts",
     "tests/advanced-frame-session.spec.ts",
     "tests/voice-ui.spec.ts",
     "tests/voice-composer-click.spec.ts",

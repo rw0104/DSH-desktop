@@ -1,5 +1,23 @@
 # Upstream synchronization ledger
 
+## 2026-09-06 客户端体验修复与验证
+
+三方仓库使用 `git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref <official-url> HEAD <branch> <tag>` 验证；直连 GitHub 曾连接失败，代理重试成功。GitHub 页面确认参考仓库官方地址重定向到 `anywhere-labs/dsh-desktop`，仍作为只读比较来源。
+
+| 来源 | 当前远端与 registry | 本轮决定 |
+| --- | --- | --- |
+| `deepseek-ai/deepseek-harness` | master `d347e703908d0406b7a7ef80e3a0e594d86b2215`；`dsh-v0.1.2-rc.1` `a66e4702047846cdaa10c66c9d3df3951f5ea70d`；npm `@deepseek-ai/dsh` latest/next `0.1.2-rc.1` | 保持 rc.1 子模块与发布 family；开发分支尚未完成本产品合同兼容验证，下一迁移步骤为审计该 tag 到 master 的 session、attachment、slots 与模型合同变更 |
+| `omdsh-dev/DSH-better-sidebar` | main `bb21657eae6d5e15078bcd6f97f3152b5daf7b0a`；`v0.18.0` `9e1a03452794532cda1f6ac677b72579dff48dfc`；npm latest `0.18.0` | 保持已发布版本与现有补丁，不改 Sidebar 上传或局部右键 |
+| `anywhere-labs/deepseek-harness-desktop` | master `91b12fcd60fe85a39c6aa21dcd3056d89d0b69a4`；最新稳定 tag `v2.0.5` `423406fe225442995902015cb6f10eed670ff115`；npm `dsh-plugin-desktop` latest `2.0.0` | 只读参考，不引入该项目运行时、README 或产品身份 |
+
+本轮已扩展 `@deepseek-ai/dsh-client-ui-conversation@0.1.2-rc.1` 已有审查补丁：为添加按钮声明一个可选 slot，携带输入锁定状态、现有图片 intake 与命令回调；原始按钮作为空 slot 的 fallback。Desktop 仅在 Advanced 注册该 slot。图片展示、上传存储和原生菜单由 Desktop 自有模块实现。没有更新子模块 pin，也没有修改 Community Market、目录 provider 或传输策略。
+
+受影响的 `@deepseek-ai/dsh-client-ui-conversation` 和 `@deepseek-ai/dsh-system-prompt` 单包 npm `latest` 仍为 `0.0.1-rc.1`，`next` 为 `0.1.2-rc.1`；保持明确的 RC1 精确版本，不按单包 latest 降级。
+
+验证完成：immutable install、完整 `corepack yarn check`（Desktop 879 passed / 11 skipped，Market 275 passed）、228 节点运行时闭包与 CLI/Loader/Profile、744 个生产依赖许可证检查通过。Windows unpacked smoke 通过，861 个文件 / 680,547,736 bytes，包内 DSH `0.1.2-rc.1` 与 pnpm `11.7.0` 可运行。实际 ASAR Host/Client 通过添加菜单、多选/拖放/粘贴、工作区真实文件存储与重名、上传失败与超限、消息/代码/链接右键、Shift+F10、原图下载及刷新读回；页面异常为零。请求确认 Desktop 产品事实到达普通聊天，纯生图仍只请求一次且没有工具。使用隔离临时 profile 与本地模拟服务，不访问真实计费供应商。
+
+本轮只交付源码变更及本地 unpacked 验证，产品版本仍为 `2.2.6`；没有新 installer、发布、tag 或用户安装操作。新增预览工具栏、添加菜单和语义菜单属于 Advanced；compatibility 保留上游客户端并共用 Host 产品事实与原生内容菜单。Windows 原生对话框及 IPC 边界由测试覆盖，macOS 原生操作需要后续对应系统验收。
+
 ## 2026-09-05 阿里云图片错误与通用适配复核
 
 代码与说明推送前再次复核三条 remote 的 HEAD、对应 heads/tags 及 npm dist-tags，结果与下文记录的本轮基线一致；不新增依赖或 submodule 更新。此次同步面向 `origin/codex/qwen-e2e-agent-orchestration`，包含已验证的 2.2.4—2.2.6 累计修复和接入说明。运行时代码与安装器编译基线 `a7e02445ee32` 一致，后续提交仅整理文档；本地诊断、会话日志、截图和安装包不随 Git 分支提交。

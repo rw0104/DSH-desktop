@@ -2,6 +2,7 @@
 
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -124,7 +125,8 @@ try {
       { id: 'community-market', name: 'dsh-community-market' },
       { id: 'third-party-smoke', name: THIRD_PARTY_NAME },
     ] }],
-    (host) => {
+    async (host) => {
+      await host.plugin(SystemPrompt)
       // Packaged Electron does not expose Node's internal ESM loader.
       host.loader.internal = undefined
       host.provide(DSH_LAUNCH_ENVIRONMENT_KEY, launchEnvironment)
