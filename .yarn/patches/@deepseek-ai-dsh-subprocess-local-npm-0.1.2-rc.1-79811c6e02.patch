@@ -1,0 +1,12 @@
+diff --git a/lib/index.js b/lib/index.js
+index 04aea6abe4215e894c6c2df717d6c190ff6882aa..0075c0493165e8c6afc61956e64c7ebb7a519a42 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -847,6 +847,7 @@ function spawnSubprocess(spec, internals = {}) {
+ 	const env = childEnv(spec.env);
+ 	const child = spawn(program, args, {
+ 		cwd: spec.cwd,
++		windowsHide: true,
+ 		env,
+ 		stdio: [
+ 			stdinMode === "ignore" ? "ignore" : "pipe",

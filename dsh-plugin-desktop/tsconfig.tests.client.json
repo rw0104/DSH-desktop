@@ -6,6 +6,9 @@
     "emitDeclarationOnly": false
   },
   "include": [
+    "tests/sidebar-menu-placement.spec.ts",
+    "tests/sidebar-menu-lifecycle.spec.ts",
+    "tests/sidebar-markdown-preview.spec.ts",
     "tests/conversation-context-menu.spec.ts",
     "tests/workspace-file-reference.spec.ts",
     "src/client/**/*.ts",

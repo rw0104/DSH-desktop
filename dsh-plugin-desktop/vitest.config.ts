@@ -11,7 +11,7 @@ export default defineConfig({
     testTimeout: process.platform === 'win32' ? 30_000 : undefined,
     server: {
       deps: {
-        inline: ['@deepseek-ai/dsh-client-ui-primitives'],
+        inline: ['@deepseek-ai/dsh-client-ui-primitives', '@deepseek-ai/dsh-subprocess-local'],
       },
     },
   },

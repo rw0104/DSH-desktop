@@ -1,4 +1,4 @@
 * text=auto eol=lf
 patches/*.patch text eol=lf
-# A unified patch context marker is a space before the original tab indentation.
-.yarn/patches/*.patch text eol=lf whitespace=-space-before-tab
+# Unified patch context markers precede tabs; a blank context line is one space.
+.yarn/patches/*.patch text eol=lf whitespace=-space-before-tab,-blank-at-eol

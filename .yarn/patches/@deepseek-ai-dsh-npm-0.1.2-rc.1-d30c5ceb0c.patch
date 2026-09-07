@@ -886,3 +886,15 @@ index 7486cddccd1ba3a66c78df0a4c234ac115b21cf8..372f48af14e871719d7ee5f79df95a2a
    ],
    "dsh": {
      "configTrees": [
+diff --git a/lib/plugin-F7ZVfRyo.js b/lib/plugin-F7ZVfRyo.js
+index 0ec834947e5a46d3c53d7d5a6ca2519b1e57d7ec..7b3fecadd9387d35877b7d3e5b3d6db3e958dee8 100644
+--- a/lib/plugin-F7ZVfRyo.js
++++ b/lib/plugin-F7ZVfRyo.js
+@@ -108,6 +108,7 @@ function runPlugin(profile, args) {
+ 	const before = readProfileManifest(NAME, dir);
+ 	const result = spawnSync("pnpm", args.map((argument) => anchorPathSpec(argument, process.cwd())), {
+ 		cwd: dir,
++		windowsHide: true,
+ 		stdio: "inherit",
+ 		shell: process.platform === "win32"
+ 	});

@@ -3719,7 +3719,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deepseek-ai/dsh-subprocess-local@npm:^0.1.2-rc.1":
+"@deepseek-ai/dsh-subprocess-local@npm:0.1.2-rc.1":
   version: 0.1.2-rc.1
   resolution: "@deepseek-ai/dsh-subprocess-local@npm:0.1.2-rc.1"
   dependencies:
@@ -3730,6 +3730,20 @@ __metadata:
     "@deepseek-ai/dsh-subprocess": ^0.1.2-rc.1
     "@deepseek-ai/dsh-timeout": ^0.1.2-rc.1
   checksum: 10c0/b8b1fcdabf7f2437d069f0ab279ccfbc7c305a74c4ace1b58963c3ef3235b2f4ac149ab44999eb01b7a67d054e5d2562f5ecbf35bf47cf2b3f1fabfb114a1b86
+  languageName: node
+  linkType: hard
+
+"@deepseek-ai/dsh-subprocess-local@patch:@deepseek-ai/dsh-subprocess-local@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-subprocess-local-npm-0.1.2-rc.1-79811c6e02.patch::locator=deepseek-harness-desktop%40workspace%3A.":
+  version: 0.1.2-rc.1
+  resolution: "@deepseek-ai/dsh-subprocess-local@patch:@deepseek-ai/dsh-subprocess-local@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-subprocess-local-npm-0.1.2-rc.1-79811c6e02.patch::version=0.1.2-rc.1&hash=646b7f&locator=deepseek-harness-desktop%40workspace%3A."
+  dependencies:
+    koffi: "npm:^3.1.0"
+    node-pty: "npm:1.2.0-beta.15"
+  peerDependencies:
+    "@deepseek-ai/cordis": ^4.0.2
+    "@deepseek-ai/dsh-subprocess": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-timeout": ^0.1.2-rc.1
+  checksum: 10c0/15e255f955c908f60163855f8c91e171e9b98393d06451a5a7e610556d24f91662629d4ee48efc4fbb3c4c1be40b3a304bb032759f21d3af0178c46f6824647f
   languageName: node
   linkType: hard
 
@@ -4709,7 +4723,7 @@ __metadata:
 
 "@deepseek-ai/dsh@patch:@deepseek-ai/dsh@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-npm-0.1.2-rc.1-d30c5ceb0c.patch::locator=deepseek-harness-desktop%40workspace%3A.":
   version: 0.1.2-rc.1
-  resolution: "@deepseek-ai/dsh@patch:@deepseek-ai/dsh@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-npm-0.1.2-rc.1-d30c5ceb0c.patch::version=0.1.2-rc.1&hash=fc161b&locator=deepseek-harness-desktop%40workspace%3A."
+  resolution: "@deepseek-ai/dsh@patch:@deepseek-ai/dsh@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-npm-0.1.2-rc.1-d30c5ceb0c.patch::version=0.1.2-rc.1&hash=a98095&locator=deepseek-harness-desktop%40workspace%3A."
   dependencies:
     "@deepseek-ai/cordis": "npm:^4.0.2"
     "@deepseek-ai/cordis-plugin-hmr": "npm:^1.0.17"
@@ -4783,7 +4797,7 @@ __metadata:
     node-addon-require-builtin: "npm:^0.1.4"
   bin:
     dsh: lib/bin.js
-  checksum: 10c0/1502dd7242cd1552391f2b528ca0d6e3c8805e2674af83b8991dd3c352938b9374d129c6312040486cbbb640b000e70bc4733938b80537cb274762a5ea9708ec
+  checksum: 10c0/dc40773fc99173decbdc444bd620932d264bebc9979e0a85102993337a73cf6f3a7d5d3ab92fe6bea21987c0c7dc89d5ed25c85c92d965ee4b7bb082ca75fa87
   languageName: node
   linkType: hard
 
@@ -9148,6 +9162,65 @@ __metadata:
     "@huanlin/dsh-plugin-better-locale":
       optional: true
   checksum: 10c0/88ce013e764136a7227f706dc1deddf3ca6e19900d3066e52d9e21184eebecfc6c822abd2a2b6ff759d6d66aa7070f71329def604b32c756f5a2827e537a3250
+  languageName: node
+  linkType: hard
+
+"dsh-better-sidebar@patch:dsh-better-sidebar@npm%3A0.18.0#./.yarn/patches/dsh-better-sidebar-npm-0.18.0-0ef7382fe6.patch::locator=deepseek-harness-desktop%40workspace%3A.":
+  version: 0.18.0
+  resolution: "dsh-better-sidebar@patch:dsh-better-sidebar@npm%3A0.18.0#./.yarn/patches/dsh-better-sidebar-npm-0.18.0-0ef7382fe6.patch::version=0.18.0&hash=3bdf5c&locator=deepseek-harness-desktop%40workspace%3A."
+  dependencies:
+    "@codemirror/commands": "npm:^6.10.4"
+    "@codemirror/lang-cpp": "npm:^6.0.3"
+    "@codemirror/lang-css": "npm:^6.3.1"
+    "@codemirror/lang-go": "npm:^6.0.1"
+    "@codemirror/lang-html": "npm:^6.4.12"
+    "@codemirror/lang-java": "npm:^6.0.2"
+    "@codemirror/lang-javascript": "npm:^6.2.5"
+    "@codemirror/lang-json": "npm:^6.0.2"
+    "@codemirror/lang-markdown": "npm:^6.5.2"
+    "@codemirror/lang-php": "npm:^6.0.2"
+    "@codemirror/lang-python": "npm:^6.2.1"
+    "@codemirror/lang-rust": "npm:^6.0.2"
+    "@codemirror/lang-sql": "npm:^6.10.0"
+    "@codemirror/lang-vue": "npm:^0.1.3"
+    "@codemirror/lang-xml": "npm:^6.1.0"
+    "@codemirror/lang-yaml": "npm:^6.1.3"
+    "@codemirror/language": "npm:^6.12.4"
+    "@codemirror/legacy-modes": "npm:^6.5.3"
+    "@codemirror/search": "npm:^6.7.1"
+    "@codemirror/state": "npm:^6.7.1"
+    "@codemirror/view": "npm:^6.43.8"
+    "@lezer/highlight": "npm:^1.2.3"
+    clsx: "npm:^2.1.1"
+    dompurify: "npm:^3.4.14"
+    mermaid: "npm:^11.16.1"
+    node-pty: "npm:^1.1.0"
+    react-icons: "npm:5.7.0"
+    rxjs: "npm:^7.8.2"
+    schemastery: "npm:^3.18.0"
+    ws: "npm:^8.18.0"
+  peerDependencies:
+    "@deepseek-ai/cordis": ^4.0.2
+    "@deepseek-ai/dsh-agent": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-client-locale": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-client-ui-conversation": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-client-ui-primitives": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-client-ui-settings": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-client-ui-slots": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-host-webserver": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-invariants": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-llm": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-session": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-settings": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-subagent": ^0.1.2-rc.1
+    "@deepseek-ai/dsh-tools": ^0.1.2-rc.1
+    "@huanlin/dsh-plugin-better-locale": ^0.1.0
+    react: ^18.2.0
+    react-dom: ^18.2.0
+  peerDependenciesMeta:
+    "@huanlin/dsh-plugin-better-locale":
+      optional: true
+  checksum: 10c0/a960c6b683852ff8c8012507ae4cab31af3b4e0a944823136001ec460a7bf10fd8f461d8cdfbf5ed2927b06abb4fc2c20b2c018587df11e94142a4a579bc9f6d
   languageName: node
   linkType: hard
 
