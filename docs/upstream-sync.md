@@ -1,5 +1,66 @@
 # Upstream synchronization ledger
 
+## 2026-09-06 22:57 选择性同步实施前复核
+
+开始执行 Desktop 9 个提交与 Sidebar 30 个提交的选择性同步审查前，再次读取三条权威 Git remote 的全部 heads/tags、GitHub Releases 与官方 npm 元数据。结果仍为 Harness `d347e703908d0406b7a7ef80e3a0e594d86b2215` / `dsh-v0.1.3-alpha.1`、Sidebar `2dc2dcf41815cb0cf930b30708564b300645d347` / 正式 `v0.18.0`、参考 Desktop `099ef308012056178109b4e14ca73ae7a6fa635b` / 正式 `v2.0.5`；无新增范围。npm CLI `latest/next=0.1.2-rc.1`、Sidebar `latest=0.18.0`、参考 `dsh-plugin-desktop latest=2.0.0`，与前一快照一致。
+
+本产品基线为 `4737845221082bc99db3fe18dd0c7d146871e495` / `2.2.7`；gitlink 和 `upstream.json` 为官方 RC1 `a66e4702047846cdaa10c66c9d3df3951f5ea70d`。本次审查保持 RC1 和 Sidebar 精确 `0.18.0`，对适用修复建立最小受审查 patch 与实际包内回归；源码比较结果本身不代表本产品已经存在同一缺陷或兼容性已通过。环境为 Node `v24.16.0`、根 Yarn `4.18.0`。
+
+## 2026-09-06 22:29 三个上游更新复核
+
+查询窗口为 `2026-09-06T22:27:15-07:00` 至 `2026-09-06T22:29:15-07:00`（UTC 为 2026-09-07）。本轮以本页“2.2.7 本地测试安装器准备”的三方快照为比较基线，重新读取权威 Git remote 的 HEAD、全部 heads/tags、GitHub Releases/compare 和 npm 官方 registry；不以网页缓存或本地 remote-tracking ref 代替实时结果。外层 HEAD 为 `4737845221082bc99db3fe18dd0c7d146871e495`，产品版本 `2.2.7`，核对前工作区干净。
+
+| 来源 | 本次远端与发布渠道 | 相对上次审计 / 当前产品基线 |
+| --- | --- | --- |
+| [官方 Harness](https://github.com/deepseek-ai/deepseek-harness/releases) | `master` / `dsh-v0.1.3-alpha.1` 均为 `d347e703908d0406b7a7ef80e3a0e594d86b2215`；该 prerelease 发布于 `2026-09-04T11:34:32Z`。npm CLI `latest/next=0.1.2-rc.1`、`alpha=0.1.2-alpha.5` | 相对上次快照无新 HEAD/tag/release；源码仍领先本产品 RC1 pin `a66e4702047846cdaa10c66c9d3df3951f5ea70d` **328 个提交**（含 merge）。本地 gitlink、`upstream.json` 与正式 family 均为 `0.1.2-rc.1` |
+| [Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar/releases) | `main=2dc2dcf41815cb0cf930b30708564b300645d347`；稳定 tag `v0.18.0=9e1a03452794532cda1f6ac677b72579dff48dfc`，发布于 `2026-09-03T11:39:29Z`；npm `latest=0.18.0`、`alpha=0.18.0-alpha.0`、`beta=0.12.0-beta.1` | 相对上次快照无新增；main 仍领先已采用的 `0.18.0` **30 个未发布提交**（含 merge）。精确依赖及补丁基线保持不变 |
+| [Desktop reference](https://github.com/anywhere-labs/dsh-desktop/releases) | 权威旧 URL 重定向到 `anywhere-labs/dsh-desktop`；`master=099ef308012056178109b4e14ca73ae7a6fa635b`。最新稳定 `v2.0.5` 与预发布 `v2.0.5-beta.1` 的 tag 仍为 `423406fe225442995902015cb6f10eed670ff115`；稳定 Release 发布于 `2026-09-03T15:41:09Z`。npm `dsh-plugin-desktop latest=2.0.0` | 相对上次比较点 `91b12fcd60fe85a39c6aa21dcd3056d89d0b69a4` **新增 9 个提交**（7 个非 merge、2 个 merge）；未发现新发布版本。只读参考，不是本产品依赖或版本线 |
+
+### 发布面与迁移约束
+
+- npm `@deepseek-ai/dsh@0.1.3-alpha.1`、`@deepseek-ai/dsh-base@0.1.3-alpha.1`、`@deepseek-ai/dsh-web-app@0.1.3-alpha.1` 的精确查询均返回 `E404`，当前不存在可直接替换本产品的该版本完整 npm family。`dsh-base` / `dsh-web-app` 的 `latest` 仍为 `0.0.1-rc.1`，`dsh-client-ui-attachment` 的 `latest` 为 `0.0.1-rc.2`，三者 `next` 均为 `0.1.2-rc.1`；不能用单个包的 `latest` 推导整族版本。
+- [Harness alpha 发布说明](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.3-alpha.1) 明确包含生命周期持有的 `SessionHandle`、异步 `agentLoop.create()`、跨进程 session 锁和 session format v2，并声明部分历史会话加载存在已知性能回退。通用文件上传、模型发现、Windows 子进程隐藏等改进也在该版本内；本轮未进行兼容性验证，不能将其判定为可直接升级。下一步应先确认官方 npm family 完整发布，再独立审查 session 迁移/恢复、attachment 上传、slot 与 Sidebar 合同，验证后单独提交 gitlink。
+- [Sidebar 的 30 个提交](https://github.com/omdsh-dev/DSH-better-sidebar/compare/9e1a03452794532cda1f6ac677b72579dff48dfc...2dc2dcf41815cb0cf930b30708564b300645d347) 包括文件树重命名/确认删除、菜单视口适配、Sidechat fork inbox 修正、Markdown 本地图片预览，以及轮询/组件拆分、主题和翻译调整。这些是相对已发布版本的既有待跟进内容，不是本轮新增。npm `0.18.0` integrity 仍为 `sha512-6sGUIpgrFLXikACKBXLSiyngULceZCIr5M4bLw2IdCJ3KWHcbNsJJl+TLHJw0lM9voRw0etbr5fC16VQ9YvshQ==`，DSH peers 仍要求 `^0.1.2-rc.1`；下一次发布后再审查消费侧补丁、文件操作与 Sidechat 回归。
+
+### 参考 Desktop 本轮新增内容
+
+[精确比较范围](https://github.com/anywhere-labs/dsh-desktop/compare/91b12fcd60fe85a39c6aa21dcd3056d89d0b69a4...099ef308012056178109b4e14ca73ae7a6fa635b) 为 ahead 9 / behind 0。下表仅记录变更及后续审查方向，未移植代码。
+
+| 提交 | 变更 | 后续审查方向 |
+| --- | --- | --- |
+| `8f3c361982ed103b520b7d967b55806b4e60abb5` | Safe Mode 清理逐项识别链接并仅解除链接，保留 junction 指向的目标；增加失败重试与测试 | 优先对照本产品诊断/Profile 清理路径，验证目标保留、边界检查和失败行为 |
+| `151af68dd6d9af97f717897e4e802cabe0873e8d` | beta 插件安装控制台隐藏补丁改为命中当前 alpha CLI chunk | 依赖参考项目 `0.1.3-alpha.1` 构建；本产品 RC1 补丁需按实际包面独立检查 |
+| `1eca954d45350f80fbe63a8de71fc9a37f422933` | Windows 并行测试开始前先准备 Electron runtime，避免首次解包竞争 | 若出现同类测试竞争再评估；保持 headless 和机器级缓存复用 |
+| `48afbd7a4bb8836d8e2e1da7979aac8bbd0a6fa1`，文档 `6a70075fba2b3d3a81ae3ed668c427dcd4635d55` / `57c2c178a004af2926e7efa1d43bf6e7478f779c` | 删除已废弃的 Profile creator 窗口/API 路由并更新架构记录 | 按本产品实际路由所有权检查，不整体合并参考架构 |
+| `58e1c48d31ef091ca8518ffb558eb1d365f725cb` | 更新参考产品 Windows 图标 | 参考项目品牌资产，不接入本产品 |
+
+复核使用以下命令（Git/GitHub API 使用本机既有代理；npm 显式指定官方 registry）：
+
+```powershell
+foreach ($repo in @('deepseek-ai/deepseek-harness', 'omdsh-dev/DSH-better-sidebar', 'anywhere-labs/deepseek-harness-desktop')) {
+  git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref "https://github.com/$repo.git" HEAD 'refs/heads/*' 'refs/tags/*'
+}
+$env:HTTPS_PROXY='http://127.0.0.1:10808'
+foreach ($repo in @('deepseek-ai/deepseek-harness', 'omdsh-dev/DSH-better-sidebar', 'anywhere-labs/dsh-desktop')) {
+  gh api "repos/$repo/releases?per_page=3" --jq '[.[]|{tag_name,published_at,prerelease,draft,html_url,target_commitish}]'
+}
+gh api 'repos/deepseek-ai/deepseek-harness/compare/a66e4702047846cdaa10c66c9d3df3951f5ea70d...d347e703908d0406b7a7ef80e3a0e594d86b2215' --jq '{status,ahead_by,behind_by,total_commits,html_url}'
+gh api 'repos/omdsh-dev/DSH-better-sidebar/compare/9e1a03452794532cda1f6ac677b72579dff48dfc...2dc2dcf41815cb0cf930b30708564b300645d347' --jq '{status,ahead_by,behind_by,total_commits,commits:[.commits[]|{sha,message:.commit.message}]}'
+gh api 'repos/anywhere-labs/dsh-desktop/compare/91b12fcd60fe85a39c6aa21dcd3056d89d0b69a4...099ef308012056178109b4e14ca73ae7a6fa635b' --jq '{status,ahead_by,behind_by,total_commits,commits:[.commits[]|{sha,message:.commit.message}],files:[.files[]|{filename,status,patch}]}'
+npm view @deepseek-ai/dsh version dist-tags time.modified --registry=https://registry.npmjs.org --json
+npm view dsh-better-sidebar version dist-tags time.modified dist.integrity peerDependencies --registry=https://registry.npmjs.org --json
+npm view dsh-plugin-desktop version dist-tags time.modified repository --registry=https://registry.npmjs.org --json
+foreach ($name in @('@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@deepseek-ai/dsh-client-ui-attachment')) {
+  npm view $name version dist-tags --registry=https://registry.npmjs.org --json
+}
+foreach ($name in @('@deepseek-ai/dsh', '@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app')) {
+  npm view "${name}@0.1.3-alpha.1" version --registry=https://registry.npmjs.org --json
+}
+git submodule status -- deepseek-harness
+```
+
+本轮只更新同步台账；没有修改源码、依赖、lockfile、gitlink、产品版本或根 README，也没有安装、打包、提交、推送或发布。构建与运行门禁未重跑；本次文档改动使用 `corepack yarn check:docs` 和 `git diff --check` 验证。
+
 ## 2026-09-06 2.2.7 本地测试安装器准备
 
 用户请求完整开发文档与可安装的最新测试包。本轮复核：Harness HEAD / `dsh-v0.1.3-alpha.1` 为 `d347e703908d0406b7a7ef80e3a0e594d86b2215`，RC1 tag 为 `a66e4702047846cdaa10c66c9d3df3951f5ea70d`；Sidebar HEAD `2dc2dcf41815cb0cf930b30708564b300645d347`、v0.18.0 tag `9e1a03452794532cda1f6ac677b72579dff48dfc`；参考 Desktop HEAD `91b12fcd60fe85a39c6aa21dcd3056d89d0b69a4`、最新稳定 v2.0.5 tag `423406fe225442995902015cb6f10eed670ff115`。npm CLI latest/next `0.1.2-rc.1`、attachment next `0.1.2-rc.1`（latest 仍为 `0.0.1-rc.2`）、Sidebar latest `0.18.0`、参考 Desktop package latest `2.0.0`。
