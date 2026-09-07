@@ -1,5 +1,13 @@
 # Upstream synchronization ledger
 
+## 2026-09-07 v2.2.7 正式发布结果
+
+[DSH Desktop v2.2.7](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.7) 于 `2026-09-07T12:18:15Z` 正式公开；GitHub Release ID `384063305`，`draft=false`、`prerelease=false`，`releases/latest` 已指向该 Release。annotated tag object 为 `6f492989f18828f128b273745a3e5963cf34a813`，解引用到 `16974a6ec9178d1085d74c66735bef55bf34e8ba`；安装器运行时代码仍来自 `f261bf52aa586c03cfeefc08e9f64df15253ceb1`，其后到 tag 的差异仅为已检查的文档。
+
+Release 只包含 `DSH-Desktop-2.2.7-x64-Setup.exe`（224,133,509 bytes）与 `latest.yml`（359 bytes）。先上传草稿并核对两项资产均为 uploaded、大小及 GitHub SHA-256 digest 与下文一致，再公开并设为 Latest；公开后再次回读通过。安装器直链 HEAD 最终返回 HTTP 200，实际下载的 `latest.yml` 与本地元数据哈希完全一致；未把本地开发文档、校验工具、日志或解包目录作为资产上传。
+
+使用公开 Latest API 的实际响应回放生产 `checkForStableUpdate`：已装 2.0.16 时返回 `update-available` / 2.2.7，准确包含正式安装器名称、224,133,509 bytes、SHA-256 和固定版本下载 URL；已装 2.2.7 时返回 `up-to-date`。仅验证更新识别与公开下载可达性，没有操作用户现有安装目录。
+
 ## 2026-09-07 v2.2.7 正式发布准备
 
 按用户要求将 `2.2.7` 发布为正式版并设为 Latest。安装器使用 `DSH-Desktop-2.2.7-x64-Setup.exe`；仅从测试名称重命名，保留已经验证的 **224,133,509 bytes** 与 SHA-256 `be0884456085ed11bb04eebc7d57d9edcd2550a547518642ca442e25f1a6bd59`。二进制源码仍为 `f261bf52aa586c03cfeefc08e9f64df15253ceb1`，此后的差异仅为文档；完整 check、typecheck、immutable install、聚焦回归及 packaged smoke 采用下文同一运行时代码与同一安装器的已通过证据，不将文档整理描述为重新构建。正式 `latest.yml` 为 **359 bytes**，SHA-256 `a0ce23c7c436d32a08d9e7b5feb6e6220f0dbf80fe281fb0d1daac88daca3299`，名称、大小与 SHA-512 均核对到实际安装器。
