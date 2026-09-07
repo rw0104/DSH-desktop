@@ -8,11 +8,11 @@ import { fileURLToPath } from 'node:url'
 import { removeIsolatedTree } from './remove-isolated-tree.mjs'
 
 export function runIsolatedCheck(args, { cwd = process.cwd(), env = process.env } = {}) {
-  if (!args.length) throw new Error('Expected vitest or a Node script, followed by its arguments')
+  if (!args.length) throw new Error('Expected vitest, node:test, or a Node script, followed by its arguments')
   const vitestManifest = args[0] === 'vitest'
     ? createRequire(join(cwd, 'package.json')).resolve('vitest/package.json')
     : undefined
-  const entry = vitestManifest
+  const entry = args[0] === 'node:test' ? '--test' : vitestManifest
     ? resolve(dirname(vitestManifest), JSON.parse(readFileSync(vitestManifest, 'utf8')).bin.vitest)
     : resolve(cwd, args[0])
   const tempParent = realpathSync(tmpdir())
@@ -26,6 +26,7 @@ export function runIsolatedCheck(args, { cwd = process.cwd(), env = process.env 
       cwd,
       env: { ...env, TMPDIR: temporary, TMP: temporary, TEMP: temporary, DSH_HOME: harnessHome },
       stdio: 'inherit',
+      windowsHide: true,
     })
     if (result.error) throw result.error
     return result.status ?? 1

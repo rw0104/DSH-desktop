@@ -89,7 +89,7 @@
     "test": "yarn workspace dsh-plugin-desktop test && yarn workspace dsh-community-market test",
     "check:layout": "node scripts/verify-documentation-boundary.mjs && node scripts/verify-layout.mjs",
     "check:docs": "node scripts/verify-documentation-boundary.mjs",
-    "test:housekeeping": "node --test scripts/run-isolated-check.spec.mjs scripts/prepare-test-electron.spec.mjs scripts/verify-documentation-boundary.spec.mjs",
+    "test:housekeeping": "node scripts/run-isolated-check.mjs node:test scripts/run-isolated-check.spec.mjs scripts/prepare-test-electron.spec.mjs scripts/verify-documentation-boundary.spec.mjs",
     "clean:local": "pwsh -NoProfile -File scripts/clean-local-artifacts.ps1",
     "check": "yarn check:layout && yarn test:housekeeping && yarn workspace dsh-community-fabric check && yarn workspace dsh-community-market check && yarn workspace dsh-plugin-desktop check",
     "dev": "yarn workspace dsh-community-market build && yarn workspace dsh-plugin-desktop dev",
