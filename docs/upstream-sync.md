@@ -1,5 +1,32 @@
 # Upstream synchronization ledger
 
+## 2026-09-07 选择性同步完成
+
+本批次以参考 Desktop `91b12fcd60fe85a39c6aa21dcd3056d89d0b69a4..099ef308012056178109b4e14ca73ae7a6fa635b` 的 9 个提交，以及 Sidebar `9e1a03452794532cda1f6ac677b72579dff48dfc..2dc2dcf41815cb0cf930b30708564b300645d347` 的 30 个提交为固定审查范围，39 个提交均已分类。2026-09-07 00:50 再次读取三方 HEAD/tag 与 npm：Harness 仍为 `d347e703…` / `0.1.3-alpha.1` 源码、npm CLI `latest/next=0.1.2-rc.1`；Sidebar 正式 `0.18.0`、HEAD `2dc2dcf4…`；参考 Desktop 正式 `v2.0.5`、HEAD `099ef308…`。本产品继续采用 gitlink `a66e4702047846cdaa10c66c9d3df3951f5ea70d`、完整 RC1 family 和精确 Sidebar `0.18.0`，版本仍为 `2.2.7`。
+
+### 接入与保留结论
+
+- 隔离检查使用不跟随目录链接的逐项清理，覆盖真实 Node/Electron、只读目标、嵌套/断链、根与祖先替换、有界失败；维护门禁也通过同一隔离入口运行。Windows Vitest 在 worker 启动前准备 Electron，避免首次准备竞争。
+- RC1 CLI 的实际 `plugin-F7ZVfRyo.js` 与 non-terminal subprocess 增加 `windowsHide`，保留已有 CLI 补丁、退出码、stdout/stderr、取消和交互终端行为。
+- Sidebar Markdown 拆分预览接入已有受限媒体 URL 转换；源码与实际 `client-editor.js` 同步修正，相对路径、中文/空格引用和跨会话媒体身份已验证。
+- Sidebar 子会话写入 `isSeeded` / `inheritedEventCount`，阻止父 pending inbox 被当作子会话自身输入。实际冷恢复额外暴露模型绑定缺口；采用 RC1 公开 `installModelSelection`、会话投影与 request header 补齐恢复，保持 adapter-default reasoning effort 的隐式语义。没有引入 alpha Session 格式。
+- Sidebar 菜单按自有标记和实际尺寸定位，覆盖视口四角、窄视口、长内容、键盘与 Escape 焦点恢复；定位规则不依赖上游方案的全局 body 方向选择器。
+- 文件树重命名/永久删除延期：对上游实现的受控验证确认目录后代标签未同步，以及存在性检查后到 rename 之间的竞争可能覆盖目标。下一步先解决路径同步、非覆盖操作和 Windows 大小写/链接合同，再评估接入。其余组件拆分、轮询、主题/翻译和混合 lint/lifecycle 调整保留到正式 Sidebar 发布或独立缺陷复现后；未复制上游 README、开发文档和品牌资产。
+
+代码检查点：`09b01a1bfdd9da8559b594c9812a7df98a22195d`（测试准备/清理）、`880e8b711ff44bde7401e87452ab8613f3d93b5c`（Sidebar 与后台进程修复）、`9738c8e129531a31e9926fe30ca5fc9806f5d314`（维护门禁隔离）。回滚时按行为提交回退并重建对应 patch locator/lockfile；官方 gitlink 不参与本次回滚。
+
+### 验证与包体完整性
+
+- 根 immutable install、typecheck、完整 `corepack yarn check` 通过：Desktop **907 passed / 11 skipped**、Market **275 passed**；运行时闭包 **228** 个 first-party 节点，生产许可证 **744** 项。新增聚焦组 **25 passed**，最终维护门禁 **10 passed**。
+- 从 `9738c8e129…` 构建最终 Windows x64 unpacked 候选。重建中的 GitHub 超时通过 electron-builder 支持的 `electronDist` 选项解决，直接使用机器级 Electron `43.4.0` 缓存；缓存 ZIP SHA-256 `ef0709cfa719739acce73de6f9b684304baf38c6454376638a70d34a7cecffe0` 与 [官方 SHASUMS256](https://github.com/electron/electron/releases/download/v43.4.0/SHASUMS256.txt) 一致，没有把 Electron 归档复制到仓库。
+- 最终包为 **863 文件 / 680,677,342 bytes**，含缓存原发行包保留的 `version` 和 `resources/default_app.asar`；footprint 与 packaged Profile 门禁通过。包内 DSH `0.1.2-rc.1`、pnpm `11.7.0`、Sidebar `0.18.0`；**36** 个桌面编译 JS 与 **7** 个关键包文件逐字节匹配构建/安装内容，**51** 个客户端模块注册通过。`app.asar` SHA-256：`64a7457f7959300a840a95db70b763827b51480a41491c83a716c036b334b335`。
+- 实际 ASAR Advanced：原 **15** 项体验共存、**6** 项同步验收、**4** 项标签页检查通过；兼容模式独立验收通过，均无页面异常。实际 PowerShell PTY 输出与跨会话固定终端 PID 连续性通过，Git 暂存文件和 Browser 沙箱控件正常；Browser 检查没有打开外部网站。
+- 两个 Host 都以 **0** 退出，临时 Profile 清除；Advanced 的已登记子进程全部结束。每个 Host 退出后再次比较全部 **863** 个文件的路径、大小、权限模式与 SHA-256，均与运行前完全一致。node-pty 的 `AttachConsole failed` 收尾诊断仍可出现，但本轮已确认相关进程退出且包体未改变；不将此记录写成“Host 日志完全无警告”。
+
+旧本地验收脚本曾因 Electron 的递归删除差异损坏未发布测试包的解包文件。该候选已废弃，工作区编译与关键依赖 43 项核对未变；验收脚本已统一清理方式，上述证据来自重建后、并经过退出后整树复核的最终候选。
+
+验证后执行 `corepack yarn clean:local` 预览及 `-Apply`：清除 7 个本地构建/缓存目标，另清除本轮 3 个 Yarn 提取目录与首轮失败测试残留。共享 Yarn/Electron 缓存和活动依赖保留；最终 unpacked 测试目录已清理，验证记录留存本地。没有生成 installer、创建 tag/Release 或推送远端；macOS/Linux 原生表现不以本轮 Windows 验证代替。Market/catalog/受限 HTTP 代码未改动，本轮没有 merge/tag，也未执行 live-source release replay。
+
 ## 2026-09-06 22:57 选择性同步实施前复核
 
 开始执行 Desktop 9 个提交与 Sidebar 30 个提交的选择性同步审查前，再次读取三条权威 Git remote 的全部 heads/tags、GitHub Releases 与官方 npm 元数据。结果仍为 Harness `d347e703908d0406b7a7ef80e3a0e594d86b2215` / `dsh-v0.1.3-alpha.1`、Sidebar `2dc2dcf41815cb0cf930b30708564b300645d347` / 正式 `v0.18.0`、参考 Desktop `099ef308012056178109b4e14ca73ae7a6fa635b` / 正式 `v2.0.5`；无新增范围。npm CLI `latest/next=0.1.2-rc.1`、Sidebar `latest=0.18.0`、参考 `dsh-plugin-desktop latest=2.0.0`，与前一快照一致。
