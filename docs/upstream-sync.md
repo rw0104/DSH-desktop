@@ -1,5 +1,31 @@
 # Upstream synchronization ledger
 
+## 2026-09-07 源码同步与 2.2.7 功能说明
+
+推送前于 `2026-09-07T11:47:36Z—11:48:01Z` 复核三条权威 remote 的 HEAD/heads/tags、GitHub Releases 和官方 npm registry：Harness `d347e703908d0406b7a7ef80e3a0e594d86b2215`、Sidebar `6fbfeedc0189e95a1c4d3908d3a58c784c5b7f15`、参考 Desktop `099ef308012056178109b4e14ca73ae7a6fa635b`，与本页测试包快照一致；正式采用的 RC1 family、Sidebar 0.18.0 与官方 gitlink 不变。Harness 0.1.3-alpha.1 的 CLI/base/web-app 精确查询仍为 E404，Sidebar 新增的 16 个提交继续保留为待审查范围。
+
+本次源码同步目标为 `origin/codex/selective-upstream-sync-20260906`，包含此前尚未推送的 2.2.7 图片/工作区文件交互、产品上下文、隔离检查及选择性上游修复；功能说明集中在 [2.2.7 更新说明](releases/v2.2.7.md)，中英文产品 README 与文档索引同步提供入口。安装器仍对应已验证源码 `f261bf52aa586c03cfeefc08e9f64df15253ceb1`，本轮新增改动仅为文档，不改变既有测试包。源码分支推送不发布 GitHub Release，不上传本地安装器或开发资料，也不合并 main；Market live-source 的 merge/tag 门禁未触发。
+
+## 2026-09-07 2.2.7 选择性同步测试安装器复核
+
+2026-09-07T10:31:36Z—10:31:59Z（本地 03:31）重新读取三条权威 remote 的 HEAD、全部 heads/tags、GitHub 最近三条 Releases，以及官方 npm registry。构建源码基线为 `f261bf52aa586c03cfeefc08e9f64df15253ceb1`，本轮生成本地 Windows x64 `2.2.7` / `test-upstream-sync` 安装器；不更新产品版本、依赖、gitlink 或发布渠道。
+
+| 来源 | 本轮结果 | 本地采用与后续动作 |
+| --- | --- | --- |
+| Harness | master / `dsh-v0.1.3-alpha.1` 仍为 `d347e703908d0406b7a7ef80e3a0e594d86b2215`；CLI npm latest/next 为 `0.1.2-rc.1`；CLI/base/web-app 精确 `0.1.3-alpha.1` 均为 E404 | 保持 RC1 family 与 `a66e4702047846cdaa10c66c9d3df3951f5ea70d` gitlink；完整发布面与 session/API 迁移验证仍是升级前置条件 |
+| Sidebar | main 更新到 `6fbfeedc0189e95a1c4d3908d3a58c784c5b7f15`；正式 tag / npm latest 仍为 `0.18.0` / `9e1a03452794532cda1f6ac677b72579dff48dfc` | GitHub compare 确认较已审查 `2dc2dcf41815cb0cf930b30708564b300645d347` 新增 **16** 个提交（含 merge）；本包保留精确 0.18.0 与已验收补丁。新增 Changes Markdown/Mermaid/HTML/PDF 预览、语法高亮和展示层凭据遮盖尚未审查；下一批核对本地媒体路由、沙箱预览、显示/复制语义和现有 patch 重叠后再决定接入 |
+| Desktop reference | master 仍为 `099ef308012056178109b4e14ca73ae7a6fa635b`；稳定 tag `v2.0.5=423406fe225442995902015cb6f10eed670ff115`；参考 npm 包 `dsh-plugin-desktop latest=2.0.0` | 保持只读对照，本 fork 不采用参考 npm 包 |
+
+查询使用上文的 `git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref <权威 URL> HEAD 'refs/heads/*' 'refs/tags/*'`、`gh api repos/<repo>/releases?per_page=3`、`npm view <包> version dist-tags time.modified --json --registry=https://registry.npmjs.org` 与精确 alpha 版本查询；Sidebar 增量由 [固定范围 compare](https://github.com/omdsh-dev/DSH-better-sidebar/compare/2dc2dcf41815cb0cf930b30708564b300645d347...6fbfeedc0189e95a1c4d3908d3a58c784c5b7f15) 确认。Market/catalog/受限 HTTP 代码无变更，本轮不 merge/tag，不触发 live-source release replay。
+
+测试安装器验证结果（2026-09-07）：
+
+- immutable install 通过；重新执行 Windows preflight：Desktop build/typecheck、**223** 项打包相关回归、**14** 项打包性能测试、**4** 项闭包测试和 **228** 节点运行时闭包通过。运行时代码与下文完整 `check` 已验证的提交一致，本轮只更新审计记录。
+- `DSH-Desktop-2.2.7-x64-Setup-test-upstream-sync.exe` 为 **224,133,509 bytes**；SHA-256：`be0884456085ed11bb04eebc7d57d9edcd2550a547518642ca442e25f1a6bd59`。安装器与主程序版本均为 `2.2.7`，Authenticode 均为 `NotSigned`；`latest.yml` 的文件名、版本、大小与 SHA-512 和实际安装器一致。
+- 直接提取安装器的 `app-64.zip`，**865 个文件 / 680,784,959 bytes** 的全树文件集合、大小与 SHA-256 和已通过 packaged smoke 的应用完全匹配。较前次 unpacked 候选多出的两个文件是 NSIS 的 `resources/app-update.yml` 与 `resources/elevate.exe`；没有增加运行依赖。
+- **36** 个编译 JS、**7** 个关键补丁文件逐字节匹配当前构建与安装内容；**51** 个客户端模块注册通过。包内 CLI `0.1.2-rc.1`、pnpm `11.7.0`、3 个 Profile layers 验证通过。`app.asar` SHA-256 为 `0181790e1590adf4c30cb26d6c41c9800f7b10d36081fbf69fed421706211c6e`；验收后整树路径、大小、权限模式与哈希和运行前基线完全一致。
+- 本次为本地未签名测试包，未执行安装器、未打开产品图形界面、未创建 tag/Release 或推送远端。校验辅助工具和提取负载通过隔离检查入口自动清理；打包清理按 `clean:local` 预览及 `-Apply` 执行，保留此安装器和匹配的更新元数据、SHA-256 校验文件。
+
 ## 2026-09-07 选择性同步完成
 
 本批次以参考 Desktop `91b12fcd60fe85a39c6aa21dcd3056d89d0b69a4..099ef308012056178109b4e14ca73ae7a6fa635b` 的 9 个提交，以及 Sidebar `9e1a03452794532cda1f6ac677b72579dff48dfc..2dc2dcf41815cb0cf930b30708564b300645d347` 的 30 个提交为固定审查范围，39 个提交均已分类。2026-09-07 00:50 再次读取三方 HEAD/tag 与 npm：Harness 仍为 `d347e703…` / `0.1.3-alpha.1` 源码、npm CLI `latest/next=0.1.2-rc.1`；Sidebar 正式 `0.18.0`、HEAD `2dc2dcf4…`；参考 Desktop 正式 `v2.0.5`、HEAD `099ef308…`。本产品继续采用 gitlink `a66e4702047846cdaa10c66c9d3df3951f5ea70d`、完整 RC1 family 和精确 Sidebar `0.18.0`，版本仍为 `2.2.7`。

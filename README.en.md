@@ -32,7 +32,17 @@ DSH Desktop integrates the local Web UI, Host service, and plugin system from [D
 
 This downstream release channel currently publishes Windows x64 installers. The source retains macOS build support, but this repository does not yet publish a signed and notarized DMG. Windows requires no additional runtime.
 
-The current source version is **2.2.3**, integrating the pm01 voice animation core, bounded live captions, task-aware voice presentation, and corrected provider model discovery. See the [v2.2.3 notes](docs/releases/v2.2.3.md). Automatic image-input detection remains available; a dedicated image-generation execution API is not yet integrated. Harness `0.1.2-rc.1` and Better Sidebar `0.18.0` remain pinned. Published download links remain unchanged until the new assets are released.
+The current source version is **2.2.7**, with a verified local Windows test installer. A 2.2.7 GitHub Release has not been published. Harness `0.1.2-rc.1` and Better Sidebar `0.18.0` remain pinned; public download links continue to point to published assets.
+
+New features and fixes:
+
+- **Image and file actions:** the Advanced composer + menu provides image selection, workspace file upload, and commands. Original images can be saved, and messages, code, and links have context actions.
+- **File references:** uploads are saved in the current workspace and referenced in the draft. Select up to 10 files, at most 25 MiB each; duplicate names are stored separately. PDF and Office parsing still depends on available tools.
+- **Local Markdown images:** Sidebar split preview supports relative paths and image references containing Chinese characters or spaces.
+- **Sidechat and menus:** fixes cover inherited history, model selection after a cold resume, submenu placement near window edges, and keyboard focus.
+- **Windows reliability:** plugin installation and non-interactive subprocesses hide their consoles. Parallel test preparation and temporary-directory cleanup that does not follow directory links are covered by regression checks.
+
+See the [2.2.7 notes (Chinese)](docs/releases/v2.2.7.md) for usage, mode boundaries, and verification. Native image generation and provider protocol support from [2.2.6](docs/releases/v2.2.6.md) remain available. File-tree rename/permanent deletion, later Sidebar preview enhancements, and the Harness alpha migration still require review and are not included in this test build.
 
 | Platform | Download | Installation |
 | --- | --- | --- |

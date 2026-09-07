@@ -12,6 +12,7 @@
 
 | 文档 | 你会得到什么 |
 | --- | --- |
+| [2.2.7 更新说明](releases/v2.2.7.md) | 图片/文件操作、Sidebar 修复、适用模式、待接入内容与测试包验证 |
 | [用户指南](user-guide.md) | 安装、profile、模式、终端、插件命令和更新 |
 | [实时语音凭据指南](user-guide-realtime-voice-credentials.md) | 申请 Qwen/豆包凭据、选择语音模式并安全配置 API Key |
 | [常见问题](faq.md) | 支持平台、内置环境、官方边界、数据、插件和更新的直接回答 |
