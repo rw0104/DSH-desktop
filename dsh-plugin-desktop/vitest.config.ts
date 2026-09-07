@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.spec.ts'],
+    globalSetup: process.platform === 'win32' ? ['../scripts/prepare-test-electron.mjs'] : [],
     // Profile integration tests create a full package-junction closure; higher
     // Windows file concurrency makes their latency depend on NTFS/Defender load.
     maxWorkers: process.platform === 'win32' ? 2 : undefined,
