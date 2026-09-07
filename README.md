@@ -8,11 +8,11 @@
 
 当前 Windows x64 安装包：
 
-[下载 DSH Desktop v2.1.0](https://github.com/rw0104/DSH-desktop/releases/tag/v2.1.0) · [直接下载 Windows 安装器](https://github.com/rw0104/DSH-desktop/releases/download/v2.1.0/DSH-Desktop-2.1.0-x64-Setup.exe)
+[下载 DSH Desktop v2.2.7](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.7) · [直接下载 Windows 安装器](https://github.com/rw0104/DSH-desktop/releases/download/v2.2.7/DSH-Desktop-2.2.7-x64-Setup.exe)
 
 安装包支持当前用户安装、选择安装目录、开始菜单和桌面快捷方式。当前安装包未进行 Authenticode 签名，Windows 可能显示 SmartScreen 或 Unknown Publisher 提示。
 
-当前源码版本为 **2.2.7**，已完成本地 Windows 测试包验证，尚未发布 2.2.7 GitHub Release。Harness `0.1.2-rc.1` 和 Better Sidebar `0.18.0` 保持固定；上方链接继续指向已发布的 v2.1.0。
+当前正式版本为 **2.2.7**，提供经过验证的 Windows x64 安装器。Harness `0.1.2-rc.1` 和 Better Sidebar `0.18.0` 保持固定；安装器未签名。
 
 本次新增与修复：
 
@@ -22,7 +22,7 @@
 - **子会话与菜单**：修复 Sidechat 继承历史和模型冷恢复，改善 Sidebar 子菜单边缘定位及键盘焦点。
 - **Windows 稳定性**：隐藏插件安装和非交互子进程的控制台，补齐并行测试准备及不跟随目录链接的临时文件清理。
 
-完整使用方式、适用模式与验收结果见 [v2.2.7 更新说明](docs/releases/v2.2.7.md)。此前的原生图片生成及供应商协议接入继续保留，见 [v2.2.6 更新说明](docs/releases/v2.2.6.md)。文件树重命名/永久删除、Sidebar 后续预览增强和 Harness alpha 迁移仍待审查，未计入本测试包功能。
+完整使用方式、适用模式与验收结果见 [v2.2.7 更新说明](docs/releases/v2.2.7.md)。此前的原生图片生成及供应商协议接入继续保留，见 [v2.2.6 更新说明](docs/releases/v2.2.6.md)。文件树重命名/永久删除、Sidebar 后续预览增强和 Harness alpha 迁移仍待审查，未计入本版本功能。
 
 ## 交流群
 
@@ -60,7 +60,7 @@ DSH Desktop 使用官方 [DeepSeek Harness](https://github.com/deepseek-ai/deeps
 
 ## 安装与首次启动
 
-1. 从 [v2.1.0 Release](https://github.com/rw0104/DSH-desktop/releases/tag/v2.1.0) 下载 Windows x64 安装器。
+1. 从 [v2.2.7 Release](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.7) 下载 Windows x64 安装器。
 2. 选择安装目录并完成安装。
 3. 启动 DSH Desktop，在 DSH Settings 中配置模型和凭据。
 4. 视觉模型需要在模型设置中明确声明 `image` 输入能力；本产品不再提供 Vision Toolkit 视觉增强入口。

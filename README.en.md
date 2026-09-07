@@ -32,7 +32,7 @@ DSH Desktop integrates the local Web UI, Host service, and plugin system from [D
 
 This downstream release channel currently publishes Windows x64 installers. The source retains macOS build support, but this repository does not yet publish a signed and notarized DMG. Windows requires no additional runtime.
 
-The current source version is **2.2.7**, with a verified local Windows test installer. A 2.2.7 GitHub Release has not been published. Harness `0.1.2-rc.1` and Better Sidebar `0.18.0` remain pinned; public download links continue to point to published assets.
+The current stable release is **2.2.7**, with a verified Windows x64 installer. Harness `0.1.2-rc.1` and Better Sidebar `0.18.0` remain pinned. The Windows installer is unsigned. See the [2.2.7 Release](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.7).
 
 New features and fixes:
 
@@ -42,11 +42,11 @@ New features and fixes:
 - **Sidechat and menus:** fixes cover inherited history, model selection after a cold resume, submenu placement near window edges, and keyboard focus.
 - **Windows reliability:** plugin installation and non-interactive subprocesses hide their consoles. Parallel test preparation and temporary-directory cleanup that does not follow directory links are covered by regression checks.
 
-See the [2.2.7 notes (Chinese)](docs/releases/v2.2.7.md) for usage, mode boundaries, and verification. Native image generation and provider protocol support from [2.2.6](docs/releases/v2.2.6.md) remain available. File-tree rename/permanent deletion, later Sidebar preview enhancements, and the Harness alpha migration still require review and are not included in this test build.
+See the [2.2.7 notes (Chinese)](docs/releases/v2.2.7.md) for usage, mode boundaries, and verification. Native image generation and provider protocol support from [2.2.6](docs/releases/v2.2.6.md) remain available. File-tree rename/permanent deletion, later Sidebar preview enhancements, and the Harness alpha migration still require review and are not included in this release.
 
 | Platform | Download | Installation |
 | --- | --- | --- |
-| Windows x64 | [Download installer](https://github.com/rw0104/DSH-desktop/releases/latest) | Download the versioned `x64-Setup.exe` and follow its prompts |
+| Windows x64 | [Download 2.2.7 installer](https://github.com/rw0104/DSH-desktop/releases/download/v2.2.7/DSH-Desktop-2.2.7-x64-Setup.exe) | Download the versioned `x64-Setup.exe` and follow its prompts |
 | macOS Universal | Not published | Build from source; signed and notarized DMG release remains pending |
 
 See the [user guide](docs/user-guide.en.md) and [FAQ](docs/faq.en.md) for plugin commands, platform details, and troubleshooting.

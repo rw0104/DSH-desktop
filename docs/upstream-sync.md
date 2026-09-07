@@ -1,5 +1,22 @@
 # Upstream synchronization ledger
 
+## 2026-09-07 v2.2.7 正式发布准备
+
+按用户要求将 `2.2.7` 发布为正式版并设为 Latest。安装器使用 `DSH-Desktop-2.2.7-x64-Setup.exe`；仅从测试名称重命名，保留已经验证的 **224,133,509 bytes** 与 SHA-256 `be0884456085ed11bb04eebc7d57d9edcd2550a547518642ca442e25f1a6bd59`。二进制源码仍为 `f261bf52aa586c03cfeefc08e9f64df15253ceb1`，此后的差异仅为文档；完整 check、typecheck、immutable install、聚焦回归及 packaged smoke 采用下文同一运行时代码与同一安装器的已通过证据，不将文档整理描述为重新构建。正式 `latest.yml` 为 **359 bytes**，SHA-256 `a0ce23c7c436d32a08d9e7b5feb6e6220f0dbf80fe281fb0d1daac88daca3299`，名称、大小与 SHA-512 均核对到实际安装器。
+
+`2026-09-07T12:01:46Z—12:02:10Z` 再次读取三条权威 HEAD/heads/tags、GitHub Releases 和官方 npm registry。Harness `d347e703908d0406b7a7ef80e3a0e594d86b2215`、Sidebar `6fbfeedc0189e95a1c4d3908d3a58c784c5b7f15`、参考 Desktop `099ef308012056178109b4e14ca73ae7a6fa635b`，以及正式 npm RC1/Sidebar 0.18.0 均与前次相同；三个核心 alpha 精确包仍为 E404。Harness gitlink 保持 `a66e4702047846cdaa10c66c9d3df3951f5ea70d`，Sidebar 新增 16 个提交及文件操作延期项的后续迁移步骤保留在 [2.2.7 说明](releases/v2.2.7.md)。
+
+本次创建版本 tag 前，两个编译期内置 reviewed source 均通过生产 `createRestrictedHttpClient` 默认 HTTPS、DNS/IP 固定、超时、解压和 JSON 校验流程回放。遥测只观察相同响应的字节；适配器处理的 JSON 与该响应逐项一致，没有替换 request、DNS、schema 或超时策略。请求均为 `Accept: application/json`、`Accept-Encoding: gzip, identity`、`User-Agent: dsh-community-market/0.1`，HTTP 200，最终 URL 与下表端点相同。
+
+| 源与精确表示 | Content-Type / 编码 | 原始 → 归一化条目 / 页数 | 压缩 / 解压 bytes | 上限及余量 | 总耗时 |
+| --- | --- | --- | --- | --- | --- |
+| 1024Store `https://deepseek1024.com/api/v1/plugins`，v1 packages 表示 | `application/json; charset=UTF-8` / gzip | 500 → 500 / 5 | 384,979 / 2,500,112 | 压缩与解压均限 16,777,216；分别余 16,392,237 / 14,277,104 bytes；raw 上限 10,000 余 9,500，归一化上限 25,000 余 24,500 | 4,453.37 ms |
+| dshfind `https://api.dshfind.com/v1/catalog`，原子完整目录 | `application/json; charset=utf-8` / gzip | 13,341 → 13,340 / 134 | 1,877,641 / 13,248,534 | 压缩与解压均限 33,554,432；分别余 31,676,791 / 20,305,898 bytes；raw 上限 25,000 余 11,659，归一化上限 25,000 余 11,660 | 7,082.86 ms |
+
+1024Store 响应生成时间 `2026-09-07T10:13:05.085Z`、provider revision `sha256:53b5d023208cba96698e1c7a0c22a817ab004eb6e7589f2dc18fb68585975eac`；该次完整解压表示 SHA-256 `37691a91c7081aa0afdc177e357bac64a350bd6c947eeb3a1796c2d3e7b3a634`。dshfind 同一响应的 `as_of=2026-09-04T08:17:29.000Z`、`data_version=sha256:17efedfddde4922eca98a909c241c8b58b2a144cf630b3f7042b8725ecf287e2`；完整解压表示 SHA-256 `f3ad2ffff5afd01853cab3d728d9651facc4c1bed232de61f48b2db0d9b5a2cc`，raw total 与 data 长度一致，1 条由既有归一化规则过滤，没有按大小/页数截断。两源页数分别低于 10,001 上限，分别余 9,996 / 9,867 页；生产请求总时限 30 秒未放宽。
+
+仅精确内置域名继续使用既有 gzip、16/32 MiB 与 synthetic-proxy 例外；用户添加与标准来源仍为 identity-only、2 MiB 默认上限且无该域名例外。此次 Release 资产仅包含安装器和 `latest.yml`，安装器明确为 `NotSigned`；本地开发文件、诊断、缓存及解包目录不上传。
+
 ## 2026-09-07 源码同步与 2.2.7 功能说明
 
 推送前于 `2026-09-07T11:47:36Z—11:48:01Z` 复核三条权威 remote 的 HEAD/heads/tags、GitHub Releases 和官方 npm registry：Harness `d347e703908d0406b7a7ef80e3a0e594d86b2215`、Sidebar `6fbfeedc0189e95a1c4d3908d3a58c784c5b7f15`、参考 Desktop `099ef308012056178109b4e14ca73ae7a6fa635b`，与本页测试包快照一致；正式采用的 RC1 family、Sidebar 0.18.0 与官方 gitlink 不变。Harness 0.1.3-alpha.1 的 CLI/base/web-app 精确查询仍为 E404，Sidebar 新增的 16 个提交继续保留为待审查范围。
