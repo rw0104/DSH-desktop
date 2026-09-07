@@ -83,7 +83,7 @@ describe('desktop voice surfaces', () => {
       settingsScope: { bind: () => ({ getSnapshot: () => ({ value: snapshot.settings }), subscribe: () => () => {}, set: vi.fn() }) },
       get: () => ({}),
       remote: { credentials: { describe, set: vi.fn(), unset: vi.fn() } },
-    } as never, { openTab: vi.fn() })
+    } as never)
     await voice.refreshCredentials()
     expect(voice.getSnapshot().qwenKeyConfigured).toBe(true)
     expect(describe).toHaveBeenCalledWith(['DASHSCOPE_API_KEY', 'DOUBAO_APP_ID', 'DOUBAO_ACCESS_KEY'])
@@ -238,7 +238,7 @@ describe('desktop voice surfaces', () => {
         set: credentialSet,
         unset: vi.fn(),
       } },
-    } as never, { openTab: vi.fn() })
+    } as never)
 
     await expect(voice.saveConfiguration(snapshot.settings, {
       qwenKey: '  sk-new  ',

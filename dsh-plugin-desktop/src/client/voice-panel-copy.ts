@@ -5,6 +5,7 @@ export interface VoicePanelLocale {
   getSnapshot(): string
 }
 const english = {
+  panelUnavailable: 'The voice window is covered or unavailable. Close other dialogs and try again.',
   unset: 'Not supplied',
   title: 'Realtime voice', details: 'Connection details', minimize: 'Back to workspace', restore: 'Show voice conversation',
   end: 'End voice', close: 'Close realtime voice', latest: 'Jump to latest', captions: 'Live captions',
@@ -22,6 +23,7 @@ const english = {
 }
 export type VoicePanelCopy = { [K in keyof typeof english]: string }
 const chinese: VoicePanelCopy = {
+  panelUnavailable: '语音窗口被遮挡或无法显示。请关闭其他对话框后重试。',
   unset: '未提供',
   title: '实时语音', details: '连接信息', minimize: '返回工作区', restore: '展开语音对话',
   end: '结束语音', close: '关闭实时语音', latest: '回到最新', captions: '实时字幕',

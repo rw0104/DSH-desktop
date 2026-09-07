@@ -1,5 +1,6 @@
 import type { ClientRemote } from '@deepseek-ai/dsh-api-gateway/client'
 import type {} from '@deepseek-ai/dsh-api-settings-controller/remote'
+import { VoicePanelGate, VOICE_PANEL_NOT_VISIBLE } from './voice-presentation.ts'
 
 interface VoiceContext {
   remote: Pick<ClientRemote, 'credentials'>
@@ -115,10 +116,6 @@ export interface DesktopVoiceState {
   inputAudio: VoiceAudioFeatures
   outputAudio: VoiceAudioFeatures
   error: string | null
-}
-
-export interface VoiceSidebarApi {
-  openTab(seed: { type: string; title?: string; meta?: unknown }, scope?: { sessionId: string }): void
 }
 
 const DEFAULT_SETTINGS: DesktopVoiceSettings = {
@@ -281,6 +278,11 @@ const MAX_VOICE_SOCKET_BUFFER = 256 * 1024
 function messageOf(value: unknown): string {
   if (value instanceof Error) return value.message
   if (value !== null && typeof value === 'object' && 'message' in value) return String(value.message)
+  if (value !== null && typeof value === 'object' && 'error' in value) {
+    if (typeof value.error === 'string') return value.error
+    if (value.error !== null && typeof value.error === 'object' && 'message' in value.error) return String(value.error.message)
+  }
+  if (typeof value === 'object') return 'The voice request failed.'
   return String(value)
 }
 
@@ -288,6 +290,7 @@ export class DesktopVoiceController {
   readonly store: SnapshotStore<DesktopVoiceState> = createSnapshotStore(INITIAL)
   readonly panel = createSnapshotStore<string | null>(null)
   readonly minimized = createSnapshotStore(false)
+  readonly presentation = new VoicePanelGate()
   readonly task = createSnapshotStore<{ status: 'idle' | 'running' | 'waiting-approval' | 'completed' | 'failed' | 'cancelled'; tool: string }>({ status: 'idle', tool: '' })
   /** Stable objects read by the pm01 renderer every frame, without re-rendering captions. */
   readonly audio = { input: { ...INITIAL.inputAudio }, output: { ...INITIAL.outputAudio } }
@@ -316,10 +319,14 @@ export class DesktopVoiceController {
   private ttsExpected = false
   private providerOutputExpected = false
 
-  constructor(ctx: VoiceContext, private readonly sidebar: VoiceSidebarApi, private readonly presentation: 'sidebar' | 'overlay' = 'sidebar') {
+  private readonly unsubscribeSettings: () => void
+  private pendingOpen: Promise<void> | null = null
+  private disposed = false
+
+  constructor(ctx: VoiceContext) {
     this.scope = ctx.settingsScope.bind<DesktopVoiceSettings>({ namespace: DESKTOP_VOICE_SETTINGS_NAMESPACE })
     this.api = ctx.remote
-    this.scope.subscribe(() => this.syncSettings())
+    this.unsubscribeSettings = this.scope.subscribe(() => this.syncSettings())
     this.syncSettings()
     void this.refreshCredentials()
   }
@@ -331,6 +338,7 @@ export class DesktopVoiceController {
   isActive(): boolean { return ACTIVE.has(this.store.getSnapshot().status) }
 
   private set(patch: Partial<DesktopVoiceState>): void {
+    if (this.disposed) return
     if (patch.inputAudio) Object.assign(this.audio.input, patch.inputAudio)
     if (patch.outputAudio) Object.assign(this.audio.output, patch.outputAudio)
     this.store.set({ ...this.store.getSnapshot(), ...patch })
@@ -443,14 +451,16 @@ export class DesktopVoiceController {
   }
 
   open(sessionId: string): void {
-    if (!sessionId) return
+    if (!sessionId || this.disposed) return
     this.minimized.set(false)
-    if (this.presentation === 'overlay') this.panel.set(sessionId)
-    else this.sidebar.openTab({ type: 'desktop:voice', title: 'Voice', meta: { sessionId } }, { sessionId })
+    // An active call belongs to its originating Agent session, even when the
+    // user restores its controls from a different conversation.
+    this.panel.set(this.isActive() || this.pendingOpen ? this.panel.getSnapshot() ?? sessionId : sessionId)
   }
 
   async closePanel(): Promise<void> {
     ++this.activeGeneration
+    this.presentation.cancel()
     await this.completeFinish(this.socket)
     this.panel.set(null)
     this.minimized.set(false)
@@ -459,12 +469,36 @@ export class DesktopVoiceController {
   minimizePanel(): void { if (this.panel.getSnapshot() !== null) this.minimized.set(true) }
   restorePanel(): void { this.minimized.set(false) }
 
-  async openAndStart(sessionId: string): Promise<void> {
+  openAndStart(sessionId: string): Promise<void> {
+    if (this.disposed || !sessionId) return Promise.resolve()
     this.open(sessionId)
-    await this.start(sessionId)
+    if (this.pendingOpen) return this.pendingOpen
+    if (this.isActive()) return Promise.resolve()
+    const generation = this.activeGeneration
+    const opening = (async () => {
+      const visible = await this.presentation.wait(sessionId)
+      if (generation !== this.activeGeneration || this.disposed) return
+      if (!visible) {
+        this.set({ status: 'error', error: VOICE_PANEL_NOT_VISIBLE })
+        return
+      }
+      await this.startSession(sessionId)
+    })()
+    this.pendingOpen = opening
+    void opening.finally(() => { if (this.pendingOpen === opening) this.pendingOpen = null })
+    return opening
   }
 
-  async start(sessionId: string): Promise<void> {
+  start(sessionId: string): Promise<void> { return this.openAndStart(sessionId) }
+
+  async dispose(): Promise<void> {
+    if (this.disposed) return
+    this.disposed = true
+    this.unsubscribeSettings()
+    await this.closePanel()
+  }
+
+  private async startSession(sessionId: string): Promise<void> {
     const snapshot = this.store.getSnapshot()
     if (this.isActive()) return
     if (!snapshot.settings.enabled) {
@@ -517,6 +551,8 @@ export class DesktopVoiceController {
   }
 
   async finish(): Promise<void> {
+    ++this.activeGeneration
+    this.presentation.cancel()
     if (!this.isActive()) return
     this.cancelPlayback(true)
     this.set({ status: 'finishing' })

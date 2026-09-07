@@ -10,6 +10,7 @@ import { VoiceTranscript } from './voice-transcript.tsx'
 import { VoiceCompact } from './voice-compact.tsx'
 import type { VoicePoint } from './voice-position.ts'
 import type { DesktopExternalNavigationAction } from '../external-navigation-contract.ts'
+import { isVoicePanelVisible, VOICE_PANEL_NOT_VISIBLE } from './voice-presentation.ts'
 
 export interface VoiceInjected {
   controller: DesktopVoiceController
@@ -29,10 +30,14 @@ export function VoiceOverlay({ controller, locale }: VoiceInjected) {
   useEffect(() => {
     const node = dialog.current
     if (node === null || sessionId === null || minimized) return
-    node.show()
-    node.querySelector<HTMLButtonElement>('[data-voice-minimize]')?.focus()
-    return () => { node.close() }
-  }, [sessionId, minimized])
+    if (!node.open) node.show()
+    const detach = controller.presentation.attach(sessionId, () => isVoicePanelVisible(node))
+    const frame = requestAnimationFrame(() => {
+      controller.presentation.check()
+      if (isVoicePanelVisible(node)) node.querySelector<HTMLButtonElement>('[data-voice-minimize]')?.focus()
+    })
+    return () => { cancelAnimationFrame(frame); detach(); node.close() }
+  }, [controller, sessionId, minimized])
   useEffect(() => {
     if (minimized && document.activeElement === document.body) document.querySelector<HTMLButtonElement>('.dshVoiceCompactRestore')?.focus()
   }, [minimized])
@@ -58,14 +63,20 @@ export function VoiceComposerButton({ sessionId, controller, t }: VoiceButtonPro
     <button
       type="button"
       className={`dshVoiceComposerButton${active ? ' is-active' : ''}`}
-      aria-label={active ? t('button.stop') : t('button.start')}
-      title={ready ? (active ? t('button.stop') : t('button.start')) : t('button.unavailable')}
+      aria-label={active ? t('button.restore') : t('button.start')}
+      title={state.error === VOICE_PANEL_NOT_VISIBLE ? t('button.panelUnavailable') : state.error ?? (ready ? (active ? t('button.restore') : t('button.start')) : t('button.unavailable'))}
       disabled={!ready && !active}
-      onClick={() => { if (active) void controller.finish(); else void controller.openAndStart(sessionId) }}
+      onClick={() => { void controller.openAndStart(sessionId) }}
     >
       <span className="dshVoiceWaveIcon" aria-hidden><span /><span /><span /><span /></span>
     </button>
   )
+}
+
+/** Retain saved Sidebar tabs as launchers without mounting a second call UI. */
+export function VoiceLegacyTab({ controller, sessionId, locale }: VoiceInjected & { sessionId: string }) {
+  const copy = useVoicePanelCopy(locale)
+  return <section className="dshVoiceLegacy"><p>{copy.title}</p><button type="button" onClick={() => controller.open(sessionId)}>{copy.restore}</button></section>
 }
 
 function voiceTaskLabel(status: string, copy: VoicePanelCopy): string {
@@ -99,7 +110,7 @@ export function VoiceSidebarTab({ controller, scope, locale, onMinimize, onClose
         <div><dt>{copy.build}</dt><dd>{state.sessionInfo.buildCommit}</dd></div>
       </dl>
     </details>
-    {state.error !== null && <div className="dshVoiceError" role="alert">{state.error}</div>}
+    {state.error !== null && <div className="dshVoiceError" role="alert">{state.error === VOICE_PANEL_NOT_VISIBLE ? copy.panelUnavailable : state.error}</div>}
     {task.status !== 'idle' && <div className="dshVoiceTask" role="status">
       <strong>{voiceTaskLabel(task.status, copy)}{task.tool ? ': ' + task.tool : ''}</strong>
       <span>{copy.taskHint}</span>

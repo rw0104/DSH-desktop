@@ -24,7 +24,7 @@ import { WorkspaceChangesTab } from './WorkspaceChangesTab.tsx'
 import { installDesktopAboutStyles, installWorkspaceChangesStyles } from './styles.ts'
 import { readDesktopUpdateUiState, subscribeDesktopUpdateUiState } from './update-state.ts'
 import { DesktopVoiceController } from './voice-controller.ts'
-import { VoiceComposerButton, VoiceOverlay, VoiceSettingsSection, VoiceSidebarTab } from './voice-ui.tsx'
+import { VoiceComposerButton, VoiceOverlay, VoiceSettingsSection, VoiceLegacyTab } from './voice-ui.tsx'
 import { voiceLocales, type VoiceKey } from './voice-locales.ts'
 import { installVoiceStyles } from './voice-styles.ts'
 
@@ -122,13 +122,12 @@ export function apply(ctx: ClientContext): void {
   }
   const sidebar = ctx.get('betterSidebar') as BetterSidebarRegistry | undefined
   if (sidebar === undefined) throw new Error('dsh-plugin-desktop: upstream Better Sidebar service is unavailable')
-  const voice = new DesktopVoiceController(ctx, sidebar, environment.mode === 'compatibility' ? 'overlay' : 'sidebar')
+  const voice = new DesktopVoiceController(ctx)
+  ctx.effect(() => () => { void voice.dispose() }, 'dsh-plugin-desktop: voice controller lifetime')
   const voicePanelLocale = { subscribe: (listener: () => void) => ctx.locale.subscribe(listener), getSnapshot: () => String(ctx.locale.getLocale().active) }
-  if (environment.mode === 'compatibility') {
-    ctx.slots.inject('shell.overlay', () => ctx.slots.register({
-      name: 'shell.overlay', id: 'desktop-voice-overlay', inject: () => ({ controller: voice, locale: voicePanelLocale }),
-    }, VoiceOverlay))
-  }
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay', id: 'desktop-voice-overlay', inject: () => ({ controller: voice, locale: voicePanelLocale }),
+  }, VoiceOverlay))
   ctx.effect(() => {
     const disposeLocale = ctx.locale.register('desktop.voice', voiceLocales)
     const disposeStyles = installVoiceStyles()
@@ -146,7 +145,7 @@ export function apply(ctx: ClientContext): void {
     title: () => ctx.locale.bind('desktop.voice')('settings.title'),
     order: 25,
     single: true,
-    component: ({ scope }) => createElement(VoiceSidebarTab, { controller: voice, scope: { sessionId: scope.sessionId }, locale: voicePanelLocale }),
+    component: ({ scope }) => createElement(VoiceLegacyTab, { controller: voice, sessionId: scope.sessionId, locale: voicePanelLocale }),
   }), 'dsh-plugin-desktop: realtime voice sidebar tab')
   ctx.effect(() => {
     return sidebar.registerTab({

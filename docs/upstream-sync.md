@@ -1,5 +1,17 @@
 # Upstream synchronization ledger
 
+## 2026-09-07 完整桌面体验修复开发基线
+
+在 `codex/unified-desktop-20260907` 开发前重新查询三条权威 remote 的 HEAD/heads/tags、GitHub Releases 和官方 npm registry。该工作修复桌面功能组合、语音显示和设置弹层，不混入一次未经验证的 Harness API 迁移。
+
+| 来源 | 本次查询 | 采用与下一步 |
+| --- | --- | --- |
+| Harness | master `c389f96bf3a9b6807cb71ed6bdad5849be0df6d8`；新 tag `dsh-v0.1.3-alpha.2=82a5fd61a7cf5c293cec4bdff68f455398d685e9`，Release 2026-09-07T13:59:29Z；npm CLI latest/next 为 RC1，alpha 为 alpha.2；base/web-app 精确 alpha.2 查询已成功 | 继续采用 RC1 family 与 `a66e4702047846cdaa10c66c9d3df3951f5ea70d` gitlink。本次不再把旧 alpha.1 的 E404 当作当前 alpha.2 状态。下一步独立验证 session/API 迁移、恢复性能和 Sidebar 兼容，再决定更新 |
+| Sidebar | HEAD `6fbfeedc0189e95a1c4d3908d3a58c784c5b7f15`；tag/npm latest 仍为 0.18.0 | 保留现有已审查补丁；未发布预览功能仍属于前述独立跟进范围 |
+| Desktop reference | master `58d18bb56209207d5855e9420d271c9982ad45cf`；稳定 Release 仍为 v2.0.5，npm `dsh-plugin-desktop` 仍为 2.0.0 | 仅作只读比较，不作为本 fork 运行依赖；新增参考提交不直接覆盖本产品行为 |
+
+命令使用 `git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref <官方 URL> HEAD 'refs/heads/*' 'refs/tags/*'`、`gh api repos/<repo>/releases?per_page=2` 与 `npm view <包> version dist-tags --json --registry=https://registry.npmjs.org`。Node 24.16.0、Corepack Yarn 4.18.0 及 immutable install 已核对；安装保留原有 peer warnings。本记录仅证明开发基线，不代替之后的打包与发布验收。
+
 ## 2026-09-07 v2.2.7 正式发布结果
 
 [DSH Desktop v2.2.7](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.7) 于 `2026-09-07T12:18:15Z` 正式公开；GitHub Release ID `384063305`，`draft=false`、`prerelease=false`，`releases/latest` 已指向该 Release。annotated tag object 为 `6f492989f18828f128b273745a3e5963cf34a813`，解引用到 `16974a6ec9178d1085d74c66735bef55bf34e8ba`；安装器运行时代码仍来自 `f261bf52aa586c03cfeefc08e9f64df15253ceb1`，其后到 tag 的差异仅为已检查的文档。

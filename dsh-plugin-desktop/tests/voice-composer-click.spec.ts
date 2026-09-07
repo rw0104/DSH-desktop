@@ -22,7 +22,7 @@ describe('voice composer click with the RC1 slot contract', () => {
     }
     vi.stubGlobal('AudioContext', AudioFixture)
     const voice = new DesktopVoiceController({ settingsScope: { bind: () => ({ getSnapshot: () => ({ value: undefined }), subscribe: () => () => {}, set: vi.fn() }) },
-      remote: { credentials: { describe: vi.fn() } } } as never, { openTab: vi.fn() })
+      remote: { credentials: { describe: vi.fn() } } } as never)
     const samples = Int16Array.from({ length: 14400 }, (_, i) => i >= 4800 && i < 9600 ? Math.round(Math.sin(i * 2 * Math.PI * 1000 / 24000) * 24000) : 0)
     ;(voice as unknown as { playPcmBytes(samples: Int16Array): void }).playPcmBytes(samples)
     await vi.advanceTimersByTimeAsync(100); expect(voice.audio.output.rms).toBe(0)
@@ -53,7 +53,7 @@ describe('voice composer click with the RC1 slot contract', () => {
     const voice = new DesktopVoiceController({
       settingsScope: { bind: () => ({ getSnapshot: () => ({ value: undefined }), subscribe: () => () => {}, set: vi.fn() }) },
       remote: { credentials: { describe: vi.fn().mockResolvedValue({ ok: true, value: {} }) } },
-    } as never, { openTab: vi.fn() })
+    } as never)
     const play = voice as unknown as { playPcmBytes(samples: Int16Array): void }
     const samples = Int16Array.from({ length: 24000 }, (_, i) => Math.round(Math.sin(i * 2 * Math.PI * 3200 / 24000) * 12000))
     play.playPcmBytes(new Int16Array(24000))
@@ -73,7 +73,7 @@ describe('voice composer click with the RC1 slot contract', () => {
     const voice = new DesktopVoiceController({
       settingsScope: { bind: () => ({ getSnapshot: () => ({ value: undefined }), subscribe: () => () => {}, set: vi.fn() }) },
       remote: { credentials: { describe: vi.fn().mockResolvedValue({ ok: true, value: {} }) } },
-    } as never, { openTab: vi.fn() }, 'overlay')
+    } as never)
     const socket = { send: vi.fn(), close: vi.fn() }
     const internal = voice as unknown as { socket: unknown; handleSocketMessage(socket: unknown, event: unknown): Promise<void> }
     internal.socket = socket
@@ -99,7 +99,7 @@ describe('voice composer click with the RC1 slot contract', () => {
     const voice = new DesktopVoiceController({
       settingsScope: { bind: () => ({ getSnapshot: () => ({ value: undefined }), subscribe: () => () => {}, set: vi.fn() }) },
       remote: { credentials: { describe: vi.fn().mockResolvedValue({ ok: true, value: {} }) } },
-    } as never, { openTab: vi.fn() })
+    } as never)
     vi.stubGlobal('WebSocket', { CLOSING: 2 })
     const close = vi.fn((code: number) => {
       if (code !== 1000 && (code < 3000 || code > 4999)) throw new Error('Invalid browser close code')
@@ -119,9 +119,11 @@ describe('voice composer click with the RC1 slot contract', () => {
     const voice = new DesktopVoiceController({
       settingsScope: { bind: () => ({ getSnapshot: () => ({ value: undefined }), subscribe: () => () => {}, set: vi.fn() }) },
       remote: { credentials: { describe: vi.fn().mockResolvedValue({ ok: true, value: {} }) } },
-    } as never, { openTab: vi.fn() }, 'overlay')
+    } as never)
     voice.store.set({ ...voice.getSnapshot(), settings: { ...voice.getSnapshot().settings, enabled: true } })
+    voice.presentation.attach('session', () => true)
     const starting = voice.start('session')
+    await Promise.resolve()
     await voice.closePanel()
     answer!(new Response(JSON.stringify({ ticket: 'fixture', wsPath: '/fixture', sessionId: 'voice-1' })))
     await starting
@@ -130,34 +132,32 @@ describe('voice composer click with the RC1 slot contract', () => {
   })
 
   it('opens a compatibility overlay and clears it on close without requiring sidebar presentation', async () => {
-    const openTab = vi.fn()
     const voice = new DesktopVoiceController({
       settingsScope: { bind: () => ({ getSnapshot: () => ({ value: undefined }), subscribe: () => () => {}, set: vi.fn() }) },
       remote: { credentials: { describe: vi.fn().mockResolvedValue({ ok: true, value: {} }) } },
-    } as never, { openTab }, 'overlay')
+    } as never)
     voice.open('compatibility-session')
     expect(voice.panel.getSnapshot()).toBe('compatibility-session')
-    expect(openTab).not.toHaveBeenCalled()
     await voice.closePanel()
     expect(voice.panel.getSnapshot()).toBeNull()
     expect(voice.getSnapshot().status).toBe('ended')
   })
 
   it('opens voice and requests a ticket for the current session instead of reading removed props.session', async () => {
-    const openTab = vi.fn()
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: 'fixture ticket refusal' }), { status: 404 }))
     vi.stubGlobal('fetch', fetch)
     const voice = new DesktopVoiceController({
       settingsScope: { bind: () => ({ getSnapshot: () => ({ value: undefined }), subscribe: () => () => {}, set: vi.fn() }) },
       remote: { credentials: { describe: vi.fn().mockResolvedValue({ ok: true, value: { DASHSCOPE_API_KEY: { configured: true } } }) } },
-    } as never, { openTab })
+    } as never)
     voice.store.set({ ...voice.getSnapshot(), settings: { ...voice.getSnapshot().settings, enabled: true } })
     await voice.refreshCredentials()
+    voice.presentation.attach('rc1-session', () => true)
     const button = VoiceComposerButton({ sessionId: 'rc1-session' as never, controller: voice, t: key => key })
     expect(button).not.toBeNull()
     expect(() => button!.props.onClick()).not.toThrow()
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledWith(VOICE_TICKET_PATH, expect.objectContaining({ body: JSON.stringify({ sessionId: 'rc1-session' }) })))
-    expect(openTab).toHaveBeenCalledWith(expect.objectContaining({ type: 'desktop:voice' }), { sessionId: 'rc1-session' })
+    expect(voice.panel.getSnapshot()).toBe('rc1-session')
     await vi.waitFor(() => expect(voice.getSnapshot().error).toBe('fixture ticket refusal'))
   })
 })

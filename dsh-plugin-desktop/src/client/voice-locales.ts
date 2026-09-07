@@ -1,5 +1,5 @@
 export type VoiceKey =
-  | 'button.start' | 'button.stop' | 'button.unavailable'
+  | 'button.start' | 'button.stop' | 'button.restore' | 'button.unavailable' | 'button.panelUnavailable'
   | 'settings.title' | 'settings.intro' | 'settings.enabled' | 'settings.provider'
   | 'settings.model' | 'settings.voice' | 'settings.workspace' | 'settings.apiKey'
   | 'settings.endpointMode' | 'settings.apiKeyOnly' | 'settings.workspaceDedicated' | 'settings.workspaceHint'
@@ -16,6 +16,8 @@ export const voiceLocales = {
   zh: {
     'button.start': '开始语音对话',
     'button.stop': '结束语音对话',
+    'button.restore': '展开语音对话',
+    'button.panelUnavailable': '语音窗口被遮挡或无法显示。请关闭其他对话框后重试。',
     'button.unavailable': '语音对话尚未配置',
     'settings.title': '实时语音',
     'settings.intro': '在输入框显示语音按钮。普通设置提供稳定级联和 Qwen 原生语音 Agent；桥接模式仅用于开发诊断。',
@@ -58,6 +60,8 @@ export const voiceLocales = {
   en: {
     'button.start': 'Start voice conversation',
     'button.stop': 'End voice conversation',
+    'button.restore': 'Show voice conversation',
+    'button.panelUnavailable': 'The voice window is covered or unavailable. Close other dialogs and try again.',
     'button.unavailable': 'Voice conversation is not configured',
     'settings.title': 'Realtime voice',
     'settings.intro': 'Show a voice button in the composer. Ordinary settings provide stable cascade and Qwen native voice Agent; bridge mode is reserved for development diagnostics.',
