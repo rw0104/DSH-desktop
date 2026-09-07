@@ -72,6 +72,9 @@ if ($RemoveDiagnostics) {
 if ($IncludeLegacyTemp) {
   # Literal mkdtemp prefixes reviewed in this repository's tests/scripts.
   $legacyPrefixes = @('dsh-check-','dsh-cli-diagnostics-','dsh-updates-','dsh-log-','dsh-log-e2e-','dsh-log-link-','dsh-run-','dsh-desktop-profile-','dsh-desktop-plugins-','dsh-workbench-git-','dsh-dx-','dsh-dx-dump-','dsh-dx-dump-limit-','dsh-dx-dump-link-','dsh-dx-user-data-link-','dsh-dx-lifecycle-','dsh-dx-lifecycle-limit-','dsh-dx-lifecycle-file-link-','dsh-dx-lifecycle-parent-link-','dsh-dx-recovery-','dsh-dx-retain-','dsh-dx-limit-','dsh-dx-link-','dsh-dx-logs-link-')
+  # lifecycle-events.spec.ts passes these literals through tempUserData(),
+  # rather than passing them directly to mkdtemp().
+  $legacyPrefixes += @('dsh-lifecycle-correlated-','dsh-lifecycle-generation-','dsh-lifecycle-healthy-','dsh-lifecycle-failed-','dsh-lifecycle-timeout-','dsh-lifecycle-cap-','dsh-lifecycle-parent-link-','dsh-lifecycle-file-link-','dsh-lifecycle-hardlink-','dsh-lifecycle-unsafe-write-')
   $pattern = '^(?:' + (($legacyPrefixes | ForEach-Object { [regex]::Escape($_) }) -join '|') + ')[A-Za-z0-9]{6}$'
   $cutoff = (Get-Date).AddHours(-$MinimumAgeHours)
   foreach ($item in Get-ChildItem -LiteralPath $tempRoot -Directory -Force) {
