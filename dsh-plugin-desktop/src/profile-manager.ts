@@ -316,6 +316,14 @@ export function readDesktopProfileState(statePath: string): DesktopProfileStateV
   return loadState(statePath).state
 }
 
+/** Inspect a diagnostic generation without consuming a pending normal startup. */
+export function inspectDesktopProfileStartup(statePath: string, home: string): DesktopProfileStartup {
+  const loaded = loadState(statePath)
+  const profileName = isSelectable(home, loaded.state.active) ? loaded.state.active
+    : isSelectable(home, loaded.state.lastKnownGood) ? loaded.state.lastKnownGood : DEFAULT_PROFILE_NAME
+  return { profileName, state: loaded.state, recoveredState: loaded.recovered || profileName !== loaded.state.active }
+}
+
 /**
  * Request a compatible profile for the next application restart.
  * @param statePath - desktop-owned state file outside the Harness profile tree.

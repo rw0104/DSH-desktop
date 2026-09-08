@@ -31,6 +31,7 @@ import { parseDocument } from 'yaml'
 import { unpackedAsarPath } from './packaged-runtime-path.ts'
 import { ensurePackagedClientModuleFallback } from './client-module-fallback.ts'
 import type { DesktopShellMode } from './runtime.ts'
+import { desktopWindowStyle, resolveDesktopPresentation, type DesktopWindowStyle, type DesktopExperience } from './desktop-experience.ts'
 import {
   activeDesktopProfileLayers,
   desktopPluginBundleMutable,
@@ -104,12 +105,15 @@ export function parseDesktopPort(value: unknown): number {
 /** Startup settings projected into the Loader graph before the settings plugin boots. */
 export interface DesktopStartupSettings {
   mode: DesktopShellMode
+  windowStyle?: DesktopWindowStyle
   port: number
 }
 
 /** Profile-scoped startup values layered over the shared legacy document. */
 export interface DesktopStartupSettingsOverride {
   mode?: DesktopShellMode
+  windowStyle?: DesktopWindowStyle
+  experience?: DesktopExperience
   port?: number
 }
 
@@ -131,7 +135,8 @@ export function desktopStartupSettingsFromSettings(document: unknown): DesktopSt
   }
   const values = section as Record<string, unknown>
   return {
-    mode: parseDesktopShellMode(values.mode),
+    mode: resolveDesktopPresentation({ mode: values.mode, windowStyle: values.windowStyle }).mode,
+    windowStyle: desktopWindowStyle(values.windowStyle, values.mode),
     port: parseDesktopPort(values.port),
   }
 }
@@ -198,6 +203,8 @@ export interface PreparedDesktopProfile {
   patches: PatchOptions[]
   /** Optional Client UI entries skipped because this profile cannot resolve them. */
   skippedOptionalEntries: SkippedOptionalEntry[]
+  experience: DesktopExperience
+  windowStyle: DesktopWindowStyle
   /** Persisted shell mode applied after every user-owned patch. */
   mode: DesktopShellMode
   /** Persisted loopback Web port applied to every startup consumer. */
@@ -536,13 +543,27 @@ export function prepareDesktopProfile(
     ...rowConfig(settings),
   } as SettingsFileConfig)
   const fileSettings = readDesktopStartupSettings(settingsConfig)
-  const mode = startupSettingsOverride?.mode ?? fileSettings.mode
+  const presentation = resolveDesktopPresentation({
+    windowStyle: startupSettingsOverride?.windowStyle ?? (startupSettingsOverride?.mode === undefined ? desktopWindowStyle(fileSettings.windowStyle, fileSettings.mode) : desktopWindowStyle(undefined, startupSettingsOverride.mode)),
+    experience: startupSettingsOverride?.experience,
+  }, platform)
+  const { mode, experience, windowStyle } = presentation
+  if (experience === 'upstream-diagnostic') {
+    // Keep the pinned official graph and the native carrier. Third-party rows
+    // (including Sidebar and Market) are disabled only in this in-memory layer.
+    for (const [id, row] of rows) {
+      if (typeof row.name === 'string' && !row.name.startsWith('@deepseek-ai/')
+        && row.id !== 'desktop-shell') {
+        patches.push({ id, disabled: true })
+      }
+    }
+  }
   const port = startupSettingsOverride?.port ?? fileSettings.port
   patches.push({
     id: 'settings',
     config: settingsConfig,
   })
-  if (mode === 'advanced') {
+  if (mode === 'advanced' || experience === 'upstream-diagnostic') {
     for (const [id, packageName] of [
       ['ui-layout', UI_LAYOUT_PACKAGE],
       ['ui-sidebar', UI_SIDEBAR_PACKAGE],
@@ -553,7 +574,7 @@ export function prepareDesktopProfile(
       }
     }
     patches.push(
-      { id: 'ui-layout', disabled: true },
+      { id: 'ui-layout', disabled: mode === 'advanced' },
       { id: 'ui-sidebar', disabled: false },
       { id: 'ui-conversation', disabled: false },
     )
@@ -652,6 +673,8 @@ export function prepareDesktopProfile(
     config: {
       ...rowConfig(desktopShell),
       mode,
+      experience,
+      windowStyle,
       port,
     },
   })
@@ -663,6 +686,8 @@ export function prepareDesktopProfile(
     patches: structuredClone(patches),
     skippedOptionalEntries,
     mode,
+    experience,
+    windowStyle,
     port,
   }
 }

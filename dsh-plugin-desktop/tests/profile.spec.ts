@@ -23,6 +23,30 @@ function temporaryHome(): string {
   return home
 }
 
+describe('upstream diagnostic composition', () => {
+  it('excludes desktop UI plugins without rewriting normal settings or bundle membership', () => {
+    const home = temporaryHome()
+    const text = 'dsh-desktop:\n  mode: advanced\n'
+    writeFileSync(join(home, 'settings.yaml'), text)
+    const normal = prepareDesktopProfile('1', home, 'win32')
+    const manifestPath = join(normal.profile.dir, 'package.json')
+    const manifest = readFileSync(manifestPath, 'utf8')
+    const diagnostic = prepareDesktopProfile('1', home, 'win32', 'desktop', undefined, { experience: 'upstream-diagnostic' })
+    const rows = composeEntries([diagnostic.patches])
+    expect(diagnostic).toMatchObject({ experience: 'upstream-diagnostic', windowStyle: 'system' })
+    for (const name of ['dsh-better-sidebar', 'dsh-community-market']) {
+      const row = rows.find(row => row.name === name)
+      expect(row, name).toBeDefined()
+      expect(row!.disabled).toBe(true)
+    }
+    expect(rows.find(row => row.id === 'desktop-terminal')?.disabled).toBe(true)
+    expect(rows.find(row => row.id === 'desktop-diagnostics')?.disabled).toBe(true)
+    expect(rows.find(row => row.id === 'ui-layout')?.disabled).toBe(false)
+    expect(readFileSync(join(home, 'settings.yaml'), 'utf8')).toBe(text)
+    expect(readFileSync(manifestPath, 'utf8')).toBe(manifest)
+  })
+})
+
 function installWebClient(
   home: string,
   packageName: string,
@@ -393,9 +417,11 @@ describe('desktop profile composition', {
     expect(desktopStartupSettingsFromSettings({ 'dsh-desktop': { mode: 'advanced', port: 43_189 } })).toEqual({
       mode: 'advanced',
       port: 43_189,
+      windowStyle: 'native',
     })
     expect(desktopStartupSettingsFromSettings({ 'dsh-desktop': { mode: 'advanced' } })).toEqual({
       mode: 'advanced',
+      windowStyle: 'native',
       port: 0,
     })
     expect(desktopShellModeFromSettings({ unrelated: { enabled: true } })).toBe('compatibility')

@@ -4,6 +4,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createServer } from 'node:http'
 import { boot } from '@deepseek-ai/dsh-app-boot'
 import { assembleContextFor } from '@deepseek-ai/dsh-agent'
 import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
@@ -21,6 +22,11 @@ import { verifyClientRegistrations } from './verify-client-bundles.ts'
 const BIN_NAME = 'dsh-plugin-desktop-profile-smoke'
 const HOST_SERVICE_PLUGIN_NAME = 'dsh-desktop-host-services-smoke-plugin'
 const HOST_SERVICE_PROBE_KEY = 'desktopHostServiceProbe'
+const diagnostic = process.argv.includes('--diagnostic')
+const requestedMode = process.argv.includes('--system') ? 'compatibility' : 'advanced'
+const expectedMode = diagnostic ? 'compatibility' : requestedMode
+const uiStatePath = process.env.DSH_UI_STATE_FILE
+const rendererReports = []
 const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-profile-'))
 let ctx
 let releasePackageResolver
@@ -28,16 +34,32 @@ let pnpmRuntime
 let mountedSpec
 let nativeThemeSource = 'system'
 const trayItems = []
+let uiProvider
 
 try {
+  let uiProviderPort
+  if (uiStatePath) {
+    uiProvider = createServer(async (req, res) => {
+      for await (const _part of req) { /* consume the fixture request */ }
+      res.writeHead(200, { 'content-type': 'text/event-stream' })
+      res.end(`data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: 'Isolated UI fixture response.' }, finish_reason: null }] })}\n\ndata: ${JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })}\n\ndata: [DONE]\n\n`)
+    })
+    await new Promise(resolve => uiProvider.listen(0, '127.0.0.1', resolve))
+    uiProviderPort = uiProvider.address().port
+  }
   writeFileSync(join(home, 'settings.yaml'), [
     'dsh-desktop:',
-    '  mode: advanced',
+    `  mode: ${requestedMode}`,
+    ...(uiStatePath ? ['dsh-desktop-voice:', '  enabled: true', 'agent-default-model:', '  provider: surface-fixture', '  model: surface-chat', 'llm-pi-ai:', '  providers:', '    surface-fixture:', '      api: openai-completions', '      apiKeyEnv: DSH_UI_FIXTURE_KEY', `      baseURL: http://127.0.0.1:${uiProviderPort}/v1`, '      models:', '        - id: surface-chat', '          input: [text, image]'] : []),
     'agent-presets:',
     '  default: minimal',
     '',
   ].join('\n'))
-  const prepared = prepareDesktopProfile('1', home, 'win32')
+  if (uiStatePath) {
+    process.env.DASHSCOPE_API_KEY = 'isolated-surface-fixture'
+    process.env.DEEPSEEK_API_KEY = 'isolated-surface-fixture'
+  }
+  const prepared = prepareDesktopProfile('1', home, 'win32', 'desktop', undefined, { experience: diagnostic ? 'upstream-diagnostic' : 'desktop' })
   const hostServicePluginDir = join(
     prepared.profile.dir,
     'node_modules',
@@ -61,6 +83,7 @@ try {
     ...prepared.patches,
   ]
   const packageRoot = new URL('../', import.meta.url)
+  const productVersion = uiStatePath ? JSON.parse(readFileSync(new URL('package.json', packageRoot), 'utf8')).version : '2.0.4'
   const pnpmBinPath = fileURLToPath(new URL('node_modules/pnpm/bin/pnpm.mjs', packageRoot))
   const electronVersion = JSON.parse(
     readFileSync(new URL('node_modules/electron/package.json', packageRoot), 'utf8'),
@@ -80,7 +103,7 @@ try {
     updates: {
       isPackaged: false,
       canDownload: true,
-      currentVersion: '2.0.4',
+      currentVersion: productVersion,
       statePath: join(home, 'update-state.json'),
       request: async () => { throw new Error('profile smoke must not perform update requests') },
       confirmDownload: async () => false,
@@ -100,6 +123,9 @@ try {
       nativeThemeSource = mountedSpec.readThemeSource()
     },
     show() {},
+    async pickDirectory() { return home },
+    async validateDirectory(path) { return path === home || path.startsWith(`${home}${process.platform === 'win32' ? '\\' : '/'}`) },
+    reportRendererBoot(report) { rendererReports.push(report) },
     registerTrayItem(item) {
       trayItems.push(item)
       return {
@@ -159,6 +185,11 @@ try {
     },
     prepared.bareModuleBaseUrl,
   )
+  if (uiStatePath) {
+    for (const ref of ['DASHSCOPE_API_KEY', 'DEEPSEEK_API_KEY', 'DSH_UI_FIXTURE_KEY']) {
+      if (!(await ctx.credentials.describe(ref)).configured) await ctx.credentials.set(ref, 'sk-isolated-surface-fixture')
+    }
+  }
   await runtime.mountScheduled()
 
   if (ctx.webStartup?.openBrowser !== false) {
@@ -239,20 +270,20 @@ try {
     : mountedDriveLetters === null
   if (mountedUrl.origin !== `http://127.0.0.1:${String(ctx.webServer.port)}`
     || mountedUrl.pathname !== '/'
-    || mountedUrl.searchParams.get('dsh-desktop-mode') !== 'advanced'
+    || mountedUrl.searchParams.get('dsh-desktop-mode') !== expectedMode
     || mountedUrl.searchParams.get('dsh-desktop-platform') !== 'win32'
-    || mountedUrl.searchParams.get('dsh-desktop-version') !== '2.0.4'
+    || mountedUrl.searchParams.get('dsh-desktop-version') !== productVersion
     || !hasExpectedDriveLetters) {
     throw new Error(`desktop plugin produced an unexpected renderer URL: ${String(mountedSpec?.url)}`)
   }
-  if (mountedSpec?.mode !== 'advanced') {
+  if (mountedSpec?.mode !== expectedMode) {
     throw new Error(`desktop plugin produced an unexpected shell mode: ${String(mountedSpec?.mode)}`)
   }
   if (nativeThemeSource !== 'system') {
     throw new Error(`desktop plugin produced an unexpected native theme source: ${nativeThemeSource}`)
   }
   const desktopSettings = ctx.settings.get(DESKTOP_SETTINGS_NAMESPACE)
-  if (desktopSettings?.mode !== 'advanced') {
+  if (desktopSettings?.mode !== requestedMode) {
     throw new Error('assembled Host settings are missing the advanced dsh-desktop mode')
   }
   if (!trayItems.some(item => item.label() === 'Check for Updates…')) {
@@ -310,13 +341,36 @@ try {
     if (!ids.has(id)) throw new Error(`assembled advanced Web graph is missing ${id}`)
   }
   for (const id of [
-    '@deepseek-ai/dsh-client-ui-layout',
     '@deepseek-ai/dsh-client-ui-directory-picker-native',
   ]) {
     if (ids.has(id)) throw new Error(`assembled advanced Web graph unexpectedly includes ${id}`)
   }
+  if (ids.has('@deepseek-ai/dsh-client-ui-layout') !== (expectedMode === 'compatibility')) throw new Error('Wrong upstream layout composition')
+  for (const name of ['dsh-better-sidebar', 'dsh-community-market']) {
+    if (ids.has(name) === diagnostic) throw new Error(`Wrong ${name} diagnostic composition`)
+  }
+  if (uiStatePath) {
+    let finish
+    const done = new Promise(resolve => { finish = resolve })
+    const timer = setTimeout(() => finish(), 240_000)
+    const disposeRoute = ctx.webServer.register({ kind: 'exact', path: '/dsh-desktop/api/ui-smoke/finish', handler: (req, res) => {
+      if (req.method !== 'POST' || req.headers['x-dsh-ui-smoke'] !== '1') { res.writeHead(403); res.end(); return }
+      res.writeHead(204); res.end(); finish()
+    } })
+    const disposeStatus = ctx.webServer.register({ kind: 'exact', path: '/dsh-desktop/api/ui-smoke/status', handler: (_req, res) => {
+      res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ rendererReports }))
+    } })
+    writeFileSync(uiStatePath, JSON.stringify({ url: expectedUrl, root: home, sessionId: created.sessionId, version: productVersion, mode: expectedMode, diagnostic, doneUrl: new URL('/dsh-desktop/api/ui-smoke/finish', expectedUrl).href }))
+    console.log(`verify-profile-ui: ready (${expectedMode}, diagnostic=${diagnostic})`)
+    await done
+    clearTimeout(timer)
+    disposeRoute()
+    disposeStatus()
+  }
 } finally {
   await ctx?.fiber.dispose()
+  uiProvider?.closeAllConnections()
+  uiProvider?.close()
   releasePackageResolver?.()
   pnpmRuntime?.dispose()
   rmSync(home, { recursive: true, force: true })

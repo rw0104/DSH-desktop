@@ -15,14 +15,15 @@ const resourceContext = 'Desktop installation files and app.asar are runtime res
 export function desktopProductContext(facts: DesktopProductFacts): string {
   const capabilities = [
     'The desktop window supports native text selection, copy, and editing context menus.',
-    ...(facts.mode === 'advanced' ? [
-      'The Advanced composer Add (+) menu offers image selection, workspace file upload, and commands. Images also support paste and drop with the same validation limits.',
+    ...[
+      `The composer Add (+) menu offers image selection, ${facts.workspaceFiles ? 'workspace file upload, and' : 'and'} commands. Images also support paste and drop with the same validation limits. Window appearance does not change these desktop capabilities or the Agent preset.`,
+      'When enabled in settings, realtime voice uses an independent window and a compact task control. The Sidebar may remain collapsed; it does not control voice availability.',
       'Message images have an original-image preview and Save image action using stored attachment bytes. Message and code context menus provide copy actions; links can be copied or opened.',
       ...(facts.workspaceFiles ? ['Uploaded documents are saved under the current workspace in .dsh-uploads and referenced by path in the draft. Read them using available workspace tools; PDF and Office parsing depends on installed tools. Upload does not automatically parse or execute files.'] : []),
-    ] : ['Compatibility mode uses the upstream default client. The Advanced Add menu and preview toolbar are not present in this mode.']),
+    ],
   ]
   return [
-    `Desktop product context v1: the user is using DSH Desktop ${facts.version} on ${facts.platform}, in ${facts.mode} mode.`,
+    `Desktop product context v2: the user is using DSH Desktop ${facts.version} on ${facts.platform}, with ${facts.mode === 'advanced' ? 'native' : 'system'} window appearance. The standard, PTC and custom Agent presets independently select Agent tools, not desktop UI features.`,
     'DSH Desktop is the application; DeepSeek Harness is its Agent runtime. Your model identity and provider are those selected for the current session, and are not renamed to DSH Desktop. When the user says this app or this client, they mean DSH Desktop unless another target is specified.',
     resourceContext,
     ...capabilities,

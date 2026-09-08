@@ -33,10 +33,12 @@ describe('Desktop product context', () => {
       expect(renderPrompt(await ctx.systemPrompt.assemble())).toBe('A single image prompt.')
     } finally { await ctx.fiber.dispose() }
   })
-  it('does not advertise Advanced controls or upload storage in compatibility mode', () => {
+  it('keeps file and voice presentation independent from system window decoration', () => {
     const text = desktopProductContext({ version: '2.2.6', mode: 'compatibility', platform: 'darwin', workspaceFiles: false })
-    expect(text).toContain('upstream default client')
+    expect(text).toContain('system window appearance')
+    expect(text).toContain('Window appearance does not change')
+    expect(text).toContain('realtime voice uses an independent window')
     expect(text).not.toContain('workspace in .dsh-uploads')
-    expect(text).not.toContain('Message images have an original-image preview and Save image action')
+    expect(text).toContain('Message images have an original-image preview and Save image action')
   })
 })

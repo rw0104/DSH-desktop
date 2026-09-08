@@ -37,6 +37,7 @@ const EXPECTED_HOST_ROUTES = new Set([
   '/dsh-desktop/api/voice/settings',
   '/dsh-desktop/api/voice/credentials',
   '/dsh-desktop/api/voice/ticket',
+  '/dsh-desktop/api/workspace/upload',
 ])
 const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-loader-'))
 let ctx
@@ -190,7 +191,7 @@ try {
   if (mountedSpec?.mode !== 'compatibility') {
     throw new Error(`desktop plugin produced an unexpected shell mode: ${String(mountedSpec?.mode)}`)
   }
-  if (mountedSpec?.url !== `http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin&dsh-desktop-version=${desktopPackageVersion}&token=${LOADER_SMOKE_AUTH_TOKEN}`) {
+  if (mountedSpec?.url !== `http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin&dsh-desktop-experience=desktop&dsh-desktop-window-style=system&dsh-desktop-version=${desktopPackageVersion}&token=${LOADER_SMOKE_AUTH_TOKEN}`) {
     throw new Error(`desktop plugin produced an unexpected renderer URL: ${String(mountedSpec?.url)}`)
   }
 } finally {

@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
+import { resolveDesktopPresentation, type DesktopWindowStyle, type DesktopExperience } from './desktop-experience.ts'
 import type {} from '@deepseek-ai/dsh-cmdline'
 import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-client-connection'
@@ -73,6 +74,7 @@ function desktopLocale(value: string | undefined): DesktopLocale | undefined {
 
 /** Desktop settings presented by the standard settings service. */
 export interface DesktopSettings {
+  windowStyle?: DesktopWindowStyle
   /** Native presentation selected for the next application generation. */
   mode: DesktopShellMode
   /** Loopback Web port selected for the next application generation; zero requests a random port. */
@@ -83,6 +85,7 @@ export interface DesktopSettings {
 
 /** Schema registered with the standard settings service. */
 export const DesktopSettingsSchema: z<DesktopSettings> = z.object({
+  windowStyle: z.union(['system', 'native'] as const),
   mode: z.union(['compatibility', 'advanced'] as const).default('compatibility'),
   port: z.number().step(1).min(0).max(65_535).default(0),
   logLevel: z.union(['debug', 'info', 'warn', 'error'] as const).default('info'),
@@ -90,6 +93,8 @@ export const DesktopSettingsSchema: z<DesktopSettings> = z.object({
 
 /** Native window configuration. */
 export interface Config {
+  experience?: DesktopExperience
+  windowStyle?: DesktopWindowStyle
   /** Native presentation mode selected before BrowserWindow construction. */
   mode: DesktopShellMode
   /** Configured loopback Web port used to detect restart-applied settings changes. */
@@ -106,6 +111,8 @@ export interface Config {
 
 /** Validated native window configuration. */
 export const Config: z<Config> = z.object({
+  experience: z.union(['desktop', 'upstream-diagnostic'] as const).default('desktop'),
+  windowStyle: z.union(['system', 'native'] as const),
   mode: z.union(['compatibility', 'advanced'] as const).default('compatibility'),
   port: z.number().step(1).min(0).max(65_535).default(0),
   width: z.number().step(1).min(800).default(1280),
@@ -126,10 +133,13 @@ export function desktopRendererUrl(
   mode: DesktopShellMode,
   platform: Context['desktopRuntime']['platform'],
   productVersion = 'unknown',
+  experience: DesktopExperience = 'desktop',
 ): string {
   const url = new URL(`http://127.0.0.1:${String(port)}/`)
   url.searchParams.set('dsh-desktop-mode', mode)
   url.searchParams.set('dsh-desktop-platform', platform)
+  url.searchParams.set('dsh-desktop-experience', experience)
+  url.searchParams.set('dsh-desktop-window-style', mode === 'advanced' ? 'native' : 'system')
   if (productVersion !== 'unknown') url.searchParams.set('dsh-desktop-version', productVersion)
   const drives = detectWindowsDriveLetters(platform)
   if (drives.length > 0) url.searchParams.set('dsh-desktop-drives', drives.join(''))
@@ -178,15 +188,16 @@ export function apply(ctx: Context, config: Config): void {
   if (ctx.webServer.host !== '127.0.0.1') {
     throw new Error('dsh-plugin-desktop: desktop shell requires a loopback Web server')
   }
+  const presentation = resolveDesktopPresentation(config, runtime.platform)
   installWorkspaceWorkbench(ctx)
-  if (config.mode === 'advanced' && ctx.workspaceWorkbench !== undefined) {
+  if (presentation.experience === 'desktop' && ctx.workspaceWorkbench !== undefined) {
     ctx.effect(() => installWorkspaceUploadRoute(ctx, ctx.workspaceWorkbench!), 'desktop: workspace file upload')
   }
-  installDesktopProductContext(ctx, {
+  if (presentation.experience === 'desktop') installDesktopProductContext(ctx, {
     version: runtime.updates.currentVersion,
     platform: runtime.platform,
-    mode: config.mode,
-    workspaceFiles: config.mode === 'advanced',
+    mode: presentation.mode,
+    workspaceFiles: ctx.workspaceWorkbench !== undefined,
   })
   const iconFilename = runtime.platform === 'darwin'
     ? 'app-icon-mac.png'
@@ -201,14 +212,10 @@ export function apply(ctx: Context, config: Config): void {
     DesktopSettingsSchema,
     {
       applies: 'restart',
-      validate: (value) => {
-        if (value.mode === 'advanced' && runtime.platform === 'linux') {
-          throw new Error('dsh-plugin-desktop: advanced shell mode is supported on macOS and Windows')
-        }
-      },
+      validate: value => { resolveDesktopPresentation(value, runtime.platform) },
     },
   )
-  registerVoiceRealtimeHost(ctx)
+  if (presentation.experience === 'desktop') registerVoiceRealtimeHost(ctx)
   const rendererOrigin = `http://127.0.0.1:${String(ctx.webServer.port)}`
   ctx.effect(
     () => ctx.webServer.register({
@@ -260,7 +267,7 @@ export function apply(ctx: Context, config: Config): void {
   ctx.effect(() => {
     let pending: ReturnType<typeof setImmediate> | undefined
     const stopWatching = settings.watch((next) => {
-      if (next.mode === config.mode && next.port === config.port) {
+      if (presentation.experience === 'upstream-diagnostic' || resolveDesktopPresentation(next, runtime.platform).windowStyle === presentation.windowStyle && next.port === config.port) {
         if (pending !== undefined) clearImmediate(pending)
         pending = undefined
         return
@@ -278,7 +285,7 @@ export function apply(ctx: Context, config: Config): void {
       if (pending !== undefined) clearImmediate(pending)
     }
   }, 'dsh-plugin-desktop: restart after startup setting change')
-  if (config.mode === 'advanced') {
+  if (presentation.windowStyle === 'native') {
     ctx.on('settings/updated', (namespace, next) => {
       if (namespace !== UI_THEME_SETTINGS_NAMESPACE) return
       runtime.setThemeSource((next as ThemeSettings).preference)
@@ -291,9 +298,10 @@ export function apply(ctx: Context, config: Config): void {
   ctx.effect(
     () => runtime.schedule({
       ...config,
+      ...presentation,
       url: authenticatedDesktopRendererUrl(
         connection,
-        desktopRendererUrl(ctx.webServer.port, config.mode, runtime.platform, runtime.updates.currentVersion),
+        desktopRendererUrl(ctx.webServer.port, presentation.mode, runtime.platform, runtime.updates.currentVersion, presentation.experience),
       ),
       productName: 'DSH Desktop',
       windowTitle: 'DeepSeek Harness Desktop',
@@ -310,7 +318,7 @@ export function apply(ctx: Context, config: Config): void {
         return theme.preference
       },
       requestQuit: appExit,
-      requestModeChange: async mode => settings.update({ mode }),
+      requestModeChange: async mode => settings.update({ windowStyle: mode === 'advanced' ? 'native' : 'system', mode }),
     }),
     'dsh-plugin-desktop: native shell generation',
   )

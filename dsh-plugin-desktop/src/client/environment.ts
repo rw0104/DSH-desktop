@@ -1,3 +1,5 @@
+import { resolveDesktopPresentation, type DesktopExperience, type DesktopWindowStyle } from '../desktop-experience.ts'
+
 /** Desktop renderer modes accepted from the Electron-owned page URL. */
 export type DesktopClientMode = 'compatibility' | 'advanced'
 
@@ -6,6 +8,8 @@ export type DesktopClientPlatform = 'darwin' | 'win32' | 'linux'
 
 /** Validated renderer environment supplied by the Electron Host. */
 export interface DesktopClientEnvironment {
+  experience: DesktopExperience
+  windowStyle: DesktopWindowStyle
   /** Active shell mode for this BrowserWindow lifetime. */
   mode: DesktopClientMode
   /** Electron Host platform used for native spacing and drag regions. */
@@ -47,7 +51,11 @@ export function parseDesktopClientEnvironment(search: string): DesktopClientEnvi
     throw new Error(`dsh-plugin-desktop: invalid dsh-desktop-version ${JSON.stringify(productVersion)}`)
   }
   return {
-    mode: mode as DesktopClientMode,
+    ...resolveDesktopPresentation({
+      mode,
+      experience: params.get('dsh-desktop-experience') ?? undefined,
+      windowStyle: params.get('dsh-desktop-window-style') ?? undefined,
+    }, platform as DesktopClientPlatform),
     platform: platform as DesktopClientPlatform,
     productVersion,
     driveLetters: platform === 'win32' ? parseDriveLetters(params.get('dsh-desktop-drives')) : [],

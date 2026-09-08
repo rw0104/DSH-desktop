@@ -32,6 +32,7 @@ function composition(mode: 'advanced' | 'compatibility', enabled = true) {
   const sidebar = createBetterSidebarService(store)
   const registrations: { name: string; id?: string; inject?: () => { controller: DesktopVoiceController }; component: unknown }[] = []
   const ctx = {
+    inject: (_services: unknown, install: (ctx: unknown) => void) => install(ctx),
     get: (name: string) => name === 'betterSidebar' ? sidebar : undefined,
     effect: (effect: () => unknown, name: string) => name.endsWith('realtime voice sidebar tab') ? effect() : undefined,
     locale: { subscribe: () => () => {}, getLocale: () => ({ active: 'en' }), bind: () => (key: string) => key },

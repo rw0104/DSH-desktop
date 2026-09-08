@@ -115,7 +115,7 @@ function UploadStatus({ controller, language }: Injected) {
   return <div className="dsh-file-status" role="status"><div>{state.message}</div>{state.files.map(file => <div key={file.path}><code>{file.path}</code> · {file.bytes} B <button type="button" disabled={state.busy} onClick={() => setNotice(controller?.insert(file) ? lang === 'zh' ? '引用已插入' : 'Reference inserted' : lang === 'zh' ? '请等待输入恢复后再试' : 'Wait until the composer is ready')}>{lang === 'zh' ? '插入引用' : 'Insert reference'}</button></div>)}{notice}</div>
 }
 
-/** Desktop-only occupants; compatibility leaves every upstream fallback untouched. */
+/** Shared product controls in either system or native window decoration. */
 export function installClientExperience(ctx: Context): void {
   const controllers = new Map<SessionId, ExperienceController>()
   const language = { subscribe: (listener: () => void) => ctx.locale.subscribe(listener), getSnapshot: () => String(ctx.locale.getLocale().active) }

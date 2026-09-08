@@ -110,6 +110,8 @@ jobs:
           key: yarn-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock', '.yarnrc.yml') }}
       - run: yarn install --immutable
       - run: yarn check
+      - name: Verify desktop surfaces in hidden Electron
+        run: yarn workspace dsh-plugin-desktop verify:surfaces
       - name: Build Windows installer
         env:
           DSH_PACKAGE_CHECK_ALREADY_RAN: '1'
@@ -146,6 +148,8 @@ jobs:
           key: yarn-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock', '.yarnrc.yml') }}
       - run: yarn install --immutable
       - run: yarn check
+      - name: Verify desktop surfaces in hidden Electron
+        run: yarn workspace dsh-plugin-desktop verify:surfaces
       - name: Build macOS smoke artifact
         env:
           DSH_PACKAGE_CHECK_ALREADY_RAN: '1'

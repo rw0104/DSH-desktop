@@ -6,6 +6,8 @@
     "emitDeclarationOnly": false
   },
   "include": [
+    "tests/browser/**/*.tsx",
+    "tests/browser/**/*.d.ts",
     "tests/sidebar-menu-placement.spec.ts",
     "tests/sidebar-menu-lifecycle.spec.ts",
     "tests/sidebar-markdown-preview.spec.ts",

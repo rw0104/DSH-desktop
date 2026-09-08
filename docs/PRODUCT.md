@@ -10,7 +10,7 @@ DSH Desktop 面向在 Windows 与 macOS 上使用 DeepSeek Harness 的开发者�
 
 ## Product Purpose
 
-产品把固定版本、未经修改的官方 DeepSeek Harness Runtime 与 Web UI 放进原生 Electron 生命周期，并通过合法的 Cordis 插件组合提供窗口、托盘、profile、受管终端、Better Sidebar、安装和更新。原生视觉模型直接使用官方 `image` 附件链，不再加载 Vision Toolkit。成功意味着官方兼容模式保持原样，Advanced 模式提供更适合桌面的工作台组合，安装、启动、目录选择、侧栏和工具行为稳定且可验证。
+产品把固定版本、未经修改的官方 DeepSeek Harness Runtime 与 Web UI 放进原生 Electron 生命周期，并通过合法的 Cordis 插件组合提供窗口、托盘、profile、受管终端、Better Sidebar、安装和更新。原生视觉模型直接使用官方 `image` 附件链，不再加载 Vision Toolkit。日常桌面在系统窗口与原生外观下都提供完整的文件、图片、语音和工作台能力；Agent 预设独立决定工具组合。上游原始界面只作为临时故障排查入口，不消费正常 Profile 选择或安装恢复事务。成功意味着用户无需切换功能档次就能连续完成任务，安装、启动、目录选择、侧栏和工具行为稳定且可验证。
 
 ## Brand Personality
 

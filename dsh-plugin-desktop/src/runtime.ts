@@ -1,5 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { RendererBootReport } from './renderer-boot-contract.ts'
+import type { DesktopExperience, DesktopWindowStyle } from './desktop-experience.ts'
 import type {
   DesktopUpdateArtifactMetadata,
   UpdateCheckResult,
@@ -21,6 +22,8 @@ export type DesktopLocale = 'zh' | 'en'
 
 /** Window values resolved from the desktop-shell Cordis row. */
 export interface DesktopWindowConfig {
+  experience?: DesktopExperience | undefined
+  windowStyle?: DesktopWindowStyle | undefined
   /** Native presentation mode selected before BrowserWindow construction. */
   mode: DesktopShellMode
   /** Initial window width in CSS pixels. */

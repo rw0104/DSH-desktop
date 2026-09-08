@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
-import { apply, inject } from '../src/client/index.ts'
+import { apply, inject, desktopClientServices } from '../src/client/index.ts'
 import { provideDesktopLayout } from '../src/client/layout-service.ts'
 import { parseDesktopClientEnvironment } from '../src/client/environment.ts'
 import {
@@ -17,11 +17,12 @@ import {
 
 describe('desktop client environment', () => {
   it('declares both the Remote parent and credential service before voice reads ctx.remote', () => {
-    expect(inject).toEqual(expect.arrayContaining(['remote', 'remote.credentials']))
+    expect(desktopClientServices).toEqual(expect.arrayContaining(['remote', 'remote.credentials']))
   })
 
   it('waits for the maintained upstream Better Sidebar before registering Desktop tabs', () => {
-    expect(inject).toContain('betterSidebar')
+    expect(desktopClientServices).toContain('betterSidebar')
+    expect(inject).not.toContain('betterSidebar')
   })
 
   it('does not activate desktop effects for an ordinary browser URL', () => {
@@ -40,11 +41,11 @@ describe('desktop client environment', () => {
 
   it('accepts the Electron-owned kebab query markers', () => {
     expect(parseDesktopClientEnvironment('?dsh-desktop-mode=advanced&dsh-desktop-platform=darwin'))
-      .toEqual({ mode: 'advanced', platform: 'darwin', productVersion: 'unknown', driveLetters: [] })
+      .toEqual({ experience: 'desktop', windowStyle: 'native', mode: 'advanced', platform: 'darwin', productVersion: 'unknown', driveLetters: [] })
     expect(parseDesktopClientEnvironment('?dsh-desktop-platform=win32&dsh-desktop-mode=compatibility&dsh-desktop-version=2.0.2'))
-      .toEqual({ mode: 'compatibility', platform: 'win32', productVersion: '2.0.2', driveLetters: [] })
+      .toEqual({ experience: 'desktop', windowStyle: 'system', mode: 'compatibility', platform: 'win32', productVersion: '2.0.2', driveLetters: [] })
     expect(parseDesktopClientEnvironment('?dsh-desktop-platform=win32&dsh-desktop-mode=compatibility&dsh-desktop-drives=cDdc'))
-      .toEqual({ mode: 'compatibility', platform: 'win32', productVersion: 'unknown', driveLetters: ['C', 'D'] })
+      .toEqual({ experience: 'desktop', windowStyle: 'system', mode: 'compatibility', platform: 'win32', productVersion: 'unknown', driveLetters: ['C', 'D'] })
   })
 
   it.each([

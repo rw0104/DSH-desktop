@@ -14,12 +14,16 @@ Selecting a profile performs an orderly restart. The new profile becomes the las
 
 Switching profiles does not silently copy plugins from the old profile into the new one. Use an explicit profile in the terminal when preparing another profile, or use the default commands after switching.
 
-## Compatibility and advanced modes
+## Window appearance and Agent presets
 
-- **Compatibility mode** uses the upstream Web client and the selected profile's own layout/sidebar/conversation composition. It is the closest presentation to ordinary Harness.
-- **Advanced mode** keeps the same upstream Web carrier while adding Desktop-owned framing, layout, Mica/vibrancy, and native drag regions. It is intended for a fuller desktop presentation.
+- **System window** and **Native desktop appearance** are selected in Settings → Window appearance. Both provide the full Add menu, image saving, conversation actions, voice window and workbench.
+- **Standard, PTC and custom Agent presets** select Agent tools independently. Voice and uploads do not require changing the Standard Agent.
 
-Changing mode restarts the application; it does not hot-swap root slots or native materials in a live renderer. Linux provides compatibility mode only.
+Select an appearance and choose **Apply and restart**. Linux uses the system window with all desktop features. Legacy `compatibility` and `advanced` preferences migrate to `system` and `native` without resetting models, credentials or sessions.
+
+After voice is enabled and configured, its composer entry opens an independent window even when the sidebar is collapsed. Minimize to the compact task controls and restore the same call. Escape minimizes; explicit End or Close stops the call.
+
+For troubleshooting, use the tray's **Troubleshooting → Use upstream original interface**, or `dsh-desktop --upstream-diagnostic`. That run excludes third-party interfaces and does not replace normal appearance preferences or advance pending installation transactions. Use **Return to DSH Desktop**, or quit and launch normally, to return to the complete desktop. This is a diagnostic entry, not a second everyday feature tier.
 
 ## Local Web port
 

@@ -35,6 +35,7 @@ describe('desktop npm launcher', () => {
     expect(DESKTOP_CLI_HELP).toContain('DSH Desktop')
     expect(DESKTOP_CLI_HELP).toContain('selected Web-capable profile')
     expect(DESKTOP_CLI_HELP).toContain('--export-diagnostics')
+    expect(parseDesktopCli(['--upstream-diagnostic'])).toBe('launch')
   })
 
   it('resolves the packaged Desktop user-data directory without Electron', () => {

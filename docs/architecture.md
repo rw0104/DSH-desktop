@@ -37,7 +37,11 @@ flowchart LR
 - **Web Client**：官方 Web UI 和第三方浏览器界面。它通过 loopback carrier 工作，不直接调用 Electron。
 - **Native runtime**：Electron BrowserWindow、系统托盘、文件/网络/安装器适配。`desktopRuntime` 只供 Desktop 自有 row 使用。
 
-兼容模式的 Client face 校验环境后直接返回，不注册 Desktop layout、root、sidebar 或 conversation override。高级模式才安装 Desktop-owned layout、frame 和原生材质，同时尊重上游和第三方 slot 组合。
+日常 `desktop` 体验与 `system`/`native` 窗口外观分别解析。Host 路由、+ 菜单、图片操作和语音浮窗在两种外观中共用；只有 native 外观替换 root/layout 几何。Agent 预设不参与该选择。旧 mode 字段继续作为配置迁移和窗口适配输入，不是功能开关。
+
+`upstream-diagnostic` 是通过重启参数选择的临时体验。Launcher 在内存组合中禁用第三方行并恢复官方 layout；Desktop Client 只运行不依赖 Sidebar 的启动健康报告。诊断不消费 pending Profile 选择、不 claim 插件安装 WAL，也不提交正常外观偏好、健康状态或失败回滚。返回日常桌面时恢复原组合。
+
+Profile 外观使用固定 `presentation-v2.json` 记录，并保留旧程序可读取的严格 v1 `state.json` 镜像。v2 用摘要确认镜像；在两次原子写入之间中断，或旧程序修改 v1 后，新程序从完整 v1 值重新迁移。记录不包含模型、凭据或会话副本。
 
 ### 原生 Shell generation 与平台 adapter
 

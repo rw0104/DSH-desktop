@@ -348,7 +348,7 @@ describe('Electron desktop runtime', () => {
     expect(electron.templateIcon.setTemplateImage).toHaveBeenCalledWith(true)
     expect(electron.trays[0]?.image).toBe(electron.templateIcon)
     expect(electron.menuTemplates[0]).toEqual(expect.arrayContaining([
-      expect.objectContaining({ label: 'Switch to Advanced Mode', enabled: true }),
+      expect.objectContaining({ label: 'Troubleshooting', submenu: expect.any(Array) }),
     ]))
 
     const titleListener = electron.browserWindowOn.mock.calls.find(([event]) => event === 'page-title-updated')?.[1]
@@ -408,7 +408,7 @@ describe('Electron desktop runtime', () => {
     expect(electron.app.dock.setIcon).not.toHaveBeenCalled()
     expect(electron.browserWindows[0]?.removeMenu).not.toHaveBeenCalled()
     expect(electron.menuTemplates[0]).toEqual(expect.arrayContaining([
-      expect.objectContaining({ label: 'Switch to Advanced Mode', enabled: false }),
+      expect.objectContaining({ label: 'Troubleshooting', submenu: expect.any(Array) }),
     ]))
 
     await release()
@@ -630,7 +630,7 @@ describe('Electron desktop runtime', () => {
     expect((electron.menuTemplates.at(-1) as Array<{ label?: string }>).map(item => item.label))
       .toEqual(expect.arrayContaining([
         '打开 DSH Desktop',
-        '切换到高级模式',
+        '故障排查',
         '退出',
       ]))
 
@@ -639,7 +639,7 @@ describe('Electron desktop runtime', () => {
     expect((electron.menuTemplates.at(-1) as Array<{ label?: string }>).map(item => item.label))
       .toEqual(expect.arrayContaining([
         'Open DSH Desktop',
-        'Switch to Advanced Mode',
+        'Troubleshooting',
         'Quit',
       ]))
 
@@ -649,7 +649,7 @@ describe('Electron desktop runtime', () => {
     expect((electron.menuTemplates.at(-1) as Array<{ label?: string }>).map(item => item.label))
       .toEqual(expect.arrayContaining([
         '打开 DSH Desktop',
-        '切换到高级模式',
+        '故障排查',
         '退出',
       ]))
 
@@ -1061,19 +1061,21 @@ describe('Electron desktop runtime', () => {
     await release()
   })
 
-  it('persists the opposite mode when its tray command is clicked', async () => {
+  it('restarts into the transient upstream diagnostic interface without changing normal preferences', async () => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin')
     const { ElectronDesktopRuntime } = await import('../src/electron-runtime.ts')
     const requestModeChange = vi.fn(async () => {})
-    const runtime = new ElectronDesktopRuntime(async () => {})
+    const restart = vi.fn(async (_diagnostic?: boolean) => {})
+    const runtime = new ElectronDesktopRuntime(restart)
     const release = runtime.schedule({ ...spec, requestModeChange })
 
     await runtime.mountScheduled()
-    const item = (electron.menuTemplates[0] as Array<{ label?: string, click?: () => void }>)
-      .find(candidate => candidate.label === 'Switch to Advanced Mode')
+    const item = (electron.menuTemplates[0] as Array<{ label?: string, submenu?: { click?: () => void }[] }>)
+      .find(candidate => candidate.label === 'Troubleshooting')
     expect(item).toBeDefined()
-    item?.click?.()
-    await vi.waitFor(() => { expect(requestModeChange).toHaveBeenCalledWith('advanced') })
+    item?.submenu?.[0]?.click?.()
+    await vi.waitFor(() => { expect(restart).toHaveBeenCalledWith(true) })
+    expect(requestModeChange).not.toHaveBeenCalled()
 
     await release()
   })
@@ -1111,7 +1113,7 @@ describe('Electron desktop runtime', () => {
       'Open DSH Desktop', undefined,
       'Earlier Tool', 'Later Tool', undefined,
       'Check for Updates…', undefined,
-      'Switch to Advanced Mode', undefined,
+      'Troubleshooting', undefined,
       'Quit',
     ])
     expect(electron.menuTemplates.at(-1)).toEqual(expect.arrayContaining([
@@ -1686,7 +1688,7 @@ describe('Electron desktop runtime', () => {
       vibrancy: 'sidebar',
     }))
     expect(electron.menuTemplates[0]).toEqual(expect.arrayContaining([
-      expect.objectContaining({ label: 'Switch to Compatibility Mode', enabled: true }),
+      expect.objectContaining({ label: 'Troubleshooting', submenu: expect.any(Array) }),
     ]))
 
     runtime.setThemeSource('system')

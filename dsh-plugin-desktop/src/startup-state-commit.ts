@@ -24,6 +24,7 @@ export interface DesktopStartupStateCommitLogger {
 }
 
 export interface DesktopStartupStateCommitOptions {
+  readonly diagnostic?: boolean
   readonly profile: DesktopProfileStartup
   readonly profileStatePath: string
   readonly installRecovery: DesktopInstallRecoveryStore
@@ -50,8 +51,17 @@ export class DesktopStartupStateCommit {
 
   constructor(private readonly options: DesktopStartupStateCommitOptions) {}
 
+  /** Diagnostic runs may inspect the profile, but never claim its transaction. */
+  async claimInstallRecovery(): Promise<DesktopInstallRecoveryClaim> {
+    if (this.options.diagnostic) return { action: 'none' }
+    const claim = await this.options.installRecovery.claim()
+    this.observeInstallRecoveryClaim(claim)
+    return claim
+  }
+
   /** Retain only install recovery state that participates in a later startup commit. */
   observeInstallRecoveryClaim(claim: DesktopInstallRecoveryClaim): void {
+    if (this.options.diagnostic) return
     if (claim.action === 'verify') {
       this.verifyingInstall = claim.transaction
     } else if (claim.action === 'terminal' && claim.transaction.phase === 'verified') {
@@ -61,6 +71,7 @@ export class DesktopStartupStateCommit {
 
   /** Commit install verification before promoting the selected Profile. */
   async commitHealthy(): Promise<void> {
+    if (this.options.diagnostic) return
     if (this.verifyingInstall !== undefined) {
       const verified = await this.options.installRecovery.markHealthy(
         this.verifyingInstall.transactionId,
@@ -87,6 +98,12 @@ export class DesktopStartupStateCommit {
   async commitFailure(
     input: DesktopStartupFailureCommitInput,
   ): Promise<DesktopStartupFailureCommitResult> {
+    if (this.options.diagnostic) {
+      return {
+        route: routeDesktopStartupFailure({ appReady: input.appReady, stage: input.stage, verifyingProtectedInstall: false }),
+        recoveryActionsSafe: await this.options.quiesceForRecovery(),
+      }
+    }
     const route = routeDesktopStartupFailure({
       appReady: input.appReady,
       stage: input.stage,

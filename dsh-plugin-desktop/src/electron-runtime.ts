@@ -115,7 +115,7 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
   private rendererHealthGate: DesktopRendererHealthGate | undefined
 
   constructor(
-    private readonly restart: () => Promise<void>,
+    private readonly restart: (diagnostic?: boolean) => Promise<void>,
     private readonly onRendererBoot: (report: RendererBootReport) => boolean | void = () => {},
     private readonly logger: DesktopLogger | undefined = undefined,
     workspaceVolumeQuery: WindowsVolumeQuery | undefined = undefined,
@@ -425,6 +425,10 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
   /** @inheritdoc */
   async requestRestart(): Promise<void> {
     await this.restart()
+  }
+
+  async requestDiagnosticMode(enabled: boolean): Promise<void> {
+    await this.restart(enabled)
   }
 
   /** @inheritdoc */
@@ -742,13 +746,15 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
     template.push(
       { type: 'separator' },
       {
-        label: modeToggleLabel(spec.mode, this.locale),
-        enabled: this.platformStrategy.canToggleShellMode,
-        click: () => {
-          void spec.requestModeChange(nextDesktopShellMode(spec.mode)).catch((cause: unknown) => {
-            this.logError(`dsh-plugin-desktop: failed to change shell mode: ${cause instanceof Error ? cause.message : String(cause)}`)
-          })
-        },
+        label: desktopTrayLabel(this.locale, 'troubleshooting'),
+        submenu: [{
+          label: desktopTrayLabel(this.locale, spec.experience === 'upstream-diagnostic' ? 'returnToDesktop' : 'openUpstreamDiagnostic'),
+          click: () => {
+            void this.requestDiagnosticMode(spec.experience !== 'upstream-diagnostic').catch((cause: unknown) => {
+              this.logError(`dsh-plugin-desktop: failed to restart diagnostic interface: ${cause instanceof Error ? cause.message : String(cause)}`)
+            })
+          },
+        }],
       },
       { type: 'separator' },
       { label: desktopTrayLabel(this.locale, 'quit'), click: () => { spec.requestQuit(0) } },

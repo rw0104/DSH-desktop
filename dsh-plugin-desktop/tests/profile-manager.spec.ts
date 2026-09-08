@@ -15,6 +15,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   assertDesktopProfileName,
   beginDesktopProfileStartup,
+  inspectDesktopProfileStartup,
   listDesktopProfiles,
   markDesktopProfileFailed,
   markDesktopProfileHealthy,
@@ -46,6 +47,17 @@ afterEach(() => {
 })
 
 describe('desktop profile discovery', () => {
+  it('inspects diagnostics without consuming pending selection or confirming an unverified profile', () => {
+    const home = temporaryRoot()
+    writeProfile(home, 'desktop', ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
+    writeProfile(home, 'next', ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
+    const statePath = join(home, 'selection.json')
+    const text = JSON.stringify({ version: 1, active: 'desktop', lastKnownGood: 'desktop', pending: 'next' })
+    writeFileSync(statePath, text)
+    expect(inspectDesktopProfileStartup(statePath, home)).toMatchObject({ profileName: 'desktop', state: { pending: 'next' } })
+    expect(readFileSync(statePath, 'utf8')).toBe(text)
+    expect(beginDesktopProfileStartup(statePath, home).profileName).toBe('next')
+  })
   it('accepts safe human profile names while rejecting path and control characters', () => {
     expect(() => assertDesktopProfileName('团队 profile')).not.toThrow()
     expect(() => assertDesktopProfileName('profile\nname')).toThrow('invalid desktop profile name')

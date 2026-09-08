@@ -8,7 +8,7 @@
 
 DSH Desktop brings Agent sessions, models, terminals, Git, file editing, and optional plugins into a desktop app. Type a task, continue the discussion by voice, analyze or generate images with a capable model, and inspect the Agent's file changes and execution in the same workspace.
 
-This page describes the published **v2.2.7** release. DSH Desktop is independently maintained by the community and is not affiliated with, authorized by, or endorsed by DeepSeek.
+Public downloads still point to **v2.2.7**. This branch contains the **2.2.8 test build**, which unifies file actions and voice; the appearance description below reflects that implementation. The test build is not a published GitHub Release. DSH Desktop is independently maintained by the community and is not affiliated with, authorized by, or endorsed by DeepSeek.
 
 ## Download
 
@@ -56,7 +56,7 @@ Image input and image output are separate capabilities:
 
 | What you want to do | Action and requirements |
 | --- | --- |
-| Ask a model about an image | In Advanced mode, use **+ → Add images**, paste, or drag and drop; the selected model must support image input |
+| Ask a model about an image | Use **+ → Add images**, paste, or drag and drop; the selected model must support image input |
 | Generate or continue editing an image | Select an image-output model whose provider has an integrated image protocol, then send a generation or editing request |
 | Save a result | Open the original-image preview and select **Save image** to save the stored attachment locally |
 | Configure a custom model | Model discovery reads provider capabilities; image-input detection supports manual overrides and distinguishes name-based inference from explicit declarations |
@@ -67,7 +67,7 @@ The original attachment rail, multi-image display, scrolling, and retry behavior
 
 ### Bring documents into the workspace
 
-In Advanced mode, select **+ → Upload files to workspace**. Files are saved in the workspace or Git worktree bound to the current session, and their relative paths are inserted into the draft. If the composer is unavailable, use **Insert reference** later.
+Select **+ → Upload files to workspace**. Files are saved in the workspace or Git worktree bound to the current session, and their relative paths are inserted into the draft. If the composer is unavailable, use **Insert reference** later.
 
 - Select up to **10 files** at a time, at most **25 MiB each**. Duplicate names are saved separately without overwriting existing content.
 - Files live under `.dsh-uploads/` in the workspace, where the Agent can read them with available tools.
@@ -101,12 +101,13 @@ The desktop shell itself runs as a DSH plugin. Models, tools, and interfaces com
 
 [Full release notes, compatibility boundaries, and verification](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.7)
 
-## Modes and platforms
+## Window appearance and platforms (2.2.8 test build)
 
 | Item | Details |
 | --- | --- |
-| Advanced mode | Desktop layout and native materials, plus the **+ menu, original-image save toolbar, and conversation context menus** described here |
-| Compatibility mode | Retains the upstream default client and the product-composed workbench; Advanced-only controls are not shown |
+| System / Native window appearance | Settings → Window appearance; both provide the full **Add menu, image actions, voice window and compact controls** |
+| Standard / PTC / custom Agent presets | Independently select Agent tools; they are not desktop feature tiers |
+| Upstream original interface | A transient Troubleshooting entry in the tray; it does not replace normal preferences or consume installation recovery transactions |
 | Shared foundation | Managed Runtime/profiles, native desktop text menus, Host product context, and plugin composition |
 | Windows / macOS | Windows has a published installer and Mica; macOS retains source builds and vibrancy, with no published DMG |
 

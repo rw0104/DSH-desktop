@@ -2,6 +2,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -15,6 +16,7 @@ import {
 } from '../src/install-recovery.ts'
 import {
   beginDesktopProfileStartup,
+  inspectDesktopProfileStartup,
   markDesktopProfileFailed,
   readDesktopProfileState,
   selectDesktopProfile,
@@ -67,6 +69,33 @@ afterEach(() => {
 })
 
 describe('Desktop startup state commit ownership', () => {
+  it('leaves pending selection and awaiting-restart install bytes unchanged through diagnostic success and failure', async () => {
+    const root = temporaryRoot()
+    const home = join(root, 'home'), userDataDir = join(root, 'user-data')
+    const profileStatePath = join(userDataDir, 'profile-selection', 'state.json')
+    const profileDir = writeWebProfile(home, 'desktop')
+    writeWebProfile(home, 'next')
+    selectDesktopProfile(profileStatePath, home, 'next')
+    const origin = recoveryStore(userDataDir, 'desktop', profileDir, 'generation-0001')
+    const transaction = await origin.begin({ packageName: 'plugin-a', packageVersion: '1.0.0', receiptId: 'receipt-0001' })
+    await origin.seal(transaction.transactionId)
+    const wal = desktopInstallRecoveryStatePath(userDataDir)
+    const selectionBefore = readFileSync(profileStatePath, 'utf8')
+    const walBefore = readFileSync(wal, 'utf8')
+    const diagnostic = new DesktopStartupStateCommit({ diagnostic: true,
+      profile: inspectDesktopProfileStartup(profileStatePath, home), profileStatePath,
+      installRecovery: recoveryStore(userDataDir, 'desktop', profileDir, 'generation-0002'),
+      quiesceForRecovery: async () => true, logger: { error: vi.fn() },
+    })
+    expect(await diagnostic.claimInstallRecovery()).toEqual({ action: 'none' })
+    await diagnostic.commitHealthy()
+    await diagnostic.commitFailure({ appReady: true, stage: 'renderer-startup', failureReason: 'startup-failed' })
+    expect(readFileSync(profileStatePath, 'utf8')).toBe(selectionBefore)
+    expect(readFileSync(wal, 'utf8')).toBe(walBefore)
+    const normal = recoveryStore(userDataDir, 'desktop', profileDir, 'generation-0003')
+    expect((await normal.claim()).action).toBe('verify')
+    expect(beginDesktopProfileStartup(profileStatePath, home).profileName).toBe('next')
+  })
   it('promotes the healthy Profile and clears its verified install WAL', async () => {
     const root = temporaryRoot()
     const home = join(root, 'home')

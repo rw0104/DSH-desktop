@@ -13,10 +13,13 @@ import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import { DesktopAboutSection, DESKTOP_ABOUT_LOCALE } from './about-section.tsx'
 import { applyAdvancedShell } from './advanced-shell.ts'
 import { installClientExperience } from './experience.tsx'
+import { DesktopAppearanceSection } from './appearance-section.tsx'
+import { installDesktopSettingsPresentation } from './settings-presentation.ts'
+import type { DesktopWindowStyle } from '../desktop-experience.ts'
 import { startRendererBootReporter } from './boot-health.ts'
 import { installDesktopDirectoryPickerBridge, requestDesktopDirectoryValidation } from './directory-picker.ts'
 import { installWindowsDrivePickerEnhancement } from './drive-picker-enhancement.ts'
-import { parseDesktopClientEnvironment } from './environment.ts'
+import { parseDesktopClientEnvironment, type DesktopClientEnvironment } from './environment.ts'
 import { requestDesktopExternalNavigation } from './external-navigation.ts'
 import { DESKTOP_ABOUT_LOCALE_DICTIONARY } from './release-metadata.ts'
 import { installWorkspaceFolderDrop } from './workspace-folder-drop.ts'
@@ -74,8 +77,10 @@ export type { RendererBootLoader, RendererBootReport } from './boot-health.ts'
 export { parseDesktopClientEnvironment } from './environment.ts'
 export type { DesktopClientEnvironment, DesktopClientMode, DesktopClientPlatform } from './environment.ts'
 
-/** Services required by advanced presentation. */
-export const inject = [
+/** Diagnostic boot reporting must not depend on desktop-only client services. */
+export const inject = ['slots']
+
+export const desktopClientServices = [
   'slots',
   'connection',
   'remote',
@@ -93,6 +98,14 @@ export const inject = [
 export function apply(ctx: ClientContext): void {
   const environment = parseDesktopClientEnvironment(window.location.search)
   if (!environment) return
+  if (environment.experience === 'upstream-diagnostic') {
+    ctx.effect(() => startRendererBootReporter(ctx.loader), 'dsh-plugin-desktop: renderer boot health report')
+    return
+  }
+  ctx.inject(desktopClientServices, desktopCtx => installDesktopClient(desktopCtx, environment))
+}
+
+function installDesktopClient(ctx: ClientContext, environment: DesktopClientEnvironment): void {
   ctx.effect(
     () => startRendererBootReporter(ctx.loader),
     'dsh-plugin-desktop: renderer boot health report',
@@ -125,6 +138,17 @@ export function apply(ctx: ClientContext): void {
   const voice = new DesktopVoiceController(ctx)
   ctx.effect(() => () => { void voice.dispose() }, 'dsh-plugin-desktop: voice controller lifetime')
   const voicePanelLocale = { subscribe: (listener: () => void) => ctx.locale.subscribe(listener), getSnapshot: () => String(ctx.locale.getLocale().active) }
+  ctx.effect(installDesktopSettingsPresentation, 'dsh-plugin-desktop: shared settings presentation')
+  const appearance = ctx.settingsScope.bind<{ windowStyle?: DesktopWindowStyle }>({ namespace: 'dsh-desktop' })
+  ctx.slots.inject('settings.section', () => ctx.slots.register({
+    name: 'settings.section', id: 'desktop-appearance', order: 35,
+    label: () => voicePanelLocale.getSnapshot().toLowerCase().startsWith('zh') ? '窗口外观' : 'Window appearance',
+    inject: () => ({ current: environment.windowStyle, platform: environment.platform, locale: voicePanelLocale, preference: {
+      subscribe: (listener: () => void) => appearance.subscribe(listener),
+      getSnapshot: () => appearance.getSnapshot(),
+      setWindowStyle: (style: DesktopWindowStyle) => appearance.set('windowStyle', style),
+    } }),
+  }, DesktopAppearanceSection))
   ctx.slots.inject('shell.overlay', () => ctx.slots.register({
     name: 'shell.overlay', id: 'desktop-voice-overlay', inject: () => ({ controller: voice, locale: voicePanelLocale }),
   }, VoiceOverlay))
@@ -197,6 +221,6 @@ export function apply(ctx: ClientContext): void {
   }, 'desktop: About settings section')
   if (environment.mode === 'advanced') {
     applyAdvancedShell(ctx, environment)
-    installClientExperience(ctx)
   }
+  installClientExperience(ctx)
 }

@@ -6,6 +6,7 @@ import { homedir } from 'node:os'
 import { posix, resolve, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exportDesktopDiagnostics } from './diagnostic-export.ts'
+import { UPSTREAM_DIAGNOSTIC_ARGUMENT } from './desktop-experience.ts'
 
 /** Parsed launcher action. */
 export type DesktopCliAction = 'export-diagnostics' | 'help' | 'version' | 'launch'
@@ -17,6 +18,7 @@ Launch DSH Desktop with the selected Web-capable profile.
 
 Options:
   --export-diagnostics  export logs and crash evidence without launching the app
+  --upstream-diagnostic launch the original upstream interface for this run only
   -h, --help            display help
   -V, --version         display version
 `
@@ -28,6 +30,7 @@ Options:
  */
 export function parseDesktopCli(argv: readonly string[]): DesktopCliAction {
   if (argv.length === 0) return 'launch'
+  if (argv.length === 1 && argv[0] === UPSTREAM_DIAGNOSTIC_ARGUMENT) return 'launch'
   if (argv.length === 1 && argv[0] === '--export-diagnostics') return 'export-diagnostics'
   if (argv.length === 1 && (argv[0] === '--help' || argv[0] === '-h')) return 'help'
   if (argv.length === 1 && (argv[0] === '--version' || argv[0] === '-V')) return 'version'
@@ -66,7 +69,7 @@ export interface DesktopCliOptions {
 }
 
 /** Launch Electron and mirror its terminal exit status. */
-async function launchElectron(): Promise<number> {
+async function launchElectron(args: readonly string[]): Promise<number> {
   let electronPath: string
   try {
     const imported = await import('electron') as { default?: unknown }
@@ -88,7 +91,7 @@ async function launchElectron(): Promise<number> {
   }
   const mainPath = fileURLToPath(new URL('./main.js', import.meta.url))
   return new Promise<number>((resolveExit, reject) => {
-    const child = spawn(electronPath, [mainPath], { stdio: 'inherit', env: process.env })
+    const child = spawn(electronPath, [mainPath, ...args], { stdio: 'inherit', env: process.env, windowsHide: true })
     child.once('error', reject)
     child.once('exit', (code, signal) => {
       resolveExit(code ?? (signal === null ? 1 : 128))
@@ -129,7 +132,7 @@ export async function runDesktopCli(
     process.stdout.write(`${path}\n`)
     return 0
   }
-  return launchElectron()
+  return launchElectron(argv)
 }
 
 const invokedPath = process.argv[1] === undefined ? undefined : resolve(process.argv[1])

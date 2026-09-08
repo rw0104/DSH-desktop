@@ -37,7 +37,11 @@ Every profile or mode switch disposes the current generation before starting the
 - **Web Client** contains the official Web UI and third-party browser contributions. It works over the loopback carrier and does not call Electron directly.
 - **Native runtime** adapts Electron BrowserWindow, the tray, filesystem/network operations, and installers. `desktopRuntime` is for Desktop-owned rows only.
 
-Compatibility mode validates its environment and returns without installing a Desktop layout, root, sidebar, or conversation override. Advanced mode installs the Desktop-owned layout, frame, and native materials while respecting upstream and third-party slot composition.
+The everyday `desktop` experience is resolved independently from `system`/`native` window appearance. Host routes, Add controls, image actions and the voice window are shared; only native appearance replaces root/layout geometry. Agent presets do not select desktop features. Legacy mode values remain migration and window-adapter inputs.
+
+`upstream-diagnostic` is a transient restart argument. The launcher disables third-party rows in the in-memory composition and restores the official layout. The Desktop client runs only its Sidebar-independent boot reporter. Diagnostics do not consume pending Profile selections, claim installation WALs, or commit normal preferences, health promotion or failure rollback. Returning to the everyday desktop restores the normal composition.
+
+Profile appearance uses a fixed `presentation-v2.json` record and retains a strict v1 `state.json` mirror readable by older executables. The v2 digest identifies that mirror. An interruption between atomic writes, or an older executable updating v1, is recovered by migrating the complete v1 values again. These records contain no model, credential or session copies.
 
 ### Native shell generation and platform adapters
 

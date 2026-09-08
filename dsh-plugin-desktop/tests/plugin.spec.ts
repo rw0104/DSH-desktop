@@ -189,9 +189,9 @@ describe('desktop Host plugin', () => {
     })).toEqual([])
   })
 
-  it('defaults to compatibility mode and validates both schemas', () => {
-    expect(Config({} as DesktopConfig)).toEqual(config)
-    expect(Config({ mode: 'advanced' } as DesktopConfig)).toEqual({ ...config, mode: 'advanced' })
+  it('defaults to the full desktop with system decoration and validates both schemas', () => {
+    expect(Config({} as DesktopConfig)).toEqual({ ...config, experience: 'desktop' })
+    expect(Config({ mode: 'advanced' } as DesktopConfig)).toEqual({ ...config, experience: 'desktop', mode: 'advanced' })
     expect(DesktopSettingsSchema({} as DesktopSettings)).toEqual({ mode: 'compatibility', port: 0, logLevel: 'info' })
     expect(() => DesktopSettingsSchema({ port: -1 } as DesktopSettings)).toThrow()
     expect(() => DesktopSettingsSchema({ port: 1.5 } as DesktopSettings)).toThrow()
@@ -232,6 +232,8 @@ describe('desktop Host plugin', () => {
     expect(Object.fromEntries(url.searchParams)).toEqual({
       'dsh-desktop-mode': 'advanced',
       'dsh-desktop-platform': 'darwin',
+      'dsh-desktop-experience': 'desktop',
+      'dsh-desktop-window-style': 'native',
     })
   })
 
@@ -250,11 +252,11 @@ describe('desktop Host plugin', () => {
     expect(register.mock.calls[0]?.[2]).not.toHaveProperty('base')
     expect(loaderAwait).not.toHaveBeenCalled()
     expect(harness.authenticatedUrl).toHaveBeenCalledWith(
-      'http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin&dsh-desktop-version=2.0.0',
+      'http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin&dsh-desktop-experience=desktop&dsh-desktop-window-style=system&dsh-desktop-version=2.0.0',
     )
     expect(harness.shell()).toEqual(expect.objectContaining({
       mode: 'compatibility',
-      url: 'http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin&dsh-desktop-version=2.0.0&token=test-launch-token',
+      url: 'http://127.0.0.1:43120/?dsh-desktop-mode=compatibility&dsh-desktop-platform=darwin&dsh-desktop-experience=desktop&dsh-desktop-window-style=system&dsh-desktop-version=2.0.0&token=test-launch-token',
       productName: 'DSH Desktop',
       windowTitle: 'DeepSeek Harness Desktop',
       readThemeSource: expect.any(Function),
@@ -267,7 +269,7 @@ describe('desktop Host plugin', () => {
     expect(harness.setThemeSource).not.toHaveBeenCalled()
 
     await harness.shell()?.requestModeChange('advanced')
-    expect(harness.update).toHaveBeenCalledWith({ mode: 'advanced' })
+    expect(harness.update).toHaveBeenCalledWith({ mode: 'advanced', windowStyle: 'native' })
   })
 
   it('forwards same-origin renderer boot reports through the Host route', async () => {
@@ -441,15 +443,13 @@ describe('desktop Host plugin', () => {
     expect(workbench?.snapshot().bindings).toHaveLength(1)
   })
 
-  it('refuses advanced settings on Linux before persistence', () => {
+  it('accepts decoration preferences on Linux while resolving a complete system-window desktop', () => {
     const harness = createHarness('linux')
     apply(harness.ctx, config)
     const register = vi.mocked(harness.ctx.settings.register)
     const options = register.mock.calls[0]?.[2]
 
-    expect(() => options?.validate?.({ mode: 'advanced' })).toThrow(
-      'supported on macOS and Windows',
-    )
+    expect(() => options?.validate?.({ mode: 'advanced' })).not.toThrow()
     expect(() => options?.validate?.({ mode: 'compatibility' })).not.toThrow()
   })
 })

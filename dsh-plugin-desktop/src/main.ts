@@ -3,6 +3,8 @@
 import { app, crashReporter, dialog } from 'electron'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { desktopRelaunchArguments, UPSTREAM_DIAGNOSTIC_ARGUMENT } from './desktop-experience.ts'
+import { inspectDesktopProfileStartup } from './profile-manager.ts'
 import {
   boot,
   installFailLoud,
@@ -213,6 +215,8 @@ function notifyWindowsVolumeConcerns(
 
 /** Start one Electron process and leave lifetime to the mounted desktop plugin. */
 async function start(): Promise<void> {
+  const upstreamDiagnostic = process.argv.includes(UPSTREAM_DIAGNOSTIC_ARGUMENT)
+  let nextDiagnostic = upstreamDiagnostic
   if (!app.requestSingleInstanceLock()) {
     app.quit()
     return
@@ -295,7 +299,7 @@ async function start(): Promise<void> {
   const nativeExit = createDesktopExitCoordinator(
     {
       prepareToQuit: () => { runtime.prepareToQuit() },
-      relaunch: () => { app.relaunch() },
+      relaunch: () => { app.relaunch({ args: desktopRelaunchArguments(process.argv.slice(1), nextDiagnostic) }) },
       exit: code => { app.exit(code) },
     },
     () => {
@@ -310,11 +314,12 @@ async function start(): Promise<void> {
     },
   )
   let restartRequested = false
-  runtime = new ElectronDesktopRuntime(async () => {
+  runtime = new ElectronDesktopRuntime(async diagnostic => {
     if (shutdown === undefined) {
       throw new Error('dsh-plugin-desktop: shutdown coordinator is not ready')
     }
     if (restartRequested) return
+    if (diagnostic !== undefined) nextDiagnostic = diagnostic
     restartRequested = true
     nativeExit.requestRelaunch()
     await shutdown.request(0)
@@ -378,6 +383,10 @@ async function start(): Promise<void> {
       requestQuit(0)
       return
     }
+    if (argv.includes(UPSTREAM_DIAGNOSTIC_ARGUMENT) && !upstreamDiagnostic) {
+      void runtime.requestDiagnosticMode(true).catch(cause => electronLogger.errorCause(cause))
+      return
+    }
     if (startupRecoveryWindow !== undefined) startupRecoveryWindow.show()
     else runtime.show()
   })
@@ -432,11 +441,11 @@ async function start(): Promise<void> {
     const pluginManagementStatePath = join(app.getPath('userData'), 'plugin-management', 'state.json')
     startupStage = 'profile-selection'
     lifecycleRecorder.transitionStartupStage(startupStage)
-    profileStartup = beginDesktopProfileStartup(selectionStatePath, homeDir)
+    profileStartup = upstreamDiagnostic ? inspectDesktopProfileStartup(selectionStatePath, homeDir) : beginDesktopProfileStartup(selectionStatePath, homeDir)
     const activeProfileName = profileStartup.profileName
     const activeProfileDir = resolveProfileDir(activeProfileName, homeDir)
     const profilePreferencesUserDataDir = app.getPath('userData')
-    const storedProfilePreferences = readDesktopProfilePreferences(profilePreferencesUserDataDir, activeProfileDir)
+    const storedProfilePreferences = upstreamDiagnostic ? undefined : readDesktopProfilePreferences(profilePreferencesUserDataDir, activeProfileDir)
     startupRecoveryConfigurationPaths = {
       profilePatch: join(activeProfileDir, PROFILE_PATCH_FILENAME),
       profileManifest: join(activeProfileDir, 'package.json'),
@@ -449,6 +458,7 @@ async function start(): Promise<void> {
       generationId,
     })
     const stateCommit = new DesktopStartupStateCommit({
+      diagnostic: upstreamDiagnostic,
       profile: profileStartup,
       profileStatePath: selectionStatePath,
       installRecovery,
@@ -456,7 +466,7 @@ async function start(): Promise<void> {
       logger: electronLogger,
     })
     startupStateCommit = stateCommit
-    startupRecoveryController = new DesktopStartupRecoveryController({
+    if (!upstreamDiagnostic) startupRecoveryController = new DesktopStartupRecoveryController({
       pluginState: {
         profileName: activeProfileName,
         homeDir,
@@ -471,8 +481,7 @@ async function start(): Promise<void> {
     })
     startupStage = 'install-recovery'
     lifecycleRecorder.transitionStartupStage(startupStage)
-    const recoveryClaim = await installRecovery.claim()
-    stateCommit.observeInstallRecoveryClaim(recoveryClaim)
+    const recoveryClaim = await stateCommit.claimInstallRecovery()
     if (recoveryClaim.action === 'prompt') {
       electronLogger.error(
         `${BIN_NAME}: protected plugin install ${recoveryClaim.transaction.packageName} (${recoveryClaim.transaction.transactionId}) requires a recovery choice after ${recoveryClaim.reason}`,
@@ -481,7 +490,7 @@ async function start(): Promise<void> {
         `Protected plugin installation ${recoveryClaim.transaction.packageName}@${recoveryClaim.transaction.packageVersion} requires a recovery choice after ${recoveryClaim.reason}.`,
         startupRecoveryController,
       )
-      startupRecoveryController.dispose()
+      startupRecoveryController?.dispose()
       startupRecoveryController = undefined
       if (recoveryResult === 'restart') nativeExit.requestRelaunch()
       lifecycleRecorder.failStartup(startupStage, 'startup-failed')
@@ -511,9 +520,13 @@ async function start(): Promise<void> {
       process.platform,
       activeProfileName,
       pluginManagementStatePath,
-      storedProfilePreferences === undefined ? undefined : {
-        mode: storedProfilePreferences.mode,
-        port: storedProfilePreferences.port,
+      {
+        ...(storedProfilePreferences === undefined ? {} : {
+          mode: storedProfilePreferences.mode,
+          ...(storedProfilePreferences.windowStyle === undefined ? {} : { windowStyle: storedProfilePreferences.windowStyle }),
+          port: storedProfilePreferences.port,
+        }),
+        experience: upstreamDiagnostic ? 'upstream-diagnostic' : 'desktop',
       },
     )
     startupStage = 'runtime-bootstrap'
@@ -607,21 +620,20 @@ async function start(): Promise<void> {
     })
     generation.bindHost(ctx)
     const resolvedDesktopSettings = ctx.settings.get(DESKTOP_SETTINGS_NAMESPACE) as DesktopSettings | undefined
-    const reconciliation = reconcileDesktopProfilePreferences(storedProfilePreferences, {
-      mode: resolvedDesktopSettings?.mode ?? prepared.mode,
-      port: resolvedDesktopSettings?.port ?? prepared.port,
-      logLevel: resolvedDesktopSettings?.logLevel ?? 'info',
+    const reconciliation = reconcileDesktopProfilePreferences(storedProfilePreferences, resolvedDesktopSettings ?? {
+      mode: prepared.mode, windowStyle: prepared.windowStyle, port: prepared.port, logLevel: 'info',
     })
     const initialProfilePreferences = reconciliation.preferences
-    if (reconciliation.synchronizeShared) {
+    if (!upstreamDiagnostic && reconciliation.synchronizeShared) {
       await ctx.settings.update(DESKTOP_SETTINGS_NAMESPACE, initialProfilePreferences)
     }
-    if (reconciliation.persistPrivate) {
+    if (!upstreamDiagnostic && reconciliation.persistPrivate) {
       await writeDesktopProfilePreferences(profilePreferencesUserDataDir, activeProfileDir, initialProfilePreferences)
     }
     let currentProfilePreferences = initialProfilePreferences
     let profilePreferencesWriteTail: Promise<unknown> = Promise.resolve()
     const enqueueProfilePreferencesWrite = (next: DesktopProfilePreferences): void => {
+      if (upstreamDiagnostic) return
       currentProfilePreferences = next
       profilePreferencesWriteTail = profilePreferencesWriteTail
         .then(() => writeDesktopProfilePreferences(profilePreferencesUserDataDir, activeProfileDir, currentProfilePreferences))
@@ -636,7 +648,7 @@ async function start(): Promise<void> {
       if (namespace !== DESKTOP_SETTINGS_NAMESPACE) return
       const settings = next as DesktopSettings
       fileExporter?.setThreshold(settings.logLevel)
-      enqueueProfilePreferencesWrite({ mode: settings.mode, port: settings.port, logLevel: settings.logLevel })
+      enqueueProfilePreferencesWrite({ mode: settings.mode, windowStyle: settings.windowStyle, port: settings.port, logLevel: settings.logLevel })
     })
     runtime.configureTerminal({
       profileName: activeProfileName,

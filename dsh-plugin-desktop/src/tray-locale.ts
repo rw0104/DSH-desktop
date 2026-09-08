@@ -15,6 +15,7 @@ export type DesktopTrayLabelKey =
   | 'switchToCompatibility'
   | 'unavailableForDesktop'
   | 'updateAvailable'
+  | 'troubleshooting' | 'openUpstreamDiagnostic' | 'returnToDesktop'
 
 const labels: Record<DesktopLocale, Record<DesktopTrayLabelKey, (value: string) => string>> = {
   en: {
@@ -26,8 +27,11 @@ const labels: Record<DesktopLocale, Record<DesktopTrayLabelKey, (value: string) 
     openTerminal: () => 'Open DSH Terminal',
     profile: profileName => `Profile: ${profileName}`,
     quit: () => 'Quit',
-    switchToAdvanced: () => 'Switch to Advanced Mode',
-    switchToCompatibility: () => 'Switch to Compatibility Mode',
+    switchToAdvanced: () => 'Use Native Window Appearance',
+    switchToCompatibility: () => 'Use System Window Appearance',
+    troubleshooting: () => 'Troubleshooting',
+    openUpstreamDiagnostic: () => 'Use upstream original interface (restart)',
+    returnToDesktop: () => 'Return to DSH Desktop (restart)',
     unavailableForDesktop: profileName => `${profileName} (Unavailable for Desktop)`,
     updateAvailable: version => `DSH Desktop ${version} Available`,
   },
@@ -40,8 +44,11 @@ const labels: Record<DesktopLocale, Record<DesktopTrayLabelKey, (value: string) 
     openTerminal: () => '打开 DSH 终端',
     profile: profileName => `配置文件：${profileName}`,
     quit: () => '退出',
-    switchToAdvanced: () => '切换到高级模式',
-    switchToCompatibility: () => '切换到兼容模式',
+    switchToAdvanced: () => '使用原生桌面外观',
+    switchToCompatibility: () => '使用系统窗口外观',
+    troubleshooting: () => '故障排查',
+    openUpstreamDiagnostic: () => '使用上游原始界面（重启）',
+    returnToDesktop: () => '返回 DSH Desktop（重启）',
     unavailableForDesktop: profileName => `${profileName}（不可用于桌面端）`,
     updateAvailable: version => `DSH Desktop ${version} 可用`,
   },
