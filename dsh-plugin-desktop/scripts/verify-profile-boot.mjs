@@ -65,21 +65,23 @@ try {
     'node_modules',
     HOST_SERVICE_PLUGIN_NAME,
   )
-  mkdirSync(join(prepared.profile.dir, 'node_modules'), { recursive: true })
-  cpSync(
-    fileURLToPath(new URL('../tests/fixtures/desktop-host-services-smoke-plugin/', import.meta.url)),
-    hostServicePluginDir,
-    { recursive: true, force: false, errorOnExist: true },
-  )
+  if (!diagnostic) {
+    mkdirSync(join(prepared.profile.dir, 'node_modules'), { recursive: true })
+    cpSync(
+      fileURLToPath(new URL('../tests/fixtures/desktop-host-services-smoke-plugin/', import.meta.url)),
+      hostServicePluginDir,
+      { recursive: true, force: false, errorOnExist: true },
+    )
+  }
   const patches = [
     // Deliberately compose the consumer before the desktop-pnpm provider row.
     // Its required injection must keep it pending until that service mounts.
-    {
+    ...diagnostic ? [] : [{
       insert: [{
         id: 'desktop-host-services-smoke-plugin',
         name: HOST_SERVICE_PLUGIN_NAME,
       }],
-    },
+    }],
     ...prepared.patches,
   ]
   const packageRoot = new URL('../', import.meta.url)
@@ -200,7 +202,7 @@ try {
     throw new Error(`profile smoke web-runtime may open a browser: ${JSON.stringify(webRuntimeEntry?.options.config)}`)
   }
 
-  if (ctx.get('desktopPnpm') === undefined) {
+  if (!diagnostic && ctx.get('desktopPnpm') === undefined) {
     throw new Error('assembled desktop profile is missing the desktop pnpm Host capability')
   }
   if (ctx.desktopProfiles.current.name !== 'desktop'
@@ -237,8 +239,8 @@ try {
   if (legacyPreset.id !== 'minimal') {
     throw new Error(`assembled Windows profile remapped legacy preset to ${legacyPreset.id}`)
   }
-  const hostServiceProbe = ctx.get(HOST_SERVICE_PROBE_KEY)
-  if (hostServiceProbe?.current?.name !== 'desktop'
+  const hostServiceProbe = diagnostic ? undefined : ctx.get(HOST_SERVICE_PROBE_KEY)
+  if (!diagnostic && (hostServiceProbe?.current?.name !== 'desktop'
     || hostServiceProbe.current.dir !== prepared.profile.dir
     || hostServiceProbe.pnpm?.serviceName !== 'desktopPnpm'
     || hostServiceProbe.pnpm.lookupRun !== 'function'
@@ -247,7 +249,7 @@ try {
     || hostServiceProbe.pnpm.installPlugin !== 'function'
     || hostServiceProbe.pnpm.recoveredInstallReceiptIds !== 'function'
     || hostServiceProbe.pnpm.acknowledgeRecoveredInstall !== 'function'
-    || hostServiceProbe.pnpm.rollbackPluginInstall !== 'function') {
+    || hostServiceProbe.pnpm.rollbackPluginInstall !== 'function')) {
     throw new Error(
       `profile-local Host service plugin produced an unexpected probe: ${JSON.stringify(hostServiceProbe)}`,
     )
@@ -286,15 +288,15 @@ try {
   if (desktopSettings?.mode !== requestedMode) {
     throw new Error('assembled Host settings are missing the advanced dsh-desktop mode')
   }
-  if (!trayItems.some(item => item.label() === 'Check for Updates…')) {
+  if (!diagnostic && !trayItems.some(item => item.label() === 'Check for Updates…')) {
     throw new Error('assembled desktop profile is missing the update tray command')
   }
-  if (process.platform !== 'linux'
+  if (!diagnostic && process.platform !== 'linux'
     && !trayItems.some(item => item.label() === 'Open DSH Terminal')) {
     throw new Error('assembled desktop profile is missing the terminal tray command')
   }
-  const profileMenu = trayItems.find(item => item.label() === 'Profile: desktop')
-  if (profileMenu?.submenu?.()[0]?.label() !== 'desktop') {
+  const profileMenu = diagnostic ? undefined : trayItems.find(item => item.label() === 'Profile: desktop')
+  if (!diagnostic && profileMenu?.submenu?.()[0]?.label() !== 'desktop') {
     throw new Error('assembled desktop profile is missing the active profile tray submenu')
   }
   // RC1 protects the index route with the Host browser-auth token. Keep the
