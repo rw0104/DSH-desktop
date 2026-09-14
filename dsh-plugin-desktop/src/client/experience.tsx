@@ -5,7 +5,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-trajectory/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import { DesktopImagePreview } from './experience-images.tsx'
+import { DesktopMessageImages } from './experience-images.tsx'
 import { installExperienceStyles } from './experience-styles.ts'
 import { showContentMenu, closeContentMenu } from './content-menu.ts'
 import { installConversationContextMenu } from './conversation-context-menu.ts'
@@ -126,9 +126,10 @@ export function installClientExperience(ctx: Context): void {
     return { controller, language }
   }
   ctx.effect(installExperienceStyles, 'desktop: file interaction styles')
-  ctx.inject(['attachmentPresentation'], previewCtx => {
-    previewCtx.effect(() => previewCtx.attachmentPresentation.registerPreview(DesktopImagePreview), 'desktop: original image preview actions')
-  })
+  ctx.slots.inject('conversation.message.images', () => ctx.slots.register({
+    name: 'conversation.message.images',
+    locale: 'conversation',
+  }, DesktopMessageImages))
   ctx.effect(() => { const off = installConversationContextMenu(() => language.getSnapshot() === 'zh'); return () => { off(); controllers.clear(); closeContentMenu() } }, 'desktop: conversation content actions')
   ctx.slots.inject('conversation.input.add', () => ctx.slots.register({ name: 'conversation.input.add', inject: forSession }, AddButton))
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({ name: 'conversation.input.dock', id: 'desktop-upload-status', inject: forSession }, UploadStatus))

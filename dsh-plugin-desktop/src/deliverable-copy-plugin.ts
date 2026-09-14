@@ -83,7 +83,7 @@ function service(ctx: Context): DesktopDeliverableCopyService {
       const id = SessionId(sessionId)
       const live = sessions?.get(id)?.header.cwd
       if (live !== undefined) return live
-      return (await sessionPersistence.list()).find(header => header.id === id)?.cwd
+      return (await sessionPersistence.list()).find(snapshot => snapshot.header.id === id)?.header.cwd
     },
     writeClipboard: text => { desktopRuntime.writeClipboardText(text) },
   })

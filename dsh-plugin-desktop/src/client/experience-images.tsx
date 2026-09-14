@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { AttachmentPreviewProps } from '@deepseek-ai/dsh-client-ui-attachment/client'
+import type { MessageImagesProps } from '@deepseek-ai/dsh-client-ui-chat/client'
 import { exportImage } from './image-export.ts'
 import { showContentMenu } from './content-menu.ts'
 
@@ -33,7 +33,50 @@ export function ImagePreview({ src, name, zh, onClose }: { src: string; name: st
   </dialog>
 }
 
-/** Keep the upstream rail/gallery intact; enhance only its original-image preview. */
-export function DesktopImagePreview({ src, alt, labels, onClose }: AttachmentPreviewProps) {
-  return <ImagePreview src={src} name={alt} zh={/[\u3400-\u9fff]/u.test(labels.dialog)} onClose={onClose} />
+/** Desktop image gallery with the product's save/context-menu actions. */
+export function DesktopMessageImages({ images, loadImage, align, compact, t }: MessageImagesProps) {
+  const [urls, setUrls] = useState<Record<number, string>>(() => Object.fromEntries(
+    images.flatMap((image, index) => 'preview' in image ? [[index, image.preview.url]] : []),
+  ))
+  const [active, setActive] = useState<number | undefined>()
+  useEffect(() => {
+    let disposed = false
+    void Promise.all(images.map(async (image, index) => {
+      if (!('attachment' in image)) return
+      try {
+        const url = await loadImage(image.attachment)
+        if (!disposed) setUrls(previous => ({ ...previous, [index]: url }))
+      } catch { /* the upstream gallery owns its retry surface; omit failed images here */ }
+    }))
+    return () => { disposed = true }
+  }, [images, loadImage])
+  const zh = /[\u3400-\u9fff]/u.test(t('image.preview'))
+  const title = t('image.openOriginal')
+  const visible = images.flatMap((image, index) => {
+    const src = urls[index]
+    if (src === undefined) return []
+    const name = 'preview' in image ? image.preview.name ?? t('image.label') : t('image.label')
+    const dimensions = 'preview' in image && image.preview.width !== undefined && image.preview.height !== undefined
+      ? { width: image.preview.width, height: image.preview.height }
+      : undefined
+    return [{ index, src, name, dimensions }]
+  })
+  if (visible.length === 0) return null
+  return <>
+    <div className="dsh-desktop-message-images" data-align={align} data-compact={compact || undefined}>
+      {visible.map(({ index, src, name, dimensions }) => <button
+        key={index}
+        type="button"
+        data-variant={visible.length === 1 && !compact ? 'single' : 'tile'}
+        aria-label={title}
+        onClick={() => setActive(index)}
+      ><img src={src} alt={name} {...dimensions} /></button>)}
+    </div>
+    {active !== undefined && urls[active] !== undefined && <ImagePreview
+      src={urls[active]}
+      name={visible.find(item => item.index === active)?.name ?? t('image.label')}
+      zh={zh}
+      onClose={() => setActive(undefined)}
+    />}
+  </>
 }
