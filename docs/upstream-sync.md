@@ -1,5 +1,45 @@
 # Upstream synchronization ledger
 
+## 2026-09-14 主核心 0.1.5 RC 接入规划前复核
+
+本轮查询用于判断当前桌面基线是否需要接入官方 Harness 主核心更新；查询窗口为
+`2026-09-14`，使用权威 Git remote、GitHub Releases/compare 和官方 npm registry，
+不以本地 remote-tracking ref 或网页缓存代替实时结果。
+
+| 来源 | 权威实时结果 | 相对当前产品基线 | 结论 |
+| --- | --- | --- | --- |
+| [Official Harness](https://github.com/deepseek-ai/deepseek-harness) | `master=c291e7961a515f6d7af9304e7fd1d257929aef26`；`dsh-v0.1.5-rc.1=183f08e9c6dde7e36cd2318eaee70b0da08fb35e`；`dsh-v0.1.5-rc.2=fb2c4b9e698e30edb738bca4cf0618587db7d203`；rc.2 发布于 `2026-09-10T15:09:34Z` | 当前 gitlink `a66e4702047846cdaa10c66c9d3df3951f5ea70d`（`0.1.2-rc.1`）到 rc.2 的 compare 为 `ahead=1490`、`behind=0` | **需要接入规划**，但不是安全的版本号替换：0.1.5 引入 Session V3、`SessionHandle`/异步 `agentLoop.create()`、Inbox/Agent/面板 API 变化，以及 Web 文件上传、交付物和反馈改动 |
+| Harness npm family | `@deepseek-ai/dsh`：`latest=0.1.5-rc.1`、`next=0.1.5-rc.2`、`alpha=0.1.5-alpha.2`；已核对 `@deepseek-ai/dsh`、`dsh-agent`、`dsh-session`、`dsh-session-persistence`、`dsh-api-session-controller`、`dsh-web-app`、`dsh-subprocess-local` 的 `0.1.5-rc.2` 精确包均可取 | Desktop 当前直接依赖、19 个 `@deepseek-ai` 版本化 Yarn patch 和 1 个 Sidebar patch 仍锁定旧线 | 必须以完整 family 和重新生成的 patch locator/lockfile 为一个原子变更；不能混用 `latest`、`next` 和旧 patch |
+| [Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | `main=1fcf43ccbedd6e66370b7fb81df2b4dd0ef2604e`；`v0.19.1=754974afeaf5c0aa310d6104dfd892ef56a6297d`；npm `latest=0.19.1`；v0.19.1 发布说明声明已在 DSH `0.1.5-rc.2` 真机挂载验证 | 当前产品钉 `0.18.0`，其 peer 下限为 `^0.1.2-rc.1` | 作为核心接入的配套候选一并审查/升级；重点检查新 native/right-sidebar surface、`openTab` 自动展开语义和 `floatWindows` 移除对 Desktop/语音的影响 |
+| [Desktop reference](https://github.com/anywhere-labs/deepseek-harness-desktop) | 权威 URL 重定向到 `anywhere-labs/dsh-desktop`；`master=d61b6f9614ed070b1f3ddcca3f08f80ac929b5ea`；最新稳定 Release `v2.0.10`（`2026-09-13T23:41:15Z`） | 仅作只读比较，不是本产品运行依赖 | 不导入参考仓库代码或 npm 包 |
+
+本轮关键精确包完整性样本：`@deepseek-ai/dsh@0.1.5-rc.2` integrity
+`sha512-8Xc8hCQHcIWRmTCVU/xZdp6/qMsWMeAd2ObChKDEsfhUPJFXx6H0lgeb1DxUMD86HZrrVN+1bCvn1ppjZ/fOxw==`；
+`@deepseek-ai/dsh-session@0.1.5-rc.2` integrity
+`sha512-y+klWiGAWR4m4cc4ylurA0cW63673B4N8cr2ANMimweDZAfxL4XVBC7WiD/5DT2DtIhYmVZhz/niyS/WbniUTA==`；
+`dsh-better-sidebar@0.19.1` integrity
+`sha512-Jr0tPJoDKUVkq+fioL6Td+YwXZ+PULx3CnBJ4iktaQGNP5y9hgpz6V7o7f4Yh2czheVKZsewurqCaiN10GQYeQ==`。
+精确 `0.1.5-rc.2` 的 `@deepseek-ai/dsh-agent`、`dsh-session-persistence`、
+`dsh-api-session-controller`、`dsh-web-app` 和 `dsh-subprocess-local` 也已返回
+版本与 tarball 元数据；实施时仍需对 Desktop 实际声明的完整依赖集合逐项执行
+registry/integrity 校验。
+
+实施阻断条件：必须先完成 Session 格式迁移与回滚策略、`SessionPersistence.list()`
+快照形状、`main.conversation` slot 迁移、Sidechat/InBox 归属、现有 Yarn patches
+重放和 Sidebar 0.19.1 挂载验证；任一失败都保留 `0.1.2-rc.1` gitlink，不发布混合依赖图。
+语音任务线程的现有回归要求也纳入本次验收：Advanced 模式在 Sidebar 收起时打开
+`desktop:voice` 必须实际展开并可见，不能只断言 `openTab` 被调用。
+
+审计命令：
+`git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/deepseek-ai/deepseek-harness.git HEAD 'refs/heads/*' 'refs/tags/*'`、
+`git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/omdsh-dev/DSH-better-sidebar.git HEAD 'refs/heads/*' 'refs/tags/*'`、
+`git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref https://github.com/anywhere-labs/deepseek-harness-desktop.git HEAD 'refs/heads/*' 'refs/tags/*'`、
+`gh api repos/deepseek-ai/deepseek-harness/releases?per_page=5`、
+`gh api repos/omdsh-dev/DSH-better-sidebar/releases?per_page=5`、
+`gh api repos/anywhere-labs/dsh-desktop/releases?per_page=5`、
+`gh api repos/deepseek-ai/deepseek-harness/compare/a66e4702047846cdaa10c66c9d3df3951f5ea70d...fb2c4b9e698e30edb738bca4cf0618587db7d203`、
+`npm view @deepseek-ai/dsh@0.1.5-rc.2 version dist.integrity dist.tarball --json --registry=https://registry.npmjs.org`。
+
 ## 2026-09-07 完整桌面体验修复开发基线
 
 在 `codex/unified-desktop-20260907` 开发前重新查询三条权威 remote 的 HEAD/heads/tags、GitHub Releases 和官方 npm registry。该工作修复桌面功能组合、语音显示和设置弹层，不混入一次未经验证的 Harness API 迁移。
