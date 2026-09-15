@@ -23,7 +23,7 @@ describe('advanced frame rc.2 root slots', () => {
     function SessionProvider({ children }: { children: ReactNode }) {
       return selected ? createElement(scope.Provider, { value: true }, children) : null
     }
-    function Rightbar() { return createElement(SessionProvider, {}, createElement(SessionContent)) }
+    function Rightbar() { return createElement(SessionProvider, { children: createElement(SessionContent) }) }
     const layout = new DesktopLayoutState()
     layout.openRightbar(true, false)
     const renderSlot = vi.fn((name: string) => name === 'rightbar' ? createElement(Rightbar) : null)

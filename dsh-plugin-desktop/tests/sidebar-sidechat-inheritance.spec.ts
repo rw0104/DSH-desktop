@@ -1,62 +1,87 @@
-import { describe, expect, it, vi } from 'vitest'
-import { Inbox, type CreateAgentOptions } from '@deepseek-ai/dsh-agent'
-import { Session, type SessionEvent, type SessionId, type UserMessage } from '@deepseek-ai/dsh-session'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { Session, SessionId, SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
+import { sidechatRuntime } from './fixtures/sidechat-runtime.ts'
 
-type Event = { type: string; seq: number; time: number; data: Record<string, unknown> }
-const message = (id: string, text: string) => ({ id, role: 'user', content: [{ type: 'text', text }], source: { kind: 'user' } })
-const splice = (target: string, text: string): Event => ({
-  type: 'agent/inbox/spliced', seq: 0, time: 1,
-  data: { target, start: 0, inserted: [message('parent-pending', text)] },
-})
-const inboxOf = (session: Session) => new Inbox(session, { inserted() {}, discarded() {}, claimed() {} })
-
-// Load the maintained package's route, not a Desktop copy of its inheritance logic.
 const { buildSidechatApi } = await vi.importActual<{
-  buildSidechatApi(ctx: unknown): Record<string, (payload: Record<string, unknown>) => Promise<unknown>>
+  buildSidechatApi(ctx: unknown): {
+    'sidechat.start'(payload: { sessionId: string }): Promise<{ childId: string }>
+    'sidechat.prompt'(payload: { childId: string; text: string }): Promise<unknown>
+    'sidechat.dispose'(payload: { childId: string }): Promise<unknown>
+  }
 }>('dsh-better-sidebar/src/sidechat-routes.ts')
+const runtimes: Awaited<ReturnType<typeof sidechatRuntime>>[] = []
+afterEach(async () => { for (const runtime of runtimes.splice(0)) await runtime.dispose() })
+const message = (text: string) => createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text }] })
 
-describe('Sidebar RC1 fork inheritance at the route boundary', () => {
-  it.each(['next-turn', 'next-step', 'empty'])('does not consume parent %s input in a new or restored child', async target => {
-    const events = target === 'empty' ? [] : [splice(target, 'belongs to parent')]
-    const original = structuredClone(events)
-    const parentSession = Session.create('parent' as SessionId, events as unknown as SessionEvent[])
-    const parentInbox = inboxOf(parentSession)
-    const parent = {
-      id: 'parent', options: { provider: 'test', model: 'isolated-model' },
-      session: { id: 'parent', header: { cwd: 'C:\\fixture', delegationDepth: 0 }, snapshotEvents: () => events },
-    }
-    let options: CreateAgentOptions | undefined
-    const child = { id: 'child', session: { id: 'child' }, inject: vi.fn(), followup: vi.fn() }
-    const services: Record<string, unknown> = {
-      agents: {
-        get: (id: string) => id === 'parent' ? parent : child,
-        create: async (input: CreateAgentOptions) => { options = input; return { agent: child, dispose: async () => {} } },
-      },
-      sessionTitle: { rename: vi.fn() },
-    }
-    const api = buildSidechatApi({ get: (key: string) => services[key] })
-    await api['sidechat.start']!({ sessionId: 'parent', question: 'child question' })
-    expect(options).toBeDefined()
-    const created = options!
-    expect(created.meta?.isSeeded).toBe(true)
-    expect(created.inheritedEventCount).toBe(created.seed!.length)
-    const childSession = Session.create(created.sessionId!, created.seed, {
-      version: 0, id: created.sessionId!, createdAt: Date.now(), ...created.meta, isSeeded: created.meta?.isSeeded ?? false,
-    }, created.inheritedEventCount)
-    const freshInbox = inboxOf(childSession)
-    expect([freshInbox.nextTurn.length, freshInbox.nextStep.length]).toEqual([0, 0])
-    // Replay the actual persisted event/header shape as a cold session would.
-    const restored = Session.create(childSession.id, childSession.snapshotEvents(), childSession.header, created.inheritedEventCount)
-    expect([inboxOf(restored).nextTurn.length, inboxOf(restored).nextStep.length]).toEqual([0, 0])
-    freshInbox.append('next-turn', message('child-new', 'new child input') as UserMessage)
-    expect(freshInbox.claim('next-turn', 1).map(value => value.id)).toEqual(['child-new'])
-    expect(events).toEqual(original)
-    expect([parentInbox.nextTurn.length, parentInbox.nextStep.length]).toEqual(
+describe('Sidebar V3 fork inheritance through real Agents and JSONL handles', () => {
+  it('preserves a cold child\'s own unconsumed work while binding its model', async () => {
+    const runtime = await sidechatRuntime(); runtimes.push(runtime)
+    const { ctx, calls } = runtime
+    const { agent: parent } = await ctx.agents.create({
+      sessionId: SessionId('parent-own-queue'), agentOptions: { provider: 'parent-provider', model: 'parent-model' },
+    })
+    const api = buildSidechatApi(ctx)
+    const { childId } = await api['sidechat.start']({ sessionId: parent.id })
+    await api['sidechat.dispose']({ childId })
+    // Simulate work durably queued immediately before a process interruption.
+    const stored = await ctx.sessionPersistence.open(SessionId(childId), 'write')
+    try {
+      const { events, eventState } = await stored.read()
+      const session = Session.fromRestore(SessionId(childId), events, stored.header, stored.inheritedEventCount, eventState)
+      const queued = session.append('agent/inbox/spliced', {
+        target: 'next-turn', start: 0, inserted: [message('child pending work')],
+      })
+      await stored.append([queued])
+      await stored.flush()
+    } finally { await stored.close() }
+    await api['sidechat.prompt']({ childId, text: 'new child question' })
+    await ctx.agents.get(SessionId(childId))!.whenIdle()
+    expect(JSON.stringify(calls)).toContain('child pending work')
+    expect(JSON.stringify(calls)).toContain('new child question')
+    await api['sidechat.dispose']({ childId })
+  })
+
+  it.each(['next-turn', 'next-step', 'empty'] as const)('isolates parent %s input during creation and disk-backed cold resume', async target => {
+    const runtime = await sidechatRuntime(); runtimes.push(runtime)
+    const { ctx, calls } = runtime
+    const { agent: parent } = await ctx.agents.create({
+      sessionId: SessionId('parent'), agentOptions: { provider: 'parent-provider', model: 'parent-model' },
+    })
+    if (target !== 'empty') parent.inbox.append(target, message('belongs only to parent'))
+    const original = structuredClone(parent.session.snapshotEvents())
+    const api = buildSidechatApi(ctx)
+    const { childId } = await api['sidechat.start']({ sessionId: parent.id })
+    const child = ctx.agents.get(SessionId(childId))!
+    expect(child.session.header).toMatchObject({ version: SESSION_FORMAT_VERSION, isSeeded: true, parentSession: parent.id })
+    expect([child.inbox.nextTurn.length, child.inbox.nextStep.length]).toEqual([0, 0])
+    expect(calls).toHaveLength(0)
+    await api['sidechat.dispose']({ childId })
+    expect(ctx.agents.get(SessionId(childId))).toBeUndefined()
+
+    // Read the real artifact; no reconstructed in-memory Session stands in for persistence.
+    const stored = await ctx.sessionPersistence.open(SessionId(childId), 'read')
+    try {
+      expect(stored.header.version).toBe(3)
+      expect(stored.inheritedEventCount).toBeGreaterThanOrEqual(original.length)
+      expect((await stored.read()).events.some(event => event.type === 'session/end-seed')).toBe(true)
+    } finally { await stored.close() }
+    await api['sidechat.prompt']({ childId, text: 'child question' })
+    const resumed = ctx.agents.get(SessionId(childId))!
+    await resumed.whenIdle()
+    expect(calls).toHaveLength(1)
+    expect(JSON.stringify(calls[0]?.messages)).toContain('child question')
+    expect(JSON.stringify(calls[0]?.messages)).not.toContain('belongs only to parent')
+    expect([resumed.inbox.nextTurn.length, resumed.inbox.nextStep.length]).toEqual([0, 0])
+    expect(parent.session.snapshotEvents()).toEqual(original)
+    expect([parent.inbox.nextTurn.length, parent.inbox.nextStep.length]).toEqual(
       target === 'next-turn' ? [1, 0] : target === 'next-step' ? [0, 1] : [0, 0],
     )
-    if (target !== 'empty') expect(parentInbox.claim('next-turn', 1).map(value => value.id)).toEqual(['parent-pending'])
-    expect(child.inject).toHaveBeenCalledTimes(1)
-    expect(child.followup).toHaveBeenCalledTimes(1)
-    expect(child.followup.mock.calls[0]?.[0]).toMatchObject({ content: [{ type: 'text', text: 'child question' }] })
+    if (target !== 'empty') {
+      parent.followup(message('wake parent'))
+      await parent.whenIdle()
+      expect(JSON.stringify(calls.slice(1))).toContain('belongs only to parent')
+    }
+    await api['sidechat.dispose']({ childId })
   })
 })

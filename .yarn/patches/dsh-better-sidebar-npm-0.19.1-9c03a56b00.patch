@@ -1,0 +1,618 @@
+diff --git a/lib/client.js b/lib/client.js
+index f137630721b2f11268ad498c0bda41851c96bdf1..2612883bb3d892977cf527988faacad71191883d 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -4427,6 +4427,107 @@ window.__ModuleLoader__.load({
+ 		* host-owned menus are never touched.
+ 		*/
+ 		/** body attribute carrying the flip tokens (whitespace-separated words). */
++/** Geometry for an owned submenu; real dimensions replace a global body heuristic. */
++function placeSidebarSubmenu(parent, width, height, vw, vh) {
++    const margin = 12;
++    const maxWidth = Math.max(1, vw - margin * 2);
++    const maxHeight = Math.max(1, vh - margin * 2);
++    const w = Math.min(width, maxWidth), h = Math.min(height, maxHeight);
++    const gap = height > maxHeight ? 0 : 10;
++    const fitsRight = parent.right + gap + w <= vw - margin;
++    const fitsLeft = parent.left - gap - w >= margin;
++    const side = fitsRight ? 'right' : fitsLeft ? 'left' : 'overlap';
++    const proposed = side === 'left' ? parent.left - gap - w : parent.right + gap;
++    return {
++        left: Math.max(margin, Math.min(proposed, vw - margin - w)),
++        top: Math.max(margin, Math.min(parent.bottom + 4 - h, vh - margin - h)),
++        maxWidth, maxHeight, side,
++    };
++}
++/** Mark only this menu's rows, including when Menu portals its list to body. */
++function markSidebarMenuItems(items, owner) {
++    return items.map(item => 'label' in item
++        ? { ...item, label: react.createElement('span', { 'data-dsh-sidebar-menu-owner': owner }, item.label) }
++        : item);
++}
++function useSidebarSubmenuPlacement(menu) {
++    const owner = react.useId();
++    react.useLayoutEffect(() => {
++        if (menu === null)
++            return;
++        const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
++        const originals = new Map();
++        const roots = new Set();
++        const place = () => {
++            roots.clear();
++            for (const marker of document.querySelectorAll('[data-dsh-sidebar-menu-owner]')) {
++                if (marker.getAttribute('data-dsh-sidebar-menu-owner') !== owner)
++                    continue;
++                const root = marker.closest('[role="menu"]');
++                if (root)
++                    roots.add(root);
++            }
++            for (const root of roots)
++                for (const submenu of root.querySelectorAll('[role="menu"]')) {
++                    const parent = submenu.parentElement;
++                    if (!parent)
++                        continue;
++                    if (!originals.has(submenu))
++                        originals.set(submenu, { style: submenu.getAttribute('style'), side: submenu.getAttribute('data-dsh-sidebar-submenu-side') });
++                    // Remove a prior cap while measuring its natural content after resize.
++                    submenu.style.maxHeight = 'none';
++                    submenu.style.maxWidth = `${Math.max(1, window.innerWidth - 24)}px`;
++                    const rect = submenu.getBoundingClientRect();
++                    const naturalHeight = Math.max(rect.height, submenu.scrollHeight);
++                    const placement = placeSidebarSubmenu(parent.getBoundingClientRect(), rect.width, naturalHeight, window.innerWidth, window.innerHeight);
++                    Object.assign(submenu.style, {
++                        position: 'fixed', left: `${placement.left}px`, top: `${placement.top}px`, bottom: 'auto', right: 'auto',
++                        maxWidth: `${placement.maxWidth}px`, maxHeight: `${placement.maxHeight}px`,
++                        overflowY: naturalHeight > placement.maxHeight ? 'auto' : 'visible',
++                    });
++                    submenu.setAttribute('data-dsh-sidebar-submenu-side', placement.side);
++                }
++        };
++        const observer = new MutationObserver(records => {
++            if (records.some(record => record.type === 'childList' || roots.has(record.target)))
++                place();
++        });
++        const restoreFocus = (event) => {
++            if (event.key !== 'Escape' || !previousFocus?.isConnected)
++                return;
++            if (![...roots].some(root => root.contains(document.activeElement)))
++                return;
++            queueMicrotask(() => {
++                if (previousFocus.isConnected)
++                    previousFocus.focus({ preventScroll: true });
++            });
++        };
++        // Menu updates its portaled list position in a layout effect. Observe that
++        // root's style too, but ignore our submenu's own style writes to avoid a loop.
++        observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['style'] });
++        window.addEventListener('resize', place);
++        window.addEventListener('scroll', place, true);
++        document.addEventListener('keydown', restoreFocus, true);
++        place();
++        return () => {
++            observer.disconnect();
++            window.removeEventListener('resize', place);
++            window.removeEventListener('scroll', place, true);
++            document.removeEventListener('keydown', restoreFocus, true);
++            for (const [element, original] of originals) {
++                if (original.style === null)
++                    element.removeAttribute('style');
++                else
++                    element.setAttribute('style', original.style);
++                if (original.side === null)
++                    element.removeAttribute('data-dsh-sidebar-submenu-side');
++                else
++                    element.setAttribute('data-dsh-sidebar-submenu-side', original.side);
++            }
++        };
++    }, [menu, owner]);
++    return owner;
++}
+ 		const SUBMENU_FLIP_ATTR = "data-dsh-sidebar-submenu";
+ 		/**
+ 		* Mirror of the primitive's submenu geometry (Menu.module.css): card
+@@ -4784,7 +4885,7 @@ window.__ModuleLoader__.load({
+ 			const [copiedPath, setCopiedPath] = (0, react.useState)(null);
+ 			/** Open context menu: the row path (and whether it is a directory) plus the cursor position. */
+ 			const [rowMenu, setRowMenu] = (0, react.useState)(null);
+-			useSubmenuFlip(rowMenu);
++			const submenuOwner = useSidebarSubmenuPlacement(rowMenu);
+ 			/** The row being renamed inline: its path plus the edit buffer. */
+ 			const [renaming, setRenaming] = (0, react.useState)(null);
+ 			/** The delete awaiting the confirmation modal's yes. */
+@@ -5392,7 +5493,7 @@ window.__ModuleLoader__.load({
+ 						onClose: () => {
+ 							setRowMenu(null);
+ 						},
+-						items: [
++						items: markSidebarMenuItems([
+ 							...rowMenu?.isDir === false && onOpenFileNewTab !== void 0 ? [{
+ 								id: "open-new-tab",
+ 								label: t("openFileNewTab"),
+@@ -5441,7 +5542,7 @@ window.__ModuleLoader__.load({
+ 									danger: true
+ 								}
+ 							] : []
+-						],
++						], submenuOwner),
+ 						onSelect: (id) => {
+ 							const target = rowMenu;
+ 							if (target === null) return;
+@@ -14477,7 +14578,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 			const { paneId, tabs, active, onActivate, onClose, onNewTab, newTabOptions, onDropTab, onPinTab, getTabIcon, getTabBadge } = props;
+ 			const [menuOpen, setMenuOpen] = (0, react.useState)(false);
+ 			const [tabMenu, setTabMenu] = (0, react.useState)(null);
+-			useSubmenuFlip(tabMenu);
++			const submenuOwner = useSidebarSubmenuPlacement(tabMenu);
+ 			const [dragOver, setDragOver] = (0, react.useState)(false);
+ 			const listRef = (0, react.useRef)(null);
+ 			const tabMenuIndex = tabMenu === null ? -1 : tabs.findIndex((tab) => tab.id === tabMenu.tabId);
+@@ -14659,7 +14760,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 							onClose: () => {
+ 								setTabMenu(null);
+ 							},
+-							items: (() => {
++							items: markSidebarMenuItems((() => {
+ 								const targetTab = tabMenuIndex >= 0 ? tabs[tabMenuIndex] : void 0;
+ 								const isTerminal = targetTab?.type === "terminal";
+ 								const isPinnedVirtual = targetTab !== void 0 && isPinnedVirtualTab(targetTab);
+@@ -14703,7 +14804,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 										...tabMenuIndex >= tabs.length - 1 ? { disabled: true } : {}
+ 									}
+ 								];
+-							})(),
++							})(), submenuOwner),
+ 							onSelect: (id) => {
+ 								const target = tabMenu;
+ 								if (target === null) return;
+@@ -18665,7 +18766,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		}
+ 		//#endregion
+ 		//#region \0dsh-css:/home/runner/work/DSH-better-sidebar/DSH-better-sidebar/src/client/layout.css.mjs
+-		const css = "/**\n * Layout push: the bottom workbench occupies layout instead of floating over\n * the conversation. The right column belongs to DSH's native Sidebar, so this\n * stylesheet pushes no width — only the workbench's height.\n *\n * The workbench squeezes only the conversation column. The anchor is the\n * [data-dsh-center-col] tag the Sidebar shell's locator writes on the\n * frame's measured center grid item (Sidebar.tsx locate — not a positional\n * path: the frame also contains an overlay layer and drag handles). A\n * stretched grid item shrinks by its bottom margin, so the conversation\n * output and composer lift without touching either sidebar.\n *\n * The size rides a CSS variable updated by the Sidebar shell (0 while\n * collapsed). Expand/collapse uses the host theme duration; drags disable\n * transitions so the reserved edge tracks the pointer.\n */\n/* The AppFrame's center column. The Sidebar shell's locator (Sidebar.tsx\n   locate/measureCenter, resolving via center-column.ts) tags the measured\n   column node with [data-dsh-center-col] — one attribute write per node\n   lifetime. The locator anchors on the conversation slot host\n   (`main.conversation` on DSH 0.1.5-alpha.2+, `conversation` on alpha.1)\n   and skips the transparent display:contents slot hosts above it. The rule\n   used to anchor on a structural has()-selector over the conversation slot\n   wrapper, whose match cache invalidates on every #root subtree mutation\n   (the streaming chat mutates it constantly), re-evaluating the selector\n   against the whole document; the tag is evaluated once per node instead.\n   A stretched grid item shrinks by its margins, so the conversation\n   content (output + input bar) lifts without touching the sidebars. */\n#root [data-dsh-center-col] {\n  margin-bottom: var(--dsh-sidebar-height, 0px);\n  /* Grid/flex items default to min-height:auto. A long unbreakable token\n     (OAuth URL) then grows this column past the viewport and clips the\n     composer + left-rail Settings row. min-height:0 lets the cell shrink;\n     overflow-wrap lets the token wrap instead of forcing its intrinsic\n     size. The host's own descendants remain responsible for scrolling. */\n  min-height: 0;\n  overflow-wrap: anywhere;\n  transition: margin-bottom var(--ds-transition-duration-slow) var(--ds-ease-in-out);\n}\n\n/* When the sidebar is collapsed, the toggle cluster reclaims the top-right\n   corner. Push the DSH session header's right padding out so its right-aligned\n   utilities (the \"Session log\" download capsule) yield the corner instead of\n   hiding under the cluster. The header default right-pads 28px; the 2-button\n   cluster spans right 10→70px, so 78px clears it with an 8px gap. Anchor on\n   the header's slot host wrapper ([data-slot=\"conversation.session.header\"])\n   rather than a positional path: DSH 0.1.x nests the header several levels\n   under the center column. The Sidebar shell toggles the body attribute with\n   the panel open state. */\nbody[data-dsh-sidebar-collapsed] [data-slot=\"conversation.session.header\"] > header {\n  padding-right: 78px;\n}\n\nbody[data-dsh-sidebar-dragging] #root [data-dsh-center-col] {\n  transition: none;\n}\n\n/* DSH 0.1.x gives external settings sections a generic gear and exposes no\n   icon field in the settings.section contract. settings-nav-icon.ts marks\n   only this plugin's localized row; render the requested Lucide\n   gallery-horizontal-end SVG as a currentColor mask so it follows the native\n   nav hover/active colors without changing the shell's 16px icon rhythm. */\n[data-dsh-better-sidebar-settings-nav] > svg:first-child {\n  display: none;\n}\n\n[data-dsh-better-sidebar-settings-nav]::before {\n  content: '';\n  flex: none;\n  width: 16px;\n  height: 16px;\n  background: currentColor;\n  -webkit-mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 7v10'/%3E%3Cpath d='M6 5v14'/%3E%3Crect width='12' height='18' x='10' y='3' rx='2'/%3E%3C/svg%3E\") center / contain no-repeat;\n  mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 7v10'/%3E%3Cpath d='M6 5v14'/%3E%3Crect width='12' height='18' x='10' y='3' rx='2'/%3E%3C/svg%3E\") center / contain no-repeat;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  #root [data-dsh-center-col] {\n    transition: none;\n  }\n}\n\n/* Context-menu submenu flip (viewport clamping for the portaled menus).\n *\n * The ui-primitives Menu clamps its main portal list into the viewport but\n * positions nested submenus with static CSS only — anchored at the parent\n * row's bottom, growing UP and to the RIGHT — with no clamp whatsoever.\n * Both defaults are the worst case for our menus: a tall \"open with\" submenu\n * escapes past the viewport top when the row menu opens near the top, and\n * past the right edge in a narrow workbench pane (a pane can be far narrower\n * than the card 218 + gap + submenu 165 a submenu needs).\n *\n * menu-flip.ts publishes `data-dsh-sidebar-submenu` on <body> — with the\n * words \"down\" and/or \"left\" — for exactly the lifetime of one of OUR\n * submenu-bearing menus (FileTree row menu, TabBar tab menu). The tokens\n * flip the growth direction; the attribute's absence restores the\n * primitive's own geometry untouched, and host-owned menus are never\n * affected because they never open while the attribute exists (each side\n * closes on the other's outside pointerdown).\n *\n * No max-height/overflow scroll cap here on purpose: overflow clipping\n * would cut the submenu's ::before hover bridge (the corridor that keeps\n * itemWrap's mouseleave from closing the card mid-crossing). */\n\n/* Visual tether, part 1 — the parent row stays lit while its submenu is\n * open. The primitive only styles :hover, so once the pointer crossed into\n * the side card the parent row's fill cleared and the floating card read as\n * unrelated. The Menu marks the open parent row with aria-expanded=\"true\"\n * (host-rendered, stable), so the same hover token re-applies for the\n * submenu's whole lifetime. */\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] button[aria-expanded=\"true\"] {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n/* Visual tether, part 2 — the side card hugs its parent (10px → 4px gap),\n * with the ::before hover corridor narrowed to match. Ordered BEFORE the\n * flip overrides below so their left/right flips still win. */\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] div[role=\"menu\"] {\n  left: calc(100% + 4px);\n}\n\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] div[role=\"menu\"]::before {\n  left: -4px;\n  width: 4px;\n}\n\nbody[data-dsh-sidebar-submenu~=\"down\"] div[role=\"menu\"] div[role=\"menu\"] {\n  top: -4px;\n  bottom: auto;\n}\n\nbody[data-dsh-sidebar-submenu~=\"left\"] div[role=\"menu\"] div[role=\"menu\"] {\n  left: auto;\n  right: calc(100% + 4px);\n}\n\n/* The hover bridge follows the card to the left side of the parent row. */\nbody[data-dsh-sidebar-submenu~=\"left\"] div[role=\"menu\"] div[role=\"menu\"]::before {\n  left: auto;\n  right: -4px;\n}\n";
++		const css = "/**\n * Layout push: the bottom workbench occupies layout instead of floating over\n * the conversation. The right column belongs to DSH's native Sidebar, so this\n * stylesheet pushes no width — only the workbench's height.\n *\n * The workbench squeezes only the conversation column. The anchor is the\n * [data-dsh-center-col] tag the Sidebar shell's locator writes on the\n * frame's measured center grid item (Sidebar.tsx locate — not a positional\n * path: the frame also contains an overlay layer and drag handles). A\n * stretched grid item shrinks by its bottom margin, so the conversation\n * output and composer lift without touching either sidebar.\n *\n * The size rides a CSS variable updated by the Sidebar shell (0 while\n * collapsed). Expand/collapse uses the host theme duration; drags disable\n * transitions so the reserved edge tracks the pointer.\n */\n/* The AppFrame's center column. The Sidebar shell's locator (Sidebar.tsx\n   locate/measureCenter, resolving via center-column.ts) tags the measured\n   column node with [data-dsh-center-col] — one attribute write per node\n   lifetime. The locator anchors on the conversation slot host\n   (`main.conversation` on DSH 0.1.5-alpha.2+, `conversation` on alpha.1)\n   and skips the transparent display:contents slot hosts above it. The rule\n   used to anchor on a structural has()-selector over the conversation slot\n   wrapper, whose match cache invalidates on every #root subtree mutation\n   (the streaming chat mutates it constantly), re-evaluating the selector\n   against the whole document; the tag is evaluated once per node instead.\n   A stretched grid item shrinks by its margins, so the conversation\n   content (output + input bar) lifts without touching the sidebars. */\n#root [data-dsh-center-col] {\n  margin-bottom: var(--dsh-sidebar-height, 0px);\n  /* Grid/flex items default to min-height:auto. A long unbreakable token\n     (OAuth URL) then grows this column past the viewport and clips the\n     composer + left-rail Settings row. min-height:0 lets the cell shrink;\n     overflow-wrap lets the token wrap instead of forcing its intrinsic\n     size. The host's own descendants remain responsible for scrolling. */\n  min-height: 0;\n  overflow-wrap: anywhere;\n  transition: margin-bottom var(--ds-transition-duration-slow) var(--ds-ease-in-out);\n}\n\n/* When the sidebar is collapsed, the toggle cluster reclaims the top-right\n   corner. Push the DSH session header's right padding out so its right-aligned\n   utilities (the \"Session log\" download capsule) yield the corner instead of\n   hiding under the cluster. The header default right-pads 28px; the 2-button\n   cluster spans right 10→70px, so 78px clears it with an 8px gap. Anchor on\n   the header's slot host wrapper ([data-slot=\"conversation.session.header\"])\n   rather than a positional path: DSH 0.1.x nests the header several levels\n   under the center column. The Sidebar shell toggles the body attribute with\n   the panel open state. */\nbody[data-dsh-sidebar-collapsed] [data-slot=\"conversation.session.header\"] > header {\n  padding-right: 78px;\n}\n\nbody[data-dsh-sidebar-dragging] #root [data-dsh-center-col] {\n  transition: none;\n}\n\n/* DSH 0.1.x gives external settings sections a generic gear and exposes no\n   icon field in the settings.section contract. settings-nav-icon.ts marks\n   only this plugin's localized row; render the requested Lucide\n   gallery-horizontal-end SVG as a currentColor mask so it follows the native\n   nav hover/active colors without changing the shell's 16px icon rhythm. */\n[data-dsh-better-sidebar-settings-nav] > svg:first-child {\n  display: none;\n}\n\n[data-dsh-better-sidebar-settings-nav]::before {\n  content: '';\n  flex: none;\n  width: 16px;\n  height: 16px;\n  background: currentColor;\n  -webkit-mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 7v10'/%3E%3Cpath d='M6 5v14'/%3E%3Crect width='12' height='18' x='10' y='3' rx='2'/%3E%3C/svg%3E\") center / contain no-repeat;\n  mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 7v10'/%3E%3Cpath d='M6 5v14'/%3E%3Crect width='12' height='18' x='10' y='3' rx='2'/%3E%3C/svg%3E\") center / contain no-repeat;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  #root [data-dsh-center-col] {\n    transition: none;\n  }\n}\n\n/* Context-menu submenu flip (viewport clamping for the portaled menus).\n *\n * The ui-primitives Menu clamps its main portal list into the viewport but\n * positions nested submenus with static CSS only — anchored at the parent\n * row's bottom, growing UP and to the RIGHT — with no clamp whatsoever.\n * Both defaults are the worst case for our menus: a tall \"open with\" submenu\n * escapes past the viewport top when the row menu opens near the top, and\n * past the right edge in a narrow workbench pane (a pane can be far narrower\n * than the card 218 + gap + submenu 165 a submenu needs).\n *\n * menu-flip.ts publishes `data-dsh-sidebar-submenu` on <body> — with the\n * words \"down\" and/or \"left\" — for exactly the lifetime of one of OUR\n * submenu-bearing menus (FileTree row menu, TabBar tab menu). The tokens\n * flip the growth direction; the attribute's absence restores the\n * primitive's own geometry untouched, and host-owned menus are never\n * affected because they never open while the attribute exists (each side\n * closes on the other's outside pointerdown).\n *\n * No max-height/overflow scroll cap here on purpose: overflow clipping\n * would cut the submenu's ::before hover bridge (the corridor that keeps\n * itemWrap's mouseleave from closing the card mid-crossing). */\n\n/* Visual tether, part 1 — the parent row stays lit while its submenu is\n * open. The primitive only styles :hover, so once the pointer crossed into\n * the side card the parent row's fill cleared and the floating card read as\n * unrelated. The Menu marks the open parent row with aria-expanded=\"true\"\n * (host-rendered, stable), so the same hover token re-applies for the\n * submenu's whole lifetime. */\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] button[aria-expanded=\"true\"] {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n/* Visual tether, part 2 — the side card hugs its parent (10px → 4px gap),\n * with the ::before hover corridor narrowed to match. Ordered BEFORE the\n * flip overrides below so their left/right flips still win. */\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] div[role=\"menu\"] {\n  left: calc(100% + 4px);\n}\n\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] div[role=\"menu\"]::before {\n  left: -4px;\n  width: 4px;\n}\n\nbody[data-dsh-sidebar-submenu~=\"down\"] div[role=\"menu\"] div[role=\"menu\"] {\n  top: -4px;\n  bottom: auto;\n}\n\nbody[data-dsh-sidebar-submenu~=\"left\"] div[role=\"menu\"] div[role=\"menu\"] {\n  left: auto;\n  right: calc(100% + 4px);\n}\n\n/* The hover bridge follows the card to the left side of the parent row. */\nbody[data-dsh-sidebar-submenu~=\"left\"] div[role=\"menu\"] div[role=\"menu\"]::before {\n  left: auto;\n  right: -4px;\n}\n\n/* Scoped to measured Sidebar menus; no body-wide host-menu overrides. */\nbutton[aria-expanded=\"true\"]:has([data-dsh-sidebar-menu-owner]) { background: var(--dsw-alias-interactive-bg-hover); }\n[data-dsh-sidebar-submenu-side=\"left\"]::before { left: auto; right: -10px; }\n[data-dsh-sidebar-submenu-side=\"overlap\"]::before { display: none; }\n";
+ 		const tagId = "dsh-better-sidebar/layout.css";
+ 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
+ 			const tag = document.createElement("style");
+diff --git a/lib/index.js b/lib/index.js
+index 74c717132dba4087c5d7355e17f2aff58731c150..d4f322fb2311fedb039640b5466dd2bb5ff207f4 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -14,6 +14,7 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
+ import { createUserMessage } from "@deepseek-ai/dsh-llm";
+ import { snapshotSubagentDescriptor } from "@deepseek-ai/dsh-subagent";
+ import { SessionLogOffset } from "@deepseek-ai/dsh-session";
++import { installSidechatModelSelection } from "./sidechat-model.js";
+ //#region src/prefs-shared.ts
+ /**
+ * Shared "Side card" preference vocabulary (types + constants), consumed by
+@@ -4032,15 +4033,19 @@ const threadDisposers = /* @__PURE__ */ new Map();
+ *  prompt is then delivered alone, a logged degradation). */
+ const pendingSnapshots = /* @__PURE__ */ new Map();
+ /** Resolve the parent's preset and build the child's composition setup
+-*  (mirror of api-proxy's composeAgent minus the model-selection install —
+-*  the child carries the parent's provider/model in agentOptions). */
++*  including model binding on both creation and cold resume). */
+ async function composeChildSetup(ctx, presetId) {
+ 	const presets = ctx.get("agentPresets");
+-	if (presets === void 0) return { setup: () => Promise.resolve() };
++	if (presets === void 0) return { setup: (agentCtx, agent) => {
++		agent.inbox.clear();
++		installSidechatModelSelection(ctx, agentCtx, agent);
++	} };
+ 	const resolved = await presets.resolve(presetId);
+ 	return {
+ 		agentPreset: resolved.id,
+-		setup: async (agentCtx) => {
++		setup: async (agentCtx, agent) => {
++			agent.inbox.clear();
++			installSidechatModelSelection(ctx, agentCtx, agent);
+ 			await presets.mount(agentCtx, resolved.id);
+ 		}
+ 	};
+@@ -4049,13 +4054,14 @@ async function composeChildSetup(ctx, presetId) {
+ *  recorded preset wins, newest selection event first). */
+ async function composePersistedSetup(ctx, childId) {
+ 	const persistence = ctx.get("sessionPersistence");
+-	if (persistence === void 0) return () => Promise.resolve();
++	if (persistence === void 0) return (agentCtx, agent) => { installSidechatModelSelection(ctx, agentCtx, agent); };
+ 	const inspected = await readPersistedSession(persistence, childId);
+ 	const presetId = resolvePresetId(inspected.header, inspected.events);
+ 	const presets = ctx.get("agentPresets");
+-	if (presets === void 0 || presetId === void 0) return () => Promise.resolve();
++	if (presets === void 0 || presetId === void 0) return (agentCtx, agent) => { installSidechatModelSelection(ctx, agentCtx, agent); };
+ 	const resolved = await presets.resolve(presetId);
+-	return async (agentCtx) => {
++	return async (agentCtx, agent) => {
++		installSidechatModelSelection(ctx, agentCtx, agent);
+ 		await presets.mount(agentCtx, resolved.id);
+ 	};
+ }
+diff --git a/lib/sidechat-model.js b/lib/sidechat-model.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..ee8587e241d65841a1d7448f6e0f4e947de5b34d
+--- /dev/null
++++ b/lib/sidechat-model.js
+@@ -0,0 +1,29 @@
++import { installModelSelection } from '@deepseek-ai/dsh-agent';
++import { ReasoningEffortId } from '@deepseek-ai/dsh-llm';
++
++/** Bind each explicit setup Agent's durable selection to prompt and request assembly. */
++export function installSidechatModelSelection(host, agentCtx, agent) {
++  const projections = host.get('sessionProjections');
++  const defaults = host.get('agentDefaultModel');
++  installModelSelection(agentCtx, {
++    get current() {
++      const projected = projections?.stateOf(agent.session, 'modelSelection');
++      const header = agent.session.requestHeader();
++      const logged = header === undefined ? undefined : {
++        provider: header.config.provider, model: header.config.model,
++        ...(header.config.reasoningEffort === undefined || header.adapterDefaults?.reasoningEffort === true
++          ? {} : { reasoningEffort: header.config.reasoningEffort }),
++      };
++      const selected = projected?.pending ?? logged ?? projected?.lastUsed
++        ?? (agent.options.provider !== undefined && agent.options.model !== undefined
++          ? { provider: agent.options.provider, model: agent.options.model, reasoningEffort: agent.options.reasoningEffort }
++          : defaults?.currentSelection());
++      if (selected === undefined) return undefined;
++      return {
++        provider: selected.provider, model: selected.model,
++        ...(selected.reasoningEffort === undefined ? {} : { reasoningEffort: ReasoningEffortId(selected.reasoningEffort) }),
++      };
++    },
++    assembled: undefined,
++  });
++}
+diff --git a/lib/types/sidechat-model.d.ts b/lib/types/sidechat-model.d.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..af870c6211063fb7deedfe8356af09c034e5ff32
+--- /dev/null
++++ b/lib/types/sidechat-model.d.ts
+@@ -0,0 +1,4 @@
++import type { Context } from '@deepseek-ai/cordis';
++import type { Agent } from '@deepseek-ai/dsh-agent';
++/** Bind each explicit setup Agent's durable selection to prompt and request assembly. */
++export declare function installSidechatModelSelection(host: Context, agentCtx: Context, agent: Agent): void;
+diff --git a/package.json b/package.json
+index 6dbba70ec8026d33525fac25c3c9e808fecb4693..b361e6ed380c431e14186ec465d43dad6de274a8 100644
+--- a/package.json
++++ b/package.json
+@@ -56,6 +56,7 @@
+   },
+   "files": [
+     "lib/index.js",
++    "lib/sidechat-model.js",
+     "lib/invariant.js",
+     "lib/client.js",
+     "lib/client-registry.js",
+diff --git a/src/client/FileTree.tsx b/src/client/FileTree.tsx
+index 2873f51f9cb2eadc210d5c02b9f911162bca0fc9..c817ec70df291ef88c615abe4d8346314ca0a51a 100644
+--- a/src/client/FileTree.tsx
++++ b/src/client/FileTree.tsx
+@@ -34,7 +34,7 @@ import { FenceErrorNotice } from './FenceErrorNotice.tsx'
+ import { builtinFileIcon, builtinFolderIcon } from './file-icons.tsx'
+ import { IconUploadOutline16, IconVscode16 } from './icons.tsx'
+ import { isImeComposition } from './ime-guard.ts'
+-import { useSubmenuFlip } from './menu-flip.ts'
++import { markSidebarMenuItems, useSidebarSubmenuPlacement } from './menu-placement.ts'
+ import type { OpenWithTarget } from './open-with.ts'
+ import { relativeTo } from './paths.ts'
+ import { t } from './locales.ts'
+@@ -187,9 +187,8 @@ export function FileTree(props: {
+   const [copiedPath, setCopiedPath] = useState<string | null>(null)
+   /** Open context menu: the row path (and whether it is a directory) plus the cursor position. */
+   const [rowMenu, setRowMenu] = useState<{ path: string; isDir: boolean; x: number; y: number } | null>(null)
+-  // The row menu's "open with" submenu is the one submenu that can tower past
+-  // the viewport; publish its flip geometry for layout.css while it is open.
+-  useSubmenuFlip(rowMenu)
++  // Measure only this portaled menu's submenus; do not alter host-owned menus.
++  const submenuOwner = useSidebarSubmenuPlacement(rowMenu)
+   /** The row being renamed inline: its path plus the edit buffer. */
+   const [renaming, setRenaming] = useState<{ path: string; value: string } | null>(null)
+   /** The delete awaiting the confirmation modal's yes. */
+@@ -826,7 +825,7 @@ export function FileTree(props: {
+       <Menu
+         open={rowMenu !== null}
+         onClose={() => { setRowMenu(null) }}
+-        items={[
++        items={markSidebarMenuItems([
+           // The open escapes head the FILE menu (dirs only get copy).
+           ...(rowMenu?.isDir === false && onOpenFileNewTab !== undefined
+             ? [{ id: 'open-new-tab', label: t('openFileNewTab'), icon: <IconCodeOutline16 size={14} /> }]
+@@ -854,7 +853,7 @@ export function FileTree(props: {
+                 { id: 'delete', label: t('delete'), icon: <IconTrashOutline16 size={14} />, danger: true },
+               ]
+             : []),
+-        ]}
++        ], submenuOwner)}
+         onSelect={(id) => {
+           const target = rowMenu
+           if (target === null) return
+diff --git a/src/client/TabBar.tsx b/src/client/TabBar.tsx
+index 7d5ce443f33ea1c07002e5e2d4de67b298ce2f50..c24070e951352822822eb4b291910ff16d4a22a8 100644
+--- a/src/client/TabBar.tsx
++++ b/src/client/TabBar.tsx
+@@ -15,7 +15,7 @@ import {
+ import type { SidebarTab } from './state.ts'
+ import { isAgentTabId } from './state.ts'
+ import { isPinnedVirtualTab } from './pinned.ts'
+-import { useSubmenuFlip } from './menu-flip.ts'
++import { markSidebarMenuItems, useSidebarSubmenuPlacement } from './menu-placement.ts'
+ import { IconPinOutline16 } from './icons.tsx'
+ import { t } from './locales.ts'
+ import css from './sidebar.module.css'
+@@ -87,9 +87,8 @@ export function TabBar(props: {
+   // The tab right-click context menu: the target tab plus the cursor
+   // position (the portaled Menu anchors there, following the git lens/FileTree).
+   const [tabMenu, setTabMenu] = useState<{ tabId: string; x: number; y: number } | null>(null)
+-  // The strip sits at the panel's top, so the pin submenu must grow downward;
+-  // the flip hook derives that from the cursor y (upper half → "down").
+-  useSubmenuFlip(tabMenu)
++  // Clamp the owned pin submenu using actual dimensions and preserve its focus owner.
++  const submenuOwner = useSidebarSubmenuPlacement(tabMenu)
+   const [dragOver, setDragOver] = useState(false)
+   const listRef = useRef<HTMLDivElement>(null)
+   // The context target's index in the render-time tab snapshot; -1 when the
+@@ -290,7 +289,7 @@ export function TabBar(props: {
+         <Menu
+           open={tabMenu !== null && tabMenuIndex >= 0}
+           onClose={() => { setTabMenu(null) }}
+-          items={(() => {
++          items={markSidebarMenuItems((() => {
+             // The target tab drives the pin entry's shape: terminal tabs
+             // get either a "Pin ▸" submenu (unpinned) or a single "Unpin"
+             // row (pinned). Non-terminal tabs and missing onPinTab get no
+@@ -326,7 +325,7 @@ export function TabBar(props: {
+               { id: 'closeLeft', label: t('closeLeftTabs'), ...(tabMenuIndex <= 0 ? { disabled: true } : {}) },
+               { id: 'closeRight', label: t('closeRightTabs'), ...(tabMenuIndex >= tabs.length - 1 ? { disabled: true } : {}) },
+             ]
+-          })()}
++          })(), submenuOwner)}
+           onSelect={(id) => {
+             const target = tabMenu
+             if (target === null) return
+diff --git a/src/client/layout.css b/src/client/layout.css
+index 3a3e798dca655f24db03efd9b892a37530d41a00..27b40890957886eed2a0640ce35ca0e2c072a458 100644
+--- a/src/client/layout.css
++++ b/src/client/layout.css
+@@ -139,3 +139,8 @@ body[data-dsh-sidebar-submenu~="left"] div[role="menu"] div[role="menu"]::before
+   left: auto;
+   right: -4px;
+ }
++
++/* Scoped to measured Sidebar menus; no body-wide host-menu overrides. */
++button[aria-expanded="true"]:has([data-dsh-sidebar-menu-owner]) { background: var(--dsw-alias-interactive-bg-hover); }
++[data-dsh-sidebar-submenu-side="left"]::before { left: auto; right: -10px; }
++[data-dsh-sidebar-submenu-side="overlap"]::before { display: none; }
+diff --git a/src/client/menu-placement.ts b/src/client/menu-placement.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..724d144ec0d4cbf3839a9ff862a5ff73db11ad72
+--- /dev/null
++++ b/src/client/menu-placement.ts
+@@ -0,0 +1,90 @@
++import { createElement, useId, useLayoutEffect } from 'react'
++import type { MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
++
++/** Geometry for an owned submenu; real dimensions replace a global body heuristic. */
++export function placeSidebarSubmenu(parent: { left: number; right: number; bottom: number }, width: number, height: number, vw: number, vh: number) {
++  const margin = 12
++  const maxWidth = Math.max(1, vw - margin * 2)
++  const maxHeight = Math.max(1, vh - margin * 2)
++  const w = Math.min(width, maxWidth), h = Math.min(height, maxHeight)
++  const gap = height > maxHeight ? 0 : 10
++  const fitsRight = parent.right + gap + w <= vw - margin
++  const fitsLeft = parent.left - gap - w >= margin
++  const side = fitsRight ? 'right' : fitsLeft ? 'left' : 'overlap'
++  const proposed = side === 'left' ? parent.left - gap - w : parent.right + gap
++  return {
++    left: Math.max(margin, Math.min(proposed, vw - margin - w)),
++    top: Math.max(margin, Math.min(parent.bottom + 4 - h, vh - margin - h)),
++    maxWidth, maxHeight, side,
++  }
++}
++
++/** Mark only this menu's rows, including when Menu portals its list to body. */
++export function markSidebarMenuItems(items: readonly MenuEntry[], owner: string): MenuEntry[] {
++  return items.map(item => 'label' in item
++    ? { ...item, label: createElement('span', { 'data-dsh-sidebar-menu-owner': owner }, item.label) }
++    : item)
++}
++
++export function useSidebarSubmenuPlacement(menu: { x: number; y: number } | null): string {
++  const owner = useId()
++  useLayoutEffect(() => {
++    if (menu === null) return
++    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
++    const originals = new Map<HTMLElement, { style: string | null; side: string | null }>()
++    const roots = new Set<Element>()
++    const place = () => {
++      roots.clear()
++      for (const marker of document.querySelectorAll('[data-dsh-sidebar-menu-owner]')) {
++        if (marker.getAttribute('data-dsh-sidebar-menu-owner') !== owner) continue
++        const root = marker.closest('[role="menu"]')
++        if (root) roots.add(root)
++      }
++      for (const root of roots) for (const submenu of root.querySelectorAll<HTMLElement>('[role="menu"]')) {
++        const parent = submenu.parentElement
++        if (!parent) continue
++        if (!originals.has(submenu)) originals.set(submenu, { style: submenu.getAttribute('style'), side: submenu.getAttribute('data-dsh-sidebar-submenu-side') })
++        // Remove a prior cap while measuring its natural content after resize.
++        submenu.style.maxHeight = 'none'
++        submenu.style.maxWidth = `${Math.max(1, window.innerWidth - 24)}px`
++        const rect = submenu.getBoundingClientRect()
++        const naturalHeight = Math.max(rect.height, submenu.scrollHeight)
++        const placement = placeSidebarSubmenu(parent.getBoundingClientRect(), rect.width, naturalHeight, window.innerWidth, window.innerHeight)
++        Object.assign(submenu.style, {
++          position: 'fixed', left: `${placement.left}px`, top: `${placement.top}px`, bottom: 'auto', right: 'auto',
++          maxWidth: `${placement.maxWidth}px`, maxHeight: `${placement.maxHeight}px`,
++          overflowY: naturalHeight > placement.maxHeight ? 'auto' : 'visible',
++        })
++        submenu.setAttribute('data-dsh-sidebar-submenu-side', placement.side)
++      }
++    }
++    const observer = new MutationObserver(records => {
++      if (records.some(record => record.type === 'childList' || roots.has(record.target as Element))) place()
++    })
++    const restoreFocus = (event: KeyboardEvent) => {
++      if (event.key !== 'Escape' || !previousFocus?.isConnected) return
++      if (![...roots].some(root => root.contains(document.activeElement))) return
++      queueMicrotask(() => {
++        if (previousFocus.isConnected) previousFocus.focus({ preventScroll: true })
++      })
++    }
++    // Menu updates its portaled list position in a layout effect. Observe that
++    // root's style too, but ignore our submenu's own style writes to avoid a loop.
++    observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['style'] })
++    window.addEventListener('resize', place)
++    window.addEventListener('scroll', place, true)
++    document.addEventListener('keydown', restoreFocus, true)
++    place()
++    return () => {
++      observer.disconnect()
++      window.removeEventListener('resize', place)
++      window.removeEventListener('scroll', place, true)
++      document.removeEventListener('keydown', restoreFocus, true)
++      for (const [element, original] of originals) {
++        if (original.style === null) element.removeAttribute('style'); else element.setAttribute('style', original.style)
++        if (original.side === null) element.removeAttribute('data-dsh-sidebar-submenu-side'); else element.setAttribute('data-dsh-sidebar-submenu-side', original.side)
++      }
++    }
++  }, [menu, owner])
++  return owner
++}
+diff --git a/src/sidechat-model.ts b/src/sidechat-model.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..be221b394d2d661b3bae5588f81eb79637af0bbc
+--- /dev/null
++++ b/src/sidechat-model.ts
+@@ -0,0 +1,33 @@
++import type { Context } from '@deepseek-ai/cordis'
++import { installModelSelection, type Agent, type ModelSelection } from '@deepseek-ai/dsh-agent'
++import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
++
++/** Bind each explicit setup Agent's durable selection to prompt and request assembly. */
++export function installSidechatModelSelection(host: Context, agentCtx: Context, agent: Agent): void {
++  const services = host as unknown as { get(name: string): unknown }
++  const projections = services.get('sessionProjections') as {
++    stateOf(session: Agent['session'], key: string): { pending: ModelSelection | null; lastUsed: ModelSelection | null } | undefined
++  } | undefined
++  const defaults = services.get('agentDefaultModel') as { currentSelection(): ModelSelection } | undefined
++  installModelSelection(agentCtx, {
++    get current() {
++      const projected = projections?.stateOf(agent.session, 'modelSelection')
++      const header = agent.session.requestHeader()
++      const logged = header === undefined ? undefined : {
++        provider: header.config.provider, model: header.config.model,
++        ...(header.config.reasoningEffort === undefined || header.adapterDefaults?.reasoningEffort === true
++          ? {} : { reasoningEffort: header.config.reasoningEffort }),
++      }
++      const selected = projected?.pending ?? logged ?? projected?.lastUsed
++        ?? (agent.options.provider !== undefined && agent.options.model !== undefined
++          ? { provider: agent.options.provider, model: agent.options.model, reasoningEffort: agent.options.reasoningEffort }
++          : defaults?.currentSelection())
++      if (selected === undefined) return undefined
++      return {
++        provider: selected.provider, model: selected.model,
++        ...(selected.reasoningEffort === undefined ? {} : { reasoningEffort: ReasoningEffortId(selected.reasoningEffort) }),
++      }
++    },
++    assembled: undefined,
++  })
++}
+diff --git a/src/sidechat-routes.ts b/src/sidechat-routes.ts
+index 9d60df490c1c004737df250e5fb7fd6b471ca123..1639644489e8846e3c6cf81cfa384585a4484390 100644
+--- a/src/sidechat-routes.ts
++++ b/src/sidechat-routes.ts
+@@ -25,7 +25,6 @@ import { randomUUID } from 'node:crypto'
+ import { createUserMessage, type ContentBlock, type UserMessage } from '@deepseek-ai/dsh-llm'
+ import type { Agent, AgentSetup, CreateAgentOptions, ResumeAgentOptions } from '@deepseek-ai/dsh-agent'
+ import { snapshotSubagentDescriptor } from '@deepseek-ai/dsh-subagent'
+-import type { Context as CordisContext } from '@deepseek-ai/cordis'
+ import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
+ import { SessionLogOffset } from '@deepseek-ai/dsh-session'
+ import type {
+@@ -52,6 +51,7 @@ import {
+ import type { AssistantLiveBuffer } from './assistant-live.ts'
+ import { requireString, SidebarError } from './wire.ts'
+ import { readPersistedSession } from './session-store.ts'
++import { installSidechatModelSelection } from './sidechat-model.ts'
+ 
+ /** The six Side Chat routes of the sidebar API (wire method names). */
+ export interface SidechatRoutes {
+@@ -96,20 +96,28 @@ const threadDisposers = new Map<string, () => Promise<void>>()
+ const pendingSnapshots = new Map<string, string>()
+ 
+ /** Resolve the parent's preset and build the child's composition setup
+- *  (mirror of api-proxy's composeAgent minus the model-selection install —
+- *  the child carries the parent's provider/model in agentOptions). */
++ *  including model binding on both creation and cold resume). */
+ async function composeChildSetup(
+   ctx: Context,
+   presetId: string | undefined,
+ ): Promise<{ agentPreset?: string; setup: AgentSetup }> {
+   const presets = ctx.get('agentPresets') as SidebarAgentPresetsService | undefined
+   if (presets === undefined) {
+-    return { setup: () => Promise.resolve() }
++    return { setup: (agentCtx, agent) => {
++      // V3 projections replay the full seed. Cancel only the fresh child's inherited queue,
++      // before preset setup may add its own input; never clear a cold child's own pending work.
++      agent.inbox.clear()
++      installSidechatModelSelection(ctx, agentCtx, agent)
++    } }
+   }
+   const resolved = await presets.resolve(presetId)
+   return {
+     agentPreset: resolved.id,
+-    setup: async (agentCtx: CordisContext) => { await presets.mount(agentCtx, resolved.id) },
++    setup: async (agentCtx, agent) => {
++      agent.inbox.clear()
++      installSidechatModelSelection(ctx, agentCtx, agent)
++      await presets.mount(agentCtx, resolved.id)
++    },
+   }
+ }
+ 
+@@ -121,16 +129,19 @@ async function composePersistedSetup(
+ ): Promise<AgentSetup> {
+   const persistence = ctx.get('sessionPersistence') as SidebarSessionPersistenceService | undefined
+   if (persistence === undefined) {
+-    return () => Promise.resolve()
++    return (agentCtx, agent) => { installSidechatModelSelection(ctx, agentCtx, agent) }
+   }
+   const inspected = await readPersistedSession(persistence, childId)
+   const presetId = resolvePresetId(inspected.header, inspected.events)
+   const presets = ctx.get('agentPresets') as SidebarAgentPresetsService | undefined
+   if (presets === undefined || presetId === undefined) {
+-    return () => Promise.resolve()
++    return (agentCtx, agent) => { installSidechatModelSelection(ctx, agentCtx, agent) }
+   }
+   const resolved = await presets.resolve(presetId)
+-  return async (agentCtx: CordisContext) => { await presets.mount(agentCtx, resolved.id) }
++  return async (agentCtx, agent) => {
++    installSidechatModelSelection(ctx, agentCtx, agent)
++    await presets.mount(agentCtx, resolved.id)
++  }
+ }
+ 
+ /** One text-block prompt (the thread boundary + question, or a follow-up). */
+@@ -249,16 +260,11 @@ export function buildSidechatApi(ctx: Context, live?: AssistantLiveBuffer): Side
+         data: descriptor as unknown as Record<string, unknown>,
+       }
+       const seed = [...inheritance.seed, descriptorEvent]
+-      // Fork-marker fields (the exact shape the host's own session.fork uses,
+-      // api-session-controller): without `isSeeded` + `inheritedEventCount` the
+-      // session treats the whole seed as the child's OWN events, so the child's
+-      // Inbox constructor replays the parent's `agent/inbox/spliced` events and
+-      // inherits whatever input sat UNCLAIMED in the parent at the click moment
+-      // (a queued follow-up, or a tool-result context spliced into next-step
+-      // between step boundaries of a long-running turn). The first side prompt
+-      // would then claim and send that stale message BEFORE the boundary +
+-      // question. The marker keeps `ownEvents()` at the end-seed boundary, so
+-      // the inherited inbox replays to empty.
++      // Keep the full inherited transcript and its exact display/ownership cut.
++      // V3 Inbox projections fold the full seed despite this marker: the fresh
++      // child setup separately records cancellation of inherited pending input.
++      // Those child-owned cancellation events survive cold resume without
++      // rewriting the parent or discarding the child's later queued work.
+       const options: CreateAgentOptions = {
+         sessionId: childId,
+         meta: {

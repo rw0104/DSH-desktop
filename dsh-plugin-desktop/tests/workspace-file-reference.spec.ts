@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { InputState } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { workspaceFileReference } from '../src/client/workspace-file-reference.ts'
-const base: InputState = { draft: 'Read @long-file.txt ', draftRev: 9, phase: 'plain', imageIds: [], queue: [], occurrences: [
+const base: InputState = { draft: 'Read @long-file.txt ', draftRev: 9, phase: 'plain', attachmentIds: [], queue: [], occurrences: [
   { occurrenceId: 1, source: 'files', ref: 'old', offset: 5, length: 14, label: 'long-file.txt', clipboardText: '@long-file.txt' },
 ] }
 describe('workspace file reference append', () => {

@@ -2,6 +2,30 @@
 
 ## 2026-09-15 rc.2 迁移继续开发
 
+已形成阶段提交 `5ef1a81675`（图片/模型/布局等 rc.2 合同）。随后迁移 Sidebar 0.19.1
+产品补丁：模型绑定使用 setup 显式传入的 Agent；冷读取沿用 `open/read/close`，读取
+失败时释放 handle 且不恢复 Agent、不提交新输入。真实 Agent + JSONL 测试发现 V3
+Inbox 会折叠完整 seed，`isSeeded/inheritedEventCount` 并不会清空父待处理消息。新建
+Sidechat 在预设挂载前通过公开 `agent.inbox.clear()` 记录子会话自身的取消事件，
+不改父日志，冷恢复不清空子会话自己的后续排队消息。该规则分别验证 next-turn、
+next-step、空队列和中断后冷恢复。
+
+恢复菜单按实际尺寸定位和焦点恢复补丁，修改范围仅含所属菜单；保留 0.19.1 文件树
+新入口。Sidebar/菜单/Markdown/终端聚焦 **35 passed**，包含模型绑定源码与发布 JS
+双路径。Desktop 最新全套为 **112 suites passed / 3 failed，932 tests passed /
+11 failed / 11 skipped**；余下失败为 Windows preset/CLI 与 package 合同断言。
+Desktop build、immutable install、补丁 JS 语法检查与文档边界通过；完整 typecheck
+发现两个测试夹具仍用旧字段/React props，已修正并通过相关 8 项回归，整体验证重跑中。
+本轮仍未更新 gitlink、打包或发布，也未证明旧格式 0 日志的完整迁移验收通过。
+
+继续开发时重复 `git ls-remote` 遇到连接重置/超时，未将失败视为“无更新”。改用官方
+GitHub REST `repos/{owner}/{repo}/commits/HEAD` 与 `git/ref/tags/{tag}` 核验：Harness
+和 Sidebar HEAD 及本轮目标 tags 与下述记录一致；Desktop reference HEAD 又前进到
+`5510cb1203838f2d55f9bbd52cdcfaae1cad5eac`（提交时间 `2026-09-15T14:17:37Z`）。
+它仅是新增比较输入，尚未完成差异评审；已核验的稳定 v2.0.10 tag 未变。npm 三方
+查询仍为 Harness latest rc.1 / next rc.2 / alpha 0.1.6-alpha.1、Sidebar 0.19.1、
+参考 Desktop 包 2.0.0。不能声称已完成新 reference HEAD 的兼容接入。
+
 开发分支为 `codex/dsh-015-integration-20260915`。重新查询三方 HEAD/heads/tags 和 npm：Harness master 为 `0d1f50007f9bca3f52b06e1c3074fa14d5fb0720`，新增 `dsh-v0.1.6-alpha.1=0a15e36e7f82b6ed45af6fa9759f29b40dcd965d`；CLI `latest=0.1.5-rc.1`、`next=0.1.5-rc.2`、`alpha=0.1.6-alpha.1`。按已接受的迁移计划，目标仍固定为 `fb2c4b9e698e30edb738bca4cf0618587db7d203` / `0.1.5-rc.2`；新 alpha 的 Session、插件与包内合同尚未验证，后续独立评估，不能把它混入当前 rc.2 验收。
 
 Sidebar main 仍为 `1fcf43ccbedd6e66370b7fb81df2b4dd0ef2604e`，npm latest `0.19.1`。更正前次记录：`v0.19.1` 对应 `8753096a583ff2891d57a0074f1ac71cd5c6003e`，`754974afeaf5c0aa310d6104dfd892ef56a6297d` 实为 `v0.19.0`，不是本轮采用的 tag。Desktop reference master 更新为 `0a9433fafcdcf7930dba8d54cafb6d35edc0f7ab`，稳定 `v2.0.10` tag 为 `697e7d782cbfc2b9e8fa0ac862ef26bba9ac1326`，继续仅作只读比较。查询采用下节列明的三条权威 URL 与官方 npm registry。
