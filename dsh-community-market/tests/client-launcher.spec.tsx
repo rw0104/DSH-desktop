@@ -33,6 +33,7 @@ describe('community market launcher', () => {
       wide: false,
       actions: instance.actions,
       useStore,
+      usePanelInfo: selector => selector({ activePanelId: null }),
       t,
     } satisfies MarketLauncherProps
 

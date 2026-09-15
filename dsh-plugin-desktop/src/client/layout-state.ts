@@ -1,13 +1,20 @@
+import type { ILayout, MainPanelId, PanelInfo } from '@deepseek-ai/dsh-client-ui-layout/client'
+
 /** Advanced-shell panel state shared by the root slot and layout-service adapter. */
 export interface DesktopLayoutSnapshot {
   /** Preferred sidebar width; zero means the compact rail. */
   sidebar: number
-  /** Preferred details width; zero means closed. */
+  /** Preferred rightbar width; visibility is reported separately by the owner. */
   details: number
   /** Whether the current viewport is below the automatic-collapse breakpoint. */
   narrow: boolean
   /** Manual narrow-screen override that temporarily expands the rail. */
   narrowExpanded: boolean
+  /** Selected root-scoped panel; its identity is independent of the active Session. */
+  panelInfo: PanelInfo
+  rightbarShown: boolean
+  rightbarTrack: boolean
+  rightbarFullscreen: boolean
 }
 
 /** Column geometry after preserving the center surface. */
@@ -63,14 +70,57 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 /** Small observable panel controller used by the advanced root registration. */
-export class DesktopLayoutState {
+export class DesktopLayoutState implements ILayout {
   private snapshot: DesktopLayoutSnapshot = Object.freeze({
     sidebar: SIDEBAR_DEFAULT,
     details: 0,
     narrow: false,
     narrowExpanded: false,
+    panelInfo: Object.freeze({ activePanelId: null }),
+    rightbarShown: false,
+    rightbarTrack: false,
+    rightbarFullscreen: false,
   })
   private readonly listeners = new Set<() => void>()
+  private navigation = new AbortController()
+
+  constructor(private readonly hasMainPanel: (id: MainPanelId) => boolean = () => false) {}
+
+  /** Select a registered global panel without changing the selected Session. */
+  selectPanel(panelId: MainPanelId | null): void {
+    if (panelId !== null && !this.hasMainPanel(panelId)) throw new Error(`layout.selectPanel: main panel "${panelId}" is not registered`)
+    this.navigation.abort()
+    if (this.snapshot.panelInfo.activePanelId === panelId) return
+    this.publish({ ...this.snapshot, panelInfo: Object.freeze({ activePanelId: panelId }) })
+  }
+
+  /** Cancel superseded asynchronous Session or global-panel navigation. */
+  beginNavigation(): AbortSignal {
+    this.navigation.abort()
+    this.navigation = new AbortController()
+    return this.navigation.signal
+  }
+
+  dispose(): void {
+    this.navigation.abort()
+    this.listeners.clear()
+  }
+
+  /** The rightbar owns expanded state; this service records its geometry request. */
+  openRightbar(track: boolean, fullscreen: boolean): void {
+    if (this.snapshot.rightbarShown && this.snapshot.rightbarTrack === track && this.snapshot.rightbarFullscreen === fullscreen) return
+    this.publish({
+      ...this.snapshot,
+      details: this.snapshot.details || DETAILS_DEFAULT,
+      narrowExpanded: !this.snapshot.rightbarShown && this.snapshot.narrow ? false : this.snapshot.narrowExpanded,
+      rightbarShown: true, rightbarTrack: track, rightbarFullscreen: fullscreen,
+    })
+  }
+
+  closeRightbar(): void {
+    if (!this.snapshot.rightbarShown) return
+    this.publish({ ...this.snapshot, rightbarShown: false, rightbarTrack: false, rightbarFullscreen: false })
+  }
 
   /** @returns the immutable current panel snapshot. */
   getSnapshot(): DesktopLayoutSnapshot {

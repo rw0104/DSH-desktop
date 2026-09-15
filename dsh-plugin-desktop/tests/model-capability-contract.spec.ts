@@ -1,6 +1,6 @@
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime, { LlmAdapter } from '@deepseek-ai/dsh-llm'
-import type { GenerateOptions, LlmModelInfo, StreamChunk } from '@deepseek-ai/dsh-llm'
+import type { GenerateOptions, LlmModelInfo, LlmResolvedModelInfo, StreamChunk } from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
 import { buildModelCatalog } from '@deepseek-ai/dsh-api-session-controller'
 import { TYPERT } from '@deepseek-ai/dsh-api-session-controller/typert'
@@ -42,6 +42,29 @@ class CapabilityAdapter extends LlmAdapter {
 }
 
 describe('upstream model capability wire contract', () => {
+  it('retains rc.2 in-history prompt metadata and disables retries only for image calls', async () => {
+    class SnapshotAdapter extends CapabilityAdapter {
+      override resolveModel(provider: string, id: string): Promise<LlmResolvedModelInfo> {
+        return Promise.resolve({
+          provider, id, name: id, inputModalities: ['text'], systemPromptUpdate: 'in-history',
+          ...(id === 'image' ? { outputModalities: ['image'] as const, imageGenerationApi: 'openai-images', supportsTools: false } : {}),
+        })
+      }
+    }
+    const ctx = new Context()
+    try {
+      await ctx.plugin(LlmRuntime)
+      ctx.llm.registerAdapter(['fixture'], new SnapshotAdapter())
+      const image = await ctx.llm.prepareCall({ provider: 'fixture', model: 'image' })
+      const text = await ctx.llm.prepareCall({ provider: 'fixture', model: 'text' })
+      expect(image).toMatchObject({ systemPromptUpdate: 'in-history', outputModalities: ['image'], supportsTools: false })
+      expect(image.retryPolicy).toMatchObject({ mode: 'normal', maxRetries: 0 })
+      expect(text.systemPromptUpdate).toBe('in-history')
+      expect(text.retryPolicy).toEqual(ctx.llm.providerRetryPolicy('fixture'))
+      if (text.retryPolicy.mode !== 'normal') throw new Error('fixture should use the normal retry policy')
+      expect(text.retryPolicy.maxRetries).toBeGreaterThan(0)
+    } finally { await ctx.fiber.dispose() }
+  })
   it('sends an automatically inferred custom-model image through the real adapter to an HTTP endpoint', async () => {
     const requests: unknown[] = []
     const server = createServer(async (req, res) => {

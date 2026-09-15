@@ -51,7 +51,7 @@ describe('selected model native image output', () => {
     } satisfies ImageProtocol)
     try {
       const { ctx } = await setup('new-image-model', { output: ['image'] }, { provider: 'vendor-a', api: 'openai-completions', baseURL: 'https://vendor-a.invalid/v1', imageGenerationApi: 'fixture-poll-error', retryPolicy: { mode: 'normal', maxRetries: 1, backoff: { initialDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 } } })
-      await ctx.plugin(SessionStore); await ctx.plugin(SessionProjectionRegistry); await ctx.plugin(SystemPrompt, { persona: 'fixture' })
+      await ctx.plugin(SessionStore); await ctx.plugin(SessionProjectionRegistry); await ctx.plugin(SystemPrompt, { personaPrefix: 'fixture' })
       await ctx.plugin(ToolRuntime); await ctx.plugin(AgentRegistry); await ctx.plugin(AgentLoop, { agents: [] })
       const Retry = await import(pathToFileURL(createRequire(import.meta.url).resolve('@deepseek-ai/dsh-llm-retry')).href)
       await ctx.plugin(Retry)
@@ -272,7 +272,7 @@ describe('selected model native image output', () => {
   })
   it('runs ordinary Agent turns, stores native images in the session, and ignores obsolete generation-mode records', async () => {
     const { ctx } = await setup()
-    await ctx.plugin(SessionStore); await ctx.plugin(SessionProjectionRegistry); await ctx.plugin(SystemPrompt, { persona: 'fixture' })
+    await ctx.plugin(SessionStore); await ctx.plugin(SessionProjectionRegistry); await ctx.plugin(SystemPrompt, { personaPrefix: 'fixture' })
     await ctx.plugin(ToolRuntime); await ctx.plugin(AgentRegistry); await ctx.plugin(AgentLoop, { agents: [] })
     const shell = vi.fn()
     ctx.tools.register(defineContentToolFixture({ name: 'pwsh', description: 'must not be involved in model image output', parameters: {}, execute: async () => { shell(); return [] } }))

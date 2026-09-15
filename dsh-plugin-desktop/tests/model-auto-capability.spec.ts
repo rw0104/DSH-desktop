@@ -105,9 +105,31 @@ describe('automatic custom-model image capabilities', () => {
     try {
       await ctx.plugin(LlmRuntime)
       await ctx.plugin(PiAi, { providers: {} })
-      const found = await ctx.llm.discoverModels('llm-pi-ai', { provider: 'anthropic' })
+      const found = await ctx.llm.discoverModels('llm-pi-ai', { provider: 'google' })
       expect(found.some(model => model.inputModalities?.includes('image') && model.inputCapabilitySource === 'catalog')).toBe(true)
       expect(fetch).not.toHaveBeenCalled()
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('retains rc.2 Anthropic discovery and enriched gateway listings with image metadata', async () => {
+    const fetch = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ models: {
+      'gateway-vision': { id: 'canonical-id', displayName: 'Gateway Vision', limit: { context: 128000, output: 4096 }, input_modalities: ['text', 'image'] },
+      metadata: 'not a model',
+    } })))
+    vi.stubGlobal('fetch', fetch)
+    const ctx = new Context()
+    try {
+      await ctx.plugin(LlmRuntime)
+      await ctx.plugin(PiAi, { providers: {} })
+      const models = await ctx.llm.discoverModels('llm-pi-ai', {
+        provider: 'anthropic', api: 'anthropic-messages', baseURL: 'https://fixture.invalid/v1',
+      })
+      expect(fetch.mock.calls[0]?.[0]).toBe('https://fixture.invalid/v1/models?limit=1000')
+      expect(new Headers(fetch.mock.calls[0]?.[1]?.headers).get('anthropic-version')).toBe('2023-06-01')
+      expect(models).toEqual([{
+        id: 'gateway-vision', name: 'Gateway Vision', contextWindow: 128000, maxTokens: 4096,
+        inputModalities: ['text', 'image'], inputCapabilitySource: 'provider',
+      }])
     } finally { await ctx.fiber.dispose() }
   })
 

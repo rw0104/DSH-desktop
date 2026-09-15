@@ -10,7 +10,7 @@ interface SidebarStore {
   getPrefs(): { openByDefault: boolean; tabsEnabled: Record<string, boolean> }
   setPrefs(value: ReturnType<SidebarStore['getPrefs']>): void
   setSession(id: string): void
-  getSnapshot(): { state?: { panelOpen: boolean } }
+  getSnapshot(): { state?: { bottomOpen: boolean } }
 }
 const { createSidebarStore } = await vi.importActual<{ createSidebarStore(): SidebarStore }>('dsh-better-sidebar/src/client/state.ts')
 const { createBetterSidebarService } = await vi.importActual<{ createBetterSidebarService(store: SidebarStore): unknown }>('dsh-better-sidebar/src/client/service.ts')
@@ -56,7 +56,7 @@ describe('voice presentation in the actual desktop composition', () => {
     expect(overlays[0]!.inject!().controller).toBe(controller)
     controller.open('voice-test')
     expect(controller.panel.getSnapshot()).toBe('voice-test')
-    expect(store.getSnapshot().state?.panelOpen).toBe(false)
+    expect(store.getSnapshot().state?.bottomOpen).toBe(false)
     controller.minimizePanel()
     expect(controller.minimized.getSnapshot()).toBe(true)
     controller.restorePanel()
@@ -67,7 +67,7 @@ describe('voice presentation in the actual desktop composition', () => {
     const { controller, store } = composition('advanced', false)
     controller.open('voice-test')
     expect(controller.panel.getSnapshot()).toBe('voice-test')
-    expect(store.getSnapshot().state?.panelOpen).toBe(false)
+    expect(store.getSnapshot().state?.bottomOpen).toBe(false)
   })
 
   it('does not request a ticket or microphone until the intended panel is visible', async () => {

@@ -27,7 +27,7 @@ function attachmentPlugin() {
 }
 
 describe('additive attachment presentation extension', () => {
-  it('offers a disposable preview extension without replacing the three original renderers', () => {
+  it('offers a disposable preview extension while retaining all four upstream renderers', () => {
     const { entries, services } = attachmentPlugin()
     const presentation = services.get('attachmentPresentation') as { registerPreview(renderer: () => null): () => void } | undefined
     expect(presentation).toBeDefined()
@@ -39,7 +39,11 @@ describe('additive attachment presentation extension', () => {
     remove()
     expect(() => presentation!.registerPreview(() => null)).toThrow('already registered')
     removeNext()
-    expect([...entries.values()].map(component => component.name)).toEqual(['ComposerAttachments', 'MessageImages', 'MessageImages'])
+    expect([...entries.keys()]).toEqual([
+      'conversation.input.attachments', 'conversation.message.images',
+      'conversation.trajectory.images', 'tool.call.images',
+    ])
+    expect([...entries.values()].map(component => component.name)).toEqual(['ComposerAttachments', 'MessageImages', 'MessageImages', 'MessageImages'])
   })
   it('keeps natural-size single images and compact multiple-image tiles', () => {
     const { entries } = attachmentPlugin()

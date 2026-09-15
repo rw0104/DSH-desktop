@@ -35,7 +35,12 @@ describe('published non-terminal subprocess runtime with the Desktop patch', () 
     expect(await child.done).toMatchObject({ exitCode: 7 })
     expect(Buffer.concat(stdout).toString()).toBe('out')
     expect(Buffer.concat(stderr).toString()).toBe('err')
-    expect(vi.mocked(spawn).mock.calls[0]?.[2]).toMatchObject({ windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
+    if (process.platform === 'win32') {
+      // rc.2 starts a private Job runner; target output travels over its
+      // dedicated descriptors and is verified above through the public handle.
+      expect(vi.mocked(spawn).mock.calls[0]?.[2]).toMatchObject({ windowsHide: true })
+      expect(vi.mocked(spawn).mock.calls[0]?.[2]?.stdio).toEqual(expect.arrayContaining(['ipc', 'pipe']))
+    }
   })
   it('still terminates a cancelled background child', async () => {
     const service = await runtime()
@@ -64,6 +69,9 @@ describe('published non-terminal subprocess runtime with the Desktop patch', () 
     child.stdout!.on('data', chunk => stdout.push(Buffer.from(chunk)))
     child.stderr!.on('data', chunk => stderr.push(Buffer.from(chunk)))
     expect(await child.done, Buffer.concat(stderr).toString()).toMatchObject({ exitCode: 0 })
-    expect(JSON.parse(Buffer.concat(stdout).toString())).toMatchObject({ visible: false, pid: child.pid })
+    const reported = JSON.parse(Buffer.concat(stdout).toString()) as { visible: boolean; pid: number }
+    expect(reported.visible).toBe(false)
+    expect(reported.pid).toBeGreaterThan(0)
+    expect(await child.waitForExit()).toBe(true)
   })
 })

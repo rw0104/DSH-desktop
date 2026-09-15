@@ -1,0 +1,39 @@
+diff --git a/lib/client.js b/lib/client.js
+index 1b7f1344e65adac4f08f13a35eb94fa3b89bd9f1..0ade3460e00a5d458b05c001d1a9f4abeaa669dd 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -14947,6 +14947,8 @@ window.__ModuleLoader__.load({
+ 			return (0, react_jsx_runtime.jsxs)("div", {
+ 				ref: rootResizeRef,
+ 				className: ConversationRoot_module_css_default.root,
++				"data-dsh-conversation-drop-target": "",
++				style: { position: "relative" },
+ 				"data-phase": phase,
+ 				children: [sessionId === void 0 ? null : renderSlot("conversation.session.header", {}), (0, react_jsx_runtime.jsxs)("div", {
+ 					className: ConversationRoot_module_css_default.body,
+@@ -16131,7 +16133,7 @@ window.__ModuleLoader__.load({
+ 								children: [(0, react_jsx_runtime.jsxs)("div", {
+ 									className: InputBar_module_css_default.tools,
+ 									children: [
+-										(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
++										renderSlot("conversation.input.add", { locked: subagent !== null || locked || machineBusy || addFiles === void 0, onAddImages: intakeFiles, onCommands: onToggleCommandMenu }, { fallback: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
+ 											label: t("input.commands"),
+ 											side: "top",
+ 											delayMs: 500,
+@@ -16146,7 +16148,7 @@ window.__ModuleLoader__.load({
+ 												onClick: onToggleCommandMenu,
+ 												children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutline16, { size: 14 })
+ 											})
+-										}),
++										}) }),
+ 										(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
+ 											label: t("file.attach"),
+ 											side: "top",
+@@ -16717,6 +16719,7 @@ window.__ModuleLoader__.load({
+ 				name: "conversation.composer.bar",
+ 				locale: NS,
+ 				children: {
++					"conversation.input.add": { kind: "single", scope: "session-maybe" },
+ 					"conversation.input.attachments": {
+ 						kind: "single",
+ 						scope: "session-maybe"

@@ -102,6 +102,11 @@ export function apply(ctx: ClientContext): void {
     ctx.effect(() => startRendererBootReporter(ctx.loader), 'dsh-plugin-desktop: renderer boot health report')
     return
   }
+  // rc.2 Workspace UI needs layout before it can provide uiWorkspace to
+  // Conversation. Seat the native carrier before waiting on feature services.
+  if (environment.mode === 'advanced') {
+    ctx.inject(['slots', 'theme'], shellCtx => applyAdvancedShell(shellCtx, environment))
+  }
   ctx.inject(desktopClientServices, desktopCtx => installDesktopClient(desktopCtx, environment))
 }
 
@@ -219,8 +224,5 @@ function installDesktopClient(ctx: ClientContext, environment: DesktopClientEnvi
       removeStyles()
     }
   }, 'desktop: About settings section')
-  if (environment.mode === 'advanced') {
-    applyAdvancedShell(ctx, environment)
-  }
   installClientExperience(ctx)
 }

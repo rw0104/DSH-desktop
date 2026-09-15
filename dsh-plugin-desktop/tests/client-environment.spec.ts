@@ -25,6 +25,17 @@ describe('desktop client environment', () => {
     expect(inject).not.toContain('betterSidebar')
   })
 
+  it('seats the native layout before waiting on the Conversation/Workspace dependency chain', () => {
+    vi.stubGlobal('window', { location: { search: '?dsh-desktop-mode=advanced&dsh-desktop-platform=win32' } })
+    const dependencies: string[][] = []
+    try {
+      apply({ inject: (services: string[]) => { dependencies.push(services) } } as unknown as ClientContext)
+      expect(dependencies[0]).toEqual(['slots', 'theme'])
+      expect(dependencies[0]).not.toContain('conversation')
+      expect(dependencies[1]).toBe(desktopClientServices)
+    } finally { vi.unstubAllGlobals() }
+  })
+
   it('does not activate desktop effects for an ordinary browser URL', () => {
     vi.stubGlobal('window', { location: { search: '' } })
     const effect = vi.fn()
@@ -143,7 +154,10 @@ describe('advanced desktop layout', () => {
     layout.toggleSidebar()
     layout.openDetails()
     layout.closeDetails()
-    expect(snapshots).toEqual([
+    expect(snapshots.map(value => {
+      const { sidebar, details, narrow, narrowExpanded } = value as ReturnType<DesktopLayoutState['getSnapshot']>
+      return { sidebar, details, narrow, narrowExpanded }
+    })).toEqual([
       { sidebar: 0, details: 0, narrow: false, narrowExpanded: false },
       { sidebar: 0, details: 360, narrow: false, narrowExpanded: false },
       { sidebar: 0, details: 0, narrow: false, narrowExpanded: false },

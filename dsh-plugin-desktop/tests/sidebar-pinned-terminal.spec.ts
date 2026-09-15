@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   allLeaves,
   makeDefaultState,
-  openTabInActivePane,
+  openTabInBottomPane,
   reconcileAgentTerminals,
   sanitizeState,
   setTabPin,
@@ -23,16 +23,14 @@ import {
 } from 'dsh-better-sidebar/src/client/terminal-links.ts'
 
 function withTabs(...tabs: SidebarTab[]): SidebarState {
-  let state = makeDefaultState(400, true, 'none')
-  for (const tab of tabs) state = openTabInActivePane(state, tab)
+  let state = makeDefaultState()
+  for (const tab of tabs) state = openTabInBottomPane(state, tab)
   return state
 }
 
 function tab(state: SidebarState, id: string): SidebarTab | undefined {
-  return allLeaves(state.splits)
-    .concat(allLeaves(state.bottomSplits))
+  return allLeaves(state.bottomSplits)
     .flatMap(leaf => leaf.tabs)
-    .concat(state.floats.map(float => float.tab))
     .find(candidate => candidate.id === id)
 }
 
@@ -41,7 +39,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('Better Sidebar 0.17.1 pinned terminal consumer contract', () => {
+describe('Better Sidebar 0.19.1 bottom-workbench pinned terminal consumer contract', () => {
   it('loads legacy state and fail-soft sanitizes damaged pin metadata', () => {
     const legacy = JSON.parse(JSON.stringify(withTabs(
       { id: 'terminal:legacy', type: 'terminal', title: 'Legacy' },
@@ -49,7 +47,7 @@ describe('Better Sidebar 0.17.1 pinned terminal consumer contract', () => {
       { id: 'terminal:bad-cwd', type: 'terminal', title: 'Bad cwd' },
       { id: 'editor:bad-pin', type: 'editor', title: 'Editor' },
     ))) as SidebarState
-    const tabs = allLeaves(legacy.splits).flatMap(leaf => leaf.tabs) as unknown as Array<Record<string, unknown>>
+    const tabs = allLeaves(legacy.bottomSplits).flatMap(leaf => leaf.tabs) as unknown as Array<Record<string, unknown>>
     tabs.find(value => value.id === 'terminal:bad-scope')!.pin = { scope: 'session', homeCwd: 'C:\\work' }
     tabs.find(value => value.id === 'terminal:bad-cwd')!.pin = { scope: 'workspace', homeCwd: 42 }
     tabs.find(value => value.id === 'editor:bad-pin')!.pin = { scope: 'global' }

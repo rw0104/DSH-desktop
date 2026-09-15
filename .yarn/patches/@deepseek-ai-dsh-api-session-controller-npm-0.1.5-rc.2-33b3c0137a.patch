@@ -1,0 +1,61 @@
+diff --git a/lib/index.js b/lib/index.js
+index 0e94dd33ddca78b3d1f9a7145298d3a56293494f..65baf1634f4557760afbb2e7aba2a81641c29fa9 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -2004,6 +2004,8 @@ async function buildModelCatalog(ctx, defaultSelection = ctx.agentDefaultModel.c
+ 					id: model.id,
+ 					name: model.name,
+ 					...model.description === void 0 ? {} : { description: model.description },
++					...resolved.inputModalities === void 0 ? {} : { inputModalities: resolved.inputModalities },
++					...resolved.outputModalities === void 0 ? {} : { outputModalities: resolved.outputModalities },
+ 					...reasoning === void 0 ? {} : { reasoning }
+ 				};
+ 			}));
+diff --git a/lib/typert.host.js b/lib/typert.host.js
+index f619491a358d525e10e23417e9ebec6d7e687fbe..755c23f330f15041cec4403fda3ceef150f50fa5 100644
+--- a/lib/typert.host.js
++++ b/lib/typert.host.js
+@@ -518,6 +518,8 @@ const _deepseek_ai_dsh_api_session_controller_session_modelCatalog_result$schema
+   'id': z.string().readonly(),
+   'name': z.string().readonly(),
+   'description': z.string().readonly().optional(),
++    'inputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
++    'outputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
+   'reasoning': z.object({
+   'efforts': z.array(z.object({
+   'id': z.string().readonly(),
+diff --git a/lib/typert.remote-client.js b/lib/typert.remote-client.js
+index 4009608d0e2d91fe25852d045c07b2280ec77a6f..401415b4aaa60e0955bffd278a68c09bb07b7f30 100644
+--- a/lib/typert.remote-client.js
++++ b/lib/typert.remote-client.js
+@@ -518,6 +518,8 @@ const _deepseek_ai_dsh_api_session_controller_session_modelCatalog_result$schema
+   'id': z.string().readonly(),
+   'name': z.string().readonly(),
+   'description': z.string().readonly().optional(),
++    'inputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
++    'outputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
+   'reasoning': z.object({
+   'efforts': z.array(z.object({
+   'id': z.string().readonly(),
+diff --git a/lib/types/types.d.ts b/lib/types/types.d.ts
+index b468dba43d95c53d3ad0f03fa3f6630b48a2bcf5..55b2b74b37403d745c1f665f666b28ff4a572ad0 100644
+--- a/lib/types/types.d.ts
++++ b/lib/types/types.d.ts
+@@ -2,7 +2,7 @@
+ import type { AttachmentIdType, ImageAttachmentLimits, ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment';
+ import type { Branded } from '@deepseek-ai/dsh-brand';
+ import type { LlmAttemptId, MessageId } from '@deepseek-ai/dsh-llm/brand';
+-import type { ContentBlock } from '@deepseek-ai/dsh-llm';
++import type { ContentBlock, ModelModality } from '@deepseek-ai/dsh-llm';
+ import type { SessionId, SessionSeqCursor } from '@deepseek-ai/dsh-session/types';
+ import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/types';
+ import type { JobId } from '@deepseek-ai/dsh-jobs/brand';
+@@ -109,6 +109,8 @@ export interface ModelCatalogModel {
+     readonly id: string;
+     readonly name: string;
+     readonly description?: string;
++    readonly inputModalities?: readonly ModelModality[];
++    readonly outputModalities?: readonly ModelModality[];
+     readonly reasoning?: ModelReasoning;
+ }
+ /** One provider and its successfully loaded model catalog. */

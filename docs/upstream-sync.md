@@ -1,5 +1,19 @@
 # Upstream synchronization ledger
 
+## 2026-09-15 rc.2 迁移继续开发
+
+开发分支为 `codex/dsh-015-integration-20260915`。重新查询三方 HEAD/heads/tags 和 npm：Harness master 为 `0d1f50007f9bca3f52b06e1c3074fa14d5fb0720`，新增 `dsh-v0.1.6-alpha.1=0a15e36e7f82b6ed45af6fa9759f29b40dcd965d`；CLI `latest=0.1.5-rc.1`、`next=0.1.5-rc.2`、`alpha=0.1.6-alpha.1`。按已接受的迁移计划，目标仍固定为 `fb2c4b9e698e30edb738bca4cf0618587db7d203` / `0.1.5-rc.2`；新 alpha 的 Session、插件与包内合同尚未验证，后续独立评估，不能把它混入当前 rc.2 验收。
+
+Sidebar main 仍为 `1fcf43ccbedd6e66370b7fb81df2b4dd0ef2604e`，npm latest `0.19.1`。更正前次记录：`v0.19.1` 对应 `8753096a583ff2891d57a0074f1ac71cd5c6003e`，`754974afeaf5c0aa310d6104dfd892ef56a6297d` 实为 `v0.19.0`，不是本轮采用的 tag。Desktop reference master 更新为 `0a9433fafcdcf7930dba8d54cafb6d35edc0f7ab`，稳定 `v2.0.10` tag 为 `697e7d782cbfc2b9e8fa0ac862ef26bba9ac1326`，继续仅作只读比较。查询采用下节列明的三条权威 URL 与官方 npm registry。
+
+当前 `dccd5154f4` 是迁移中间提交：workspace 依赖已调整，但 submodule/upstream.json 仍在旧 pin，完整 typecheck 与图片回归未通过，不能作为可发布候选。图片输出协议、模型能力字段与附件预览扩展原本是本 fork 的 Yarn patches；没有在原生 rc.2 中出现并不等于上游删除了这些产品功能。下一步重建这些补丁，验证真实请求、图片持久化与重复提交防护，再继续 Session/Slot/Sidebar 迁移。
+
+本轮已重新生成 LLM、Pi-AI adapter/SDK、模型目录/选择器/设置、附件和 Composer 的 rc.2 补丁；清除补丁中误带的 reject 文件和仅改名的副本。新 LLM 层保留输出能力及新系统提示词字段，图片任务禁止自动重试，OpenRouter 未知模型保留既有 Completions 默认且不覆盖显式 API；继续支持新 Anthropic listing 与 enriched models map。图片/模型/附件聚焦组 **53 passed**，包括生产附件存储和真实 HTTP 回归。
+
+Desktop 自定义根已接入 keyed `main`、`rightbar`、`panelInfo` 与导航取消；布局在等待 Conversation 之前提供，解除 Workspace UI → layout → Conversation 的加载循环。语音保持 `b38b22b57a` / `26d3651b81` 已实现的独立浮窗，不重新依赖旧 Sidebar 右栏。布局/语音/固定终端/子进程聚焦组 **52 passed**。Windows 普通进程的新 Job runner 另加 `windowsHide`，真实子进程的输出、退出与不可见窗口验证通过。
+
+Desktop build 已通过，完整桌面测试盘点为 **108 suites passed / 7 failed，906 tests passed / 14 failed / 11 skipped**。失败集中于尚未迁移的 Sidechat/菜单补丁、Windows preset/CLI 补丁和旧 package locator 断言；包含部分 suite 导入失败，不能把 906 项解释为完整通过。完整 typecheck、Session V3 迁移、包内 Renderer/性能/closure、Market live-source replay 与独立 gitlink 提交仍待完成，产品版本仍为 2.2.8，未形成发布候选。
+
 ## 2026-09-14 主核心 0.1.5 RC 接入规划前复核
 
 本轮查询用于判断当前桌面基线是否需要接入官方 Harness 主核心更新；查询窗口为

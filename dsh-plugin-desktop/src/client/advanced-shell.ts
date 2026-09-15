@@ -18,7 +18,19 @@ export function applyAdvancedShell(ctx: ClientContext, environment: DesktopClien
     throw new Error(`dsh-plugin-desktop: advanced shell received mode ${JSON.stringify(environment.mode)}`)
   }
 
-  const desktopLayout = new DesktopLayoutState()
+  const desktopLayout = new DesktopLayoutState(id => ctx.slots.entries('main').some(entry => entry.options.key === id))
+  ctx.effect(() => {
+    const offSource = ctx.slots.provideRoot({ hooks: { panelInfo: {
+      getSnapshot: () => desktopLayout.getSnapshot().panelInfo,
+      subscribe: listener => desktopLayout.subscribe(listener),
+    } } })
+    const retain = () => {
+      const id = desktopLayout.getSnapshot().panelInfo.activePanelId
+      if (id !== null && !ctx.slots.entries('main').some(entry => entry.options.key === id)) desktopLayout.selectPanel(null)
+    }
+    const offPanels = ctx.slots.subscribe('main', retain)
+    return () => { offPanels(); offSource(); desktopLayout.dispose() }
+  }, 'desktop: main-panel navigation lifetime')
   ctx.effect(
     () => provideDesktopLayout(ctx, desktopLayout),
     'desktop: layout service',
@@ -49,8 +61,8 @@ export function applyAdvancedShell(ctx: ClientContext, environment: DesktopClien
     name: 'root',
     children: {
       'sidebar': { kind: 'single', scope: 'root' },
-      'conversation': { kind: 'single', scope: 'session-maybe' },
-      'details': { kind: 'single', scope: 'session' },
+      'main': { kind: 'keyed', scope: 'root' },
+      'rightbar': { kind: 'single', scope: 'root' },
       'shell.overlay': { kind: 'list', scope: 'root' },
     },
     inject: () => ({ layout: desktopLayout, platform: environment.platform }),

@@ -16,7 +16,23 @@
   "resolutions": {
     "app-builder-lib@npm:26.15.7": "patch:app-builder-lib@npm%3A26.15.7#./patches/app-builder-lib@26.15.7.patch",
     "koffi@npm:^3.1.0": "3.1.5",
-    "@earendil-works/pi-ai@npm:^0.84.2": "patch:@earendil-works/pi-ai@npm%3A0.84.4#~/.yarn/patches/@earendil-works-pi-ai-npm-0.84.4-1e468e33fa.patch"
+    "@deepseek-ai/dsh-llm-pi-ai@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-llm-pi-ai@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-llm-pi-ai-npm-0.1.5-rc.2-6c7cc127a0.patch",
+    "@deepseek-ai/dsh-llm-pi-ai@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-llm-pi-ai@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-llm-pi-ai-npm-0.1.5-rc.2-6c7cc127a0.patch",
+    "@deepseek-ai/dsh-llm@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-llm@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-llm-npm-0.1.5-rc.2-612769a350.patch",
+    "@deepseek-ai/dsh-llm@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-llm@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-llm-npm-0.1.5-rc.2-612769a350.patch",
+    "@earendil-works/pi-ai@npm:^0.85.1": "patch:@earendil-works/pi-ai@npm%3A0.85.1#./.yarn/patches/@earendil-works-pi-ai-npm-0.85.1-ba4709ead3.patch",
+    "@deepseek-ai/dsh-api-session-controller@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-api-session-controller@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-api-session-controller-npm-0.1.5-rc.2-33b3c0137a.patch",
+    "@deepseek-ai/dsh-client-ui-settings-models@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-settings-models@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-settings-models-npm-0.1.5-rc.2-f9e43d1ac1.patch",
+    "@deepseek-ai/dsh-client-ui-model-selection@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-model-selection@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-model-selection-npm-0.1.5-rc.2-cb17f5c648.patch",
+    "@deepseek-ai/dsh-client-ui-attachment@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-attachment@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-attachment-npm-0.1.5-rc.2-38004a43f6.patch",
+    "@deepseek-ai/dsh-client-ui-conversation@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-conversation@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-conversation-npm-0.1.5-rc.2-5912cf14f5.patch",
+    "@deepseek-ai/dsh-api-session-controller@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-api-session-controller@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-api-session-controller-npm-0.1.5-rc.2-33b3c0137a.patch",
+    "@deepseek-ai/dsh-client-ui-settings-models@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-settings-models@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-settings-models-npm-0.1.5-rc.2-f9e43d1ac1.patch",
+    "@deepseek-ai/dsh-client-ui-model-selection@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-model-selection@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-model-selection-npm-0.1.5-rc.2-cb17f5c648.patch",
+    "@deepseek-ai/dsh-client-ui-attachment@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-attachment@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-attachment-npm-0.1.5-rc.2-38004a43f6.patch",
+    "@deepseek-ai/dsh-client-ui-conversation@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-conversation@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-conversation-npm-0.1.5-rc.2-5912cf14f5.patch",
+    "@deepseek-ai/dsh-subprocess-local@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-subprocess-local@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-subprocess-local-npm-0.1.5-rc.2-2624341557.patch",
+    "@deepseek-ai/dsh-subprocess-local@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-subprocess-local@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-subprocess-local-npm-0.1.5-rc.2-2624341557.patch"
   },
   "dependenciesMeta": {
     "@deepseek-ai/dsh-subprocess-local": {
