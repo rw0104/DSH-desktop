@@ -1,0 +1,28 @@
+diff --git a/lib/index.js b/lib/index.js
+index 5b13925403a8ef0f0015bb080fa0b9acbdb94f2d..9e068dfd75669c95c72668506c677e64becd9d8c 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -1,4 +1,4 @@
+-import { isBuiltin } from "node:module";
++import { createRequire, isBuiltin } from "node:module";
+ import { chmod, cp, readFile, readdir, rm, stat } from "node:fs/promises";
+ import { evaluate, isJsExpr } from "@deepseek-ai/cordis-plugin-loader";
+ import z from "@deepseek-ai/schemastery";
+@@ -251,9 +251,16 @@ function packageInstalled(name, base) {
+ 	for (;;) {
+ 		if (existsSync(join(dir, "node_modules", pkg, "package.json"))) return true;
+ 		const parent = dirname(dir);
+-		if (parent === dir) return false;
++		if (parent === dir) break;
+ 		dir = parent;
+ 	}
++	// Resolve installation-owned packages through Desktop's Node hook without importing code.
++	try {
++		createRequire(base).resolve(name);
++		return true;
++	} catch {
++		return false;
++	}
+ }
+ /**
+ * Whether one classified row names a module that exists, importing nothing.

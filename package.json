@@ -33,7 +33,15 @@
     "@deepseek-ai/dsh-client-ui-attachment@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-attachment@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-attachment-npm-0.1.5-rc.2-38004a43f6.patch",
     "@deepseek-ai/dsh-client-ui-conversation@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-conversation@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-conversation-npm-0.1.5-rc.2-5912cf14f5.patch",
     "@deepseek-ai/dsh-subprocess-local@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-subprocess-local@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-subprocess-local-npm-0.1.5-rc.2-2624341557.patch",
-    "@deepseek-ai/dsh-subprocess-local@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-subprocess-local@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-subprocess-local-npm-0.1.5-rc.2-2624341557.patch"
+    "@deepseek-ai/dsh-subprocess-local@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-subprocess-local@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-subprocess-local-npm-0.1.5-rc.2-2624341557.patch",
+    "@deepseek-ai/dsh-app-boot@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-app-boot@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-app-boot-npm-0.1.5-rc.2-53326d5e06.patch",
+    "@deepseek-ai/dsh-agent-presets@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-agent-presets@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-agent-presets-npm-0.1.5-rc.2-61f40c61db.patch",
+    "@deepseek-ai/dsh-win32-process@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-win32-process@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-win32-process-npm-0.1.5-rc.2-22744f9bed.patch",
+    "@deepseek-ai/dsh-app-boot@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-app-boot@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-app-boot-npm-0.1.5-rc.2-53326d5e06.patch",
+    "@deepseek-ai/dsh-agent-presets@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-agent-presets@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-agent-presets-npm-0.1.5-rc.2-61f40c61db.patch",
+    "@deepseek-ai/dsh-win32-process@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-win32-process@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-win32-process-npm-0.1.5-rc.2-22744f9bed.patch",
+    "@deepseek-ai/dsh@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-npm-0.1.5-rc.2-65dbe76b62.patch",
+    "@deepseek-ai/dsh@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-npm-0.1.5-rc.2-65dbe76b62.patch"
   },
   "dependenciesMeta": {
     "@deepseek-ai/dsh-subprocess-local": {

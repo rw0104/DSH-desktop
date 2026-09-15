@@ -1,0 +1,57 @@
+{
+  "repository": "https://github.com/deepseek-ai/deepseek-harness",
+  "commit": "fb2c4b9e698e30edb738bca4cf0618587db7d203",
+  "sourcePrefix": "packages/preset/agent-presets/presets/",
+  "files": [
+    {
+      "path": "cordis/agent.cordis.yml",
+      "gitBlob": "940a7c9e48ac258d06b6d0322b7cd9a2da079b2f",
+      "bytes": 14010
+    },
+    {
+      "path": "cordis/preset.yml",
+      "gitBlob": "62475b645466cf15da30bc4722b3259b8afd60db",
+      "bytes": 180
+    },
+    {
+      "path": "cordis/skills/cordis-plugin-development/SKILL.md",
+      "gitBlob": "08e99271d1310cc7ec9710abe3504256d380b7c5",
+      "bytes": 20923
+    },
+    {
+      "path": "cordis/skills/editing-cordis-compositions/SKILL.md",
+      "gitBlob": "14ddd3b1d71122d4a59d2748f613c776fc68dab6",
+      "bytes": 14413
+    },
+    {
+      "path": "minimal/agent.cordis.yml",
+      "gitBlob": "549a73cba28ee20932d34007a1e329891c71c048",
+      "bytes": 3119
+    },
+    {
+      "path": "minimal/preset.yml",
+      "gitBlob": "60d2f10c15988826bbc459dfbfbd9896d8e4a7db",
+      "bytes": 91
+    },
+    {
+      "path": "ptc/agent.cordis.yml",
+      "gitBlob": "7773f641096c1ebb647ab1fb7c4e7a3b76fb5b91",
+      "bytes": 14003
+    },
+    {
+      "path": "ptc/preset.yml",
+      "gitBlob": "4cd0bed863cd9f55b129787da6c0330126ecddaa",
+      "bytes": 207
+    },
+    {
+      "path": "standard/agent.cordis.yml",
+      "gitBlob": "b2c26e4ef0668344ff71168327d82cecfb9dc7ea",
+      "bytes": 12928
+    },
+    {
+      "path": "standard/preset.yml",
+      "gitBlob": "caeacd1c1e9798165dcce6737e89113fa6508782",
+      "bytes": 176
+    }
+  ]
+}

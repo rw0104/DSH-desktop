@@ -2,6 +2,28 @@
 
 ## 2026-09-15 rc.2 迁移继续开发
 
+Sidebar 阶段已提交为 `969d15edba`；随后根 `corepack yarn typecheck` 完整通过
+（Desktop 四组 TypeScript 配置与 Market 生成合同校验均通过）。继续重建 rc.2
+app-boot、agent-presets、CLI 和 win32-process 补丁。空 YAML/null patch 层仍合法，
+非空错误层仍拒绝；preset 发现先按磁盘解析再询问安装运行时的 Node resolver，不导入
+插件代码；CLI pnpm 子进程与两种受限 Windows 进程维持隐藏控制台。
+
+官方 rc.2 CLI tarball 未包含其配置声明指向的 `config/agent-presets`。已从固定提交
+`fb2c4b9e698e30edb738bca4cf0618587db7d203` 的官方 GitHub tree/blob API 复制完整
+10 个预设资源（包括新增的 cordis-plugin-development skill），每个文件按 Git blob
+哈希逐字节核对；没有复用旧 rc.1 资源，也没有修改 submodule 内文件。发布 files
+清单同步补入该目录；新增包内资源回归验证文件全集、字节数及全部 blob 哈希。
+Windows/解析器聚焦五套 **30 passed**，资源/解析器/preset/CLI 四套 **25 passed**，
+两组有重叠，不应相加计为唯一测试数。目录选择器、Workspace 系统打开、设置图标和
+交付文件复制补丁尚未完成移植，当前 package 合同套件 **35 passed / 4 failed**。
+本轮新增补丁后再次运行根 typecheck 全部通过，immutable install 与文档边界通过；
+runtime closure 检查与其 4 项自测通过，确认 **247** 个第一方节点闭合。
+随后完整 Desktop 测试为 **116 suites passed / 1 failed，957 tests passed /
+4 failed / 11 skipped**（972 项），失败全部属于上述四个 UI 补丁。
+`verify:profile` 通过：创建 Standard 会话且未发 LLM 请求，保留普通工具，并通过两批
+HTTP 客户端模块解析/注册。它是 Host/模块 smoke，不等同于 Renderer/GUI 验收。
+完整 root gate、旧 Session 迁移和打包仍未完成。
+
 已形成阶段提交 `5ef1a81675`（图片/模型/布局等 rc.2 合同）。随后迁移 Sidebar 0.19.1
 产品补丁：模型绑定使用 setup 显式传入的 Agent；冷读取沿用 `open/read/close`，读取
 失败时释放 handle 且不恢复 Agent、不提交新输入。真实 Agent + JSONL 测试发现 V3
@@ -12,10 +34,10 @@ next-step、空队列和中断后冷恢复。
 
 恢复菜单按实际尺寸定位和焦点恢复补丁，修改范围仅含所属菜单；保留 0.19.1 文件树
 新入口。Sidebar/菜单/Markdown/终端聚焦 **35 passed**，包含模型绑定源码与发布 JS
-双路径。Desktop 最新全套为 **112 suites passed / 3 failed，932 tests passed /
+双路径。Sidebar 阶段的 Desktop 全套为 **112 suites passed / 3 failed，932 tests passed /
 11 failed / 11 skipped**；余下失败为 Windows preset/CLI 与 package 合同断言。
 Desktop build、immutable install、补丁 JS 语法检查与文档边界通过；完整 typecheck
-发现两个测试夹具仍用旧字段/React props，已修正并通过相关 8 项回归，整体验证重跑中。
+发现两个测试夹具仍用旧字段/React props，已修正并通过相关 8 项回归，之后完整类型检查通过。
 本轮仍未更新 gitlink、打包或发布，也未证明旧格式 0 日志的完整迁移验收通过。
 
 继续开发时重复 `git ls-remote` 遇到连接重置/超时，未将失败视为“无更新”。改用官方

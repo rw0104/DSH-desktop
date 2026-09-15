@@ -148,10 +148,10 @@ describe('published package surface', () => {
   })
 
   it('patches app boot to accept an empty patch layer', () => {
-    const patchPath = './.yarn/patches/@deepseek-ai-dsh-app-boot-npm-0.1.2-rc.1-14389ed4aa.patch'
+    const patchPath = './.yarn/patches/@deepseek-ai-dsh-app-boot-npm-0.1.5-rc.2-53326d5e06.patch'
     expect(workspaceManifest.resolutions).toMatchObject({
-      '@deepseek-ai/dsh-app-boot@npm:0.1.2-rc.1': expect.stringContaining(patchPath),
-      '@deepseek-ai/dsh-app-boot@npm:^0.1.2-rc.1': expect.stringContaining(patchPath),
+      '@deepseek-ai/dsh-app-boot@npm:0.1.5-rc.2': expect.stringContaining(patchPath),
+      '@deepseek-ai/dsh-app-boot@npm:^0.1.5-rc.2': expect.stringContaining(patchPath),
     })
     const marker = 'if (parsed === void 0 || parsed === null) return [];'
     const patch = readFileSync(new URL(patchPath, workspaceRoot), 'utf8')
@@ -652,12 +652,12 @@ describe('published package surface', () => {
 
   it('pins the maintained latest Better Sidebar as the product Workbench', () => {
     expect(manifest.dependencies?.['dsh-better-sidebar'])
-      .toBe('0.18.0')
+      .toBe('0.19.1')
     expect(manifest.dependencies?.cordis).toBe('4.0.0-rc.8')
     expect(manifest.dependencies?.['react-dom']).toBe('18.3.1')
   })
 
-  it('ships the audited Better Sidebar 0.17.1 contracts and pinned-terminal fixes', () => {
+  it('ships the audited Better Sidebar 0.19.1 contracts and pinned-terminal fixes', () => {
     const require = createRequire(new URL('package.json', packageRoot))
     const sidebarManifestPath = require.resolve('dsh-better-sidebar/package.json')
     const sidebarManifest = JSON.parse(readFileSync(sidebarManifestPath, 'utf8')) as {
@@ -675,11 +675,13 @@ describe('published package surface', () => {
     const terminalChunk = readFileSync(join(sidebarRoot, 'lib/client-terminal.js'), 'utf8')
     const hostSource = readFileSync(join(sidebarRoot, 'src/index.ts'), 'utf8')
 
-    expect(sidebarManifest.version).toBe('0.18.0')
+    expect(sidebarManifest.version).toBe('0.19.1')
     expect(sidebarManifest.peerDependencies).not.toHaveProperty('cordis')
     expect(require.resolve('@deepseek-ai/dsh-api-session-controller/package.json')).toBeTruthy()
-    expect(serviceSource).toContain("export const SIDEBAR_SERVICE_VERSION = '0.18.0'")
-    expect(client).toContain('"floatWindows"')
+    expect(serviceSource).toContain("export const SIDEBAR_SERVICE_VERSION = '0.19.1'")
+    expect(client).not.toContain('"floatWindows"')
+    expect(client).toContain('ctx.get("sidebarRight")')
+    expect(client).toContain('sidebarRightTabs')
     expect(client).toContain('statusTruncated')
     expect(client).toContain('pinned:')
     expect(terminalChunk).toContain('registerLinkProvider')
@@ -721,13 +723,13 @@ describe('published package surface', () => {
   })
 
   it('keeps the chat attachment drag mask outside the desktop Workspace drop target', () => {
-    const patchPath = './.yarn/patches/@deepseek-ai-dsh-client-ui-attachment-npm-0.1.2-rc.1-d0fc3a3050.patch'
-    const conversationPatchPath = './.yarn/patches/@deepseek-ai-dsh-client-ui-conversation-npm-0.1.2-rc.1-2ae03ac40e.patch'
+    const patchPath = './.yarn/patches/@deepseek-ai-dsh-client-ui-attachment-npm-0.1.5-rc.2-38004a43f6.patch'
+    const conversationPatchPath = './.yarn/patches/@deepseek-ai-dsh-client-ui-conversation-npm-0.1.5-rc.2-5912cf14f5.patch'
     expect(workspaceManifest.resolutions).toMatchObject({
-      '@deepseek-ai/dsh-client-ui-attachment@npm:0.1.2-rc.1': expect.stringContaining(patchPath),
-      '@deepseek-ai/dsh-client-ui-attachment@npm:^0.1.2-rc.1': expect.stringContaining(patchPath),
-      '@deepseek-ai/dsh-client-ui-conversation@npm:0.1.2-rc.1': expect.stringContaining(conversationPatchPath),
-      '@deepseek-ai/dsh-client-ui-conversation@npm:^0.1.2-rc.1': expect.stringContaining(conversationPatchPath),
+      '@deepseek-ai/dsh-client-ui-attachment@npm:0.1.5-rc.2': expect.stringContaining(patchPath),
+      '@deepseek-ai/dsh-client-ui-attachment@npm:^0.1.5-rc.2': expect.stringContaining(patchPath),
+      '@deepseek-ai/dsh-client-ui-conversation@npm:0.1.5-rc.2': expect.stringContaining(conversationPatchPath),
+      '@deepseek-ai/dsh-client-ui-conversation@npm:^0.1.5-rc.2': expect.stringContaining(conversationPatchPath),
     })
     const patch = readFileSync(new URL(patchPath, workspaceRoot), 'utf8')
     const conversationPatch = readFileSync(new URL(conversationPatchPath, workspaceRoot), 'utf8')
@@ -840,9 +842,9 @@ describe('published package surface', () => {
   })
 
   it('starts restricted Windows shells with a hidden console show state', () => {
-    const patchResolution = 'patch:@deepseek-ai/dsh-win32-process@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-win32-process-npm-0.1.2-rc.1-4a5022946b.patch'
+    const patchResolution = 'patch:@deepseek-ai/dsh-win32-process@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-win32-process-npm-0.1.5-rc.2-22744f9bed.patch'
     const lockfile = readFileSync(new URL('yarn.lock', workspaceRoot), 'utf8')
-    const patch = readFileSync(new URL('.yarn/patches/@deepseek-ai-dsh-win32-process-npm-0.1.2-rc.1-4a5022946b.patch', workspaceRoot), 'utf8')
+    const patch = readFileSync(new URL('.yarn/patches/@deepseek-ai-dsh-win32-process-npm-0.1.5-rc.2-22744f9bed.patch', workspaceRoot), 'utf8')
     const workspaceRequire = createRequire(new URL('package.json', packageRoot))
     const sandboxManifest = workspaceRequire.resolve('@deepseek-ai/dsh-sandbox-windows-acl/package.json')
     const sandboxLocalManifest = workspaceRequire.resolve('@deepseek-ai/dsh-sandbox-local/package.json')
@@ -851,12 +853,12 @@ describe('published package surface', () => {
     const runtimeChunks = readdirSync(sandboxLib).filter(name => /^types-.*\.js$/u.test(name))
 
     expect(workspaceManifest.resolutions).toMatchObject({
-      '@deepseek-ai/dsh-win32-process@npm:0.1.2-rc.1': patchResolution,
-      '@deepseek-ai/dsh-win32-process@npm:^0.1.2-rc.1': patchResolution,
+      '@deepseek-ai/dsh-win32-process@npm:0.1.5-rc.2': patchResolution,
+      '@deepseek-ai/dsh-win32-process@npm:^0.1.5-rc.2': patchResolution,
     })
     expect(sandboxLocalRequire.resolve('@deepseek-ai/dsh-sandbox-windows-acl/package.json'))
       .toBe(sandboxManifest)
-    expect(lockfile).toContain('@deepseek-ai/dsh-win32-process@patch:@deepseek-ai/dsh-win32-process@npm%3A0.1.2-rc.1#./.yarn/patches/@deepseek-ai-dsh-win32-process-npm-0.1.2-rc.1-4a5022946b.patch')
+    expect(lockfile).toContain('@deepseek-ai/dsh-win32-process@patch:@deepseek-ai/dsh-win32-process@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-win32-process-npm-0.1.5-rc.2-22744f9bed.patch')
     expect(patch.match(/^\+\s*dwFlags: 257,\r?$/gmu)).toHaveLength(2)
     expect(patch.match(/^\+\s*wShowWindow: 0,\r?$/gmu)).toHaveLength(2)
     expect(runtimeChunks).toHaveLength(1)
