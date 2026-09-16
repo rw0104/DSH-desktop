@@ -2,6 +2,18 @@
 
 ## 2026-09-16 UI 接入与完整门禁复核
 
+**用户确认的交付边界（2026-09-16）：**当前无 macOS/Linux 环境，原生包内验收保留未验收。
+回滚采用独立目录方案：升级前完整备份；保留官方 V0/V3 原件；旧 runtime 只运行恢复到
+独立目录的备份，不自动反向合并升级后的消息。仓库外隔离旧 `0.1.2-rc.1` runtime
+实测会拒绝直接读取 V3，但当 V0/V3 同时存在时会读取旧 V0 历史，因此禁止让旧版本
+复用升级目录，不能宣称它会自动拒绝这样的混合目录。新版本新增消息仍保留在新目录。
+
+最终根 `corepack yarn check` 已通过：Desktop **123 suites / 1003 passed / 11 skipped**，
+Market **19 suites / 278 passed**，其余布局、文档、housekeeping、Fabric、构建、类型、
+Loader/Profile/experience、CLI、closure 和许可证检查通过。Windows package preflight
+也通过，当前打包使用 `dsh-015-rc2-integration` 后缀，不覆盖原 2.2.8 验证安装器。
+在包内验证完成前，不能把该打包过程或未验证产物称为已交付。
+
 主核心 gitlink 与 `upstream.json` 已通过独立提交 `92c457eb09` 更新到
 `fb2c4b9e698e30edb738bca4cf0618587db7d203`，没有 Desktop 行为混入。子模块干净、
 `check:layout` 与后续根 `check` 通过。checkout 曾尝试旧 gitclone promisor 并超时；
