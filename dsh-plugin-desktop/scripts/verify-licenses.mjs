@@ -140,10 +140,12 @@ if (failures.length > 0) {
 
 const noticeOnly = manifests.filter(entry => NOTICE_LICENSES.has(entry.license))
 const noticesArg = process.argv.indexOf('--notices')
-if (noticesArg !== -1) {
-  const target = process.argv[noticesArg + 1]
+const checkNoticesArg = process.argv.indexOf('--check-notices')
+if (noticesArg !== -1 && checkNoticesArg !== -1) throw new Error('Choose either --notices or --check-notices')
+if (noticesArg !== -1 || checkNoticesArg !== -1) {
+  const target = process.argv[(checkNoticesArg !== -1 ? checkNoticesArg : noticesArg) + 1]
   if (target === undefined) {
-    process.stderr.write('verify-licenses: --notices requires a file path\n')
+    process.stderr.write('verify-licenses: notice generation/check requires a file path\n')
     process.exit(1)
   }
   const lines = [
@@ -165,7 +167,12 @@ if (noticesArg !== -1) {
     '',
   ].filter(line => line !== '')
   const vendoredNotices = readFileSync(join(packageRoot, 'build/vendor-notices.md'), 'utf8')
-  writeFileSync(join(packageRoot, target), `${lines.join('\n')}\n\n${vendoredNotices}`)
+  const expected = `${lines.join('\n')}\n\n${vendoredNotices}`.replaceAll('\r\n', '\n')
+  if (checkNoticesArg !== -1) {
+    const actual = readFileSync(join(packageRoot, target), 'utf8').replaceAll('\r\n', '\n')
+    if (actual !== expected) throw new Error(`verify-licenses: ${target} is stale for this platform's production dependency graph; regenerate it before packaging`)
+    process.stdout.write(`verify-notices: ${manifests.length} production records match the notice artifact.\n`)
+  } else writeFileSync(join(packageRoot, target), expected)
 }
 
 const total = seen.size - 1

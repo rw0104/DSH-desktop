@@ -2,6 +2,12 @@
 
 ## 2026-09-16 UI 接入与完整门禁复核
 
+首次 rc.2 Windows 安装器生成成功且既有 package footprint/Profile/PE 校验通过，但
+追加的实际 ASAR 检查发现内含旧 `THIRD_PARTY_NOTICES.md`，该候选判定不合格，不交付。
+发出停止操作时构建已经正常退出，没有将活跃进程误当成失败重启。现已按 655 个当前
+生产依赖重生成通知，并新增 source notices check 与 sealed-ASAR/source 全文一致性
+检查；旧候选已被新 gate 复现拒绝。Windows preflight 接入该校验，待重新打包后验收。
+
 **用户确认的交付边界（2026-09-16）：**当前无 macOS/Linux 环境，原生包内验收保留未验收。
 回滚采用独立目录方案：升级前完整备份；保留官方 V0/V3 原件；旧 runtime 只运行恢复到
 独立目录的备份，不自动反向合并升级后的消息。仓库外隔离旧 `0.1.2-rc.1` runtime

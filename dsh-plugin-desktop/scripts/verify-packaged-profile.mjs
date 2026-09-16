@@ -5,6 +5,14 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { extractFile } from '@electron/asar'
+
+/** The sealed package must carry the same reviewed, current-platform license record. */
+export function assertPackagedNotices(actual, expected) {
+  if (actual.replaceAll('\r\n', '\n') !== expected.replaceAll('\r\n', '\n')) {
+    throw new Error('packaged third-party notices differ from the validated source record; rebuild the artifact')
+  }
+}
 
 function runAsNode(application, args, cwd, environment) {
   const result = spawnSync(application, args, {
@@ -33,6 +41,10 @@ export function verifyPackagedProfile(appOutDir, environment = process.env) {
   const root = resolve(appOutDir)
   const resources = join(root, 'resources')
   const application = join(root, 'DSH Desktop.exe')
+  assertPackagedNotices(
+    extractFile(join(resources, 'app.asar'), 'THIRD_PARTY_NOTICES.md').toString('utf8'),
+    readFileSync(new URL('../THIRD_PARTY_NOTICES.md', import.meta.url), 'utf8'),
+  )
   const appManifest = JSON.parse(readFileSync(join(resources, 'app.asar.unpacked', 'package.json'), 'utf8'))
   const pnpmManifest = JSON.parse(readFileSync(join(
     resources,
