@@ -7,6 +7,9 @@
   },
   "include": ["scripts/**/*.ts", "src/*.ts", "tests/**/*.ts", "tests/**/*.tsx"],
   "exclude": [
+    "tests/published-directory-browser.spec.ts",
+    "tests/published-deliverables.spec.ts",
+    "tests/fixtures/published-client.tsx",
     "tests/browser/**",
     "tests/sidebar-menu-placement.spec.ts",
     "tests/sidebar-menu-lifecycle.spec.ts",

@@ -1,5 +1,26 @@
 # Upstream synchronization ledger
 
+## 2026-09-16 UI 接入与完整门禁复核
+
+本轮固定候选仍为 Harness `0.1.5-rc.2` 与 Sidebar `0.19.1`。上一轮继续开发时重查
+官方 GitHub API 与 npm：Harness HEAD `0d1f50007f9bca3f52b06e1c3074fa14d5fb0720`、
+Sidebar HEAD `1fcf43ccbedd6e66370b7fb81df2b4dd0ef2604e`、Desktop reference HEAD
+`5510cb1203838f2d55f9bbd52cdcfaae1cad5eac`，registry tags 与上一节相同；没有更换目标。
+
+已重建目录浏览 Host/Client、Workspace、设置图标、交付物共 5 个 rc.2 补丁。
+目录浏览恢复桌面 bridge，并增加操作代次与重入保护；验证取消、拒绝、关闭后的迟到结果
+不会接纳路径。交付物保留 rc.2 新卡片和预览，复制路径/文本仍调用桌面授权路由，
+只在正常 desktop experience 显示；Workspace 新增菜单同样不进入 upstream-diagnostic。
+使用真实已发布 Client factory 和 React DOM 状态的回归证明按钮执行路径，不只查找字符串；
+测试 primitive chrome 和 native-open store 是夹具，不能将其记为完整 GUI 验收。
+
+证据：UI/路由聚焦 33 项通过；Desktop 全套 **119 suites / 973 tests passed，11 skipped**；
+根 typecheck 通过；Market check 在修正旧 peer-version 断言后 **19 suites / 275 tests passed**。
+完整 Desktop check 继续到 CLI artifact smoke 时失败：Electron RunAsNode 的 DSH
+`--version` 输出为空。当前上游 bin 改为 `if (import.meta.main) await runCli()`，而 Desktop
+仍仅 import bin。直接运行上游 bin 和显式调用导出的 runCli 都输出 rc.2，证明旧启动约定
+已不成立。该入口迁移、后续完整门禁、真实 Renderer、Session 0→V3、gitlink 和打包仍待完成。
+
 ## 2026-09-15 rc.2 迁移继续开发
 
 Sidebar 阶段已提交为 `969d15edba`；随后根 `corepack yarn typecheck` 完整通过

@@ -6,6 +6,9 @@
     "emitDeclarationOnly": false
   },
   "include": [
+    "tests/published-directory-browser.spec.ts",
+    "tests/published-deliverables.spec.ts",
+    "tests/fixtures/published-client.tsx",
     "tests/browser/**/*.tsx",
     "tests/browser/**/*.d.ts",
     "tests/sidebar-menu-placement.spec.ts",

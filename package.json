@@ -41,7 +41,17 @@
     "@deepseek-ai/dsh-agent-presets@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-agent-presets@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-agent-presets-npm-0.1.5-rc.2-61f40c61db.patch",
     "@deepseek-ai/dsh-win32-process@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-win32-process@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-win32-process-npm-0.1.5-rc.2-22744f9bed.patch",
     "@deepseek-ai/dsh@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-npm-0.1.5-rc.2-65dbe76b62.patch",
-    "@deepseek-ai/dsh@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-npm-0.1.5-rc.2-65dbe76b62.patch"
+    "@deepseek-ai/dsh@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-npm-0.1.5-rc.2-65dbe76b62.patch",
+    "@deepseek-ai/dsh-host-directory-picker-browse@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-host-directory-picker-browse@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-host-directory-picker-browse-npm-0.1.5-rc.2-cc8ac86c3a.patch",
+    "@deepseek-ai/dsh-client-ui-directory-picker-browse@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-directory-picker-browse@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-directory-picker-browse-npm-0.1.5-rc.2-ee216bd2d6.patch",
+    "@deepseek-ai/dsh-client-ui-workspace@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-workspace@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-workspace-npm-0.1.5-rc.2-c6173586b0.patch",
+    "@deepseek-ai/dsh-client-ui-settings-general@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-settings-general@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-settings-general-npm-0.1.5-rc.2-11ea783599.patch",
+    "@deepseek-ai/dsh-client-ui-deliverables@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-deliverables@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-deliverables-npm-0.1.5-rc.2-a75affaa04.patch",
+    "@deepseek-ai/dsh-host-directory-picker-browse@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-host-directory-picker-browse@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-host-directory-picker-browse-npm-0.1.5-rc.2-cc8ac86c3a.patch",
+    "@deepseek-ai/dsh-client-ui-directory-picker-browse@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-directory-picker-browse@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-directory-picker-browse-npm-0.1.5-rc.2-ee216bd2d6.patch",
+    "@deepseek-ai/dsh-client-ui-workspace@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-workspace@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-workspace-npm-0.1.5-rc.2-c6173586b0.patch",
+    "@deepseek-ai/dsh-client-ui-settings-general@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-settings-general@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-settings-general-npm-0.1.5-rc.2-11ea783599.patch",
+    "@deepseek-ai/dsh-client-ui-deliverables@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-deliverables@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-deliverables-npm-0.1.5-rc.2-a75affaa04.patch"
   },
   "dependenciesMeta": {
     "@deepseek-ai/dsh-subprocess-local": {

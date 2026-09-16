@@ -175,10 +175,10 @@ describe('published package surface', () => {
   })
 
   it('patches the browse panel with the Windows native-picker icon bridge', () => {
-    const patchPath = './.yarn/patches/@deepseek-ai-dsh-client-ui-directory-picker-browse-npm-0.1.2-rc.1-2f66bbf842.patch'
+    const patchPath = './.yarn/patches/@deepseek-ai-dsh-client-ui-directory-picker-browse-npm-0.1.5-rc.2-ee216bd2d6.patch'
     expect(workspaceManifest.resolutions).toMatchObject({
-      '@deepseek-ai/dsh-client-ui-directory-picker-browse@npm:0.1.2-rc.1': expect.stringContaining(patchPath),
-      '@deepseek-ai/dsh-client-ui-directory-picker-browse@npm:^0.1.2-rc.1': expect.stringContaining(patchPath),
+      '@deepseek-ai/dsh-client-ui-directory-picker-browse@npm:0.1.5-rc.2': expect.stringContaining(patchPath),
+      '@deepseek-ai/dsh-client-ui-directory-picker-browse@npm:^0.1.5-rc.2': expect.stringContaining(patchPath),
     })
     const patch = readFileSync(new URL(patchPath, workspaceRoot), 'utf8')
     const installedClient = readFileSync(new URL(
@@ -188,7 +188,7 @@ describe('published package surface', () => {
     for (const marker of [
       'pickNativeDirectory',
       'validateDirectory',
-      'openDirectory(path)',
+      'openDirectory(path, operation)',
       'openDirectory(targetPath)',
       'IconFolderOpen16',
       'nativePickerButton',
@@ -202,11 +202,11 @@ describe('published package surface', () => {
   })
 
   it('adds the system Explorer action to the official Workspace menu', () => {
-    const patchFilename = '@deepseek-ai-dsh-client-ui-workspace-npm-0.1.2-rc.1-233ba8c0a7.patch'
+    const patchFilename = '@deepseek-ai-dsh-client-ui-workspace-npm-0.1.5-rc.2-c6173586b0.patch'
     const patchPath = `.yarn/patches/${patchFilename}`
     expect(workspaceManifest.resolutions).toMatchObject({
-      '@deepseek-ai/dsh-client-ui-workspace@npm:0.1.2-rc.1': expect.stringContaining(patchFilename),
-      '@deepseek-ai/dsh-client-ui-workspace@npm:^0.1.2-rc.1': expect.stringContaining(patchFilename),
+      '@deepseek-ai/dsh-client-ui-workspace@npm:0.1.5-rc.2': expect.stringContaining(patchFilename),
+      '@deepseek-ai/dsh-client-ui-workspace@npm:^0.1.5-rc.2': expect.stringContaining(patchFilename),
     })
     const patch = readFileSync(new URL(patchPath, workspaceRoot), 'utf8')
     const installedClient = readFileSync(new URL(
@@ -700,10 +700,10 @@ describe('published package surface', () => {
   })
 
   it('gives the Desktop settings section a dedicated display icon', () => {
-    const patchPath = './.yarn/patches/@deepseek-ai-dsh-client-ui-settings-general-npm-0.1.2-rc.1-7f824ae1d5.patch'
+    const patchPath = './.yarn/patches/@deepseek-ai-dsh-client-ui-settings-general-npm-0.1.5-rc.2-11ea783599.patch'
     expect(workspaceManifest.resolutions).toMatchObject({
-      '@deepseek-ai/dsh-client-ui-settings-general@npm:0.1.2-rc.1': expect.stringContaining(patchPath),
-      '@deepseek-ai/dsh-client-ui-settings-general@npm:^0.1.2-rc.1': expect.stringContaining(patchPath),
+      '@deepseek-ai/dsh-client-ui-settings-general@npm:0.1.5-rc.2': expect.stringContaining(patchPath),
+      '@deepseek-ai/dsh-client-ui-settings-general@npm:^0.1.5-rc.2': expect.stringContaining(patchPath),
     })
     const patch = readFileSync(new URL(patchPath, workspaceRoot), 'utf8')
     const require = createRequire(new URL('package.json', packageRoot))
