@@ -1,5 +1,38 @@
 # Upstream synchronization ledger
 
+## 2026-09-16 Windows rc.2 最终候选验证
+
+固定源码 `d9f4c740518d89ddfb4310c2690d91137331b26e` 的本地未签名候选已通过最终根
+check（Desktop 124 suites / 1005 passed / 11 skipped；Market 278 passed）、实体打包、
+安装器全树一致性、包内三组合 Renderer、旧 Profile 与 V0 Web Session inspect/page
+专项。测试后 929 文件完整包树未变。候选 SHA-256 为
+`b5ed08f3e95a5136a2fe60368e631ec9d553d0507f5db91480d38360569d03e7`，227300603 bytes。
+详细证据边界及用户确认的独立目录回滚规则见
+[2.2.8 / rc.2 验证记录](releases/v2.2.8-harness-0.1.5-rc.2-validation.md)。
+没有 tag、push、Release 或覆盖安装；macOS/Linux 已接受延期，其他人工验收的交付边界待确认。
+
+本次包内追加探针先纠正两处测试输入：默认存储为 Zstd，应使用旧 driver 的独立
+checksummed 帧；Web Session inspect 需要 cwd，不能用无 cwd 的通用持久化夹具替代。
+三组合正确夹具均验证原件不变、只读不发布 V3、写入发布 V3、7 条事件可分页并重开。
+旧 Profile 的必需 bundle 列表在诊断启动时也会规范化，不能将选择/WAL 不消费误称为
+整个旧 manifest 字节绝对不变；自定义字段和设置均保留。
+
+交付复查再次执行三方官方 `git ls-remote` 与 npm `dist-tags`：Harness HEAD 仍为
+`0d1f50007f9bca3f52b06e1c3074fa14d5fb0720`，rc.2 tag 不变；Sidebar HEAD 仍为
+`1fcf43ccbedd6e66370b7fb81df2b4dd0ef2604e`，v0.19.1 tag 不变。DSH latest/next/alpha
+分别为 0.1.5-rc.1 / 0.1.5-rc.2 / 0.1.6-alpha.1，Sidebar latest=0.19.1，参考 Desktop
+npm latest=2.0.0。候选不跟随 alpha 或移动 HEAD。
+
+参考 Desktop HEAD 新增到 `01fa59e6688d82fa34b59fc507e3a6f5d695fa17`，v2.0.10 仍为
+`697e7d782cbfc2b9e8fa0ac862ef26bba9ac1326`。相对此前对照 `474d3936...` 新增 3 个提交：
+`4a427fdb...` 将桌面操作从 Host HTTP 改成 Electron preload；`afec8f6d...` 等待强制
+终止的 Renderer 退出再 reload，并加原生托盘 reload；`01fa59e6...` 用显式 repaint
+替代 Windows 禁用 backgroundThrottling。这些不属于本次固定核心 rc.2 接入，没有
+混入已验证安装器；下一步独立核对本 fork 生命周期/隔离架构、补故障回归及真实 Windows
+恢复场景，再决定采用。上游自身也注明后两项仍需 Windows GUI 验证，不视为现成验收。
+
+以下段落按阶段保留历史结果；曾写的“待完成”不覆盖本节已给出证据的完成项。
+
 ## 2026-09-16 UI 接入与完整门禁复核
 
 包内 Renderer 探针在 system 组合完成后暴露了**测试清理故障**：探针曾在 Electron
