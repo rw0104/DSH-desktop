@@ -53,7 +53,9 @@
     "@deepseek-ai/dsh-client-ui-settings-general@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-settings-general@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-settings-general-npm-0.1.5-rc.2-11ea783599.patch",
     "@deepseek-ai/dsh-client-ui-deliverables@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-client-ui-deliverables@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-client-ui-deliverables-npm-0.1.5-rc.2-a75affaa04.patch",
     "@deepseek-ai/dsh-agent-loop@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-agent-loop@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-agent-loop-npm-0.1.5-rc.2-9623b17efc.patch",
-    "@deepseek-ai/dsh-agent-loop@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-agent-loop@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-agent-loop-npm-0.1.5-rc.2-9623b17efc.patch"
+    "@deepseek-ai/dsh-agent-loop@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-agent-loop@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-agent-loop-npm-0.1.5-rc.2-9623b17efc.patch",
+    "@deepseek-ai/dsh-web-app@npm:^0.1.5-rc.2": "patch:@deepseek-ai/dsh-web-app@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-web-app-npm-0.1.5-rc.2-71c8ac07b4.patch",
+    "@deepseek-ai/dsh-web-app@npm:0.1.5-rc.2": "patch:@deepseek-ai/dsh-web-app@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-web-app-npm-0.1.5-rc.2-71c8ac07b4.patch"
   },
   "dependenciesMeta": {
     "@deepseek-ai/dsh-subprocess-local": {

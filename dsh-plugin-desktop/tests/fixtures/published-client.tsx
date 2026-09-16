@@ -1,6 +1,7 @@
 import * as React from 'react'
 import * as ReactDOM from 'react-dom'
 import * as JSX from 'react/jsx-runtime'
+import * as ClientStore from '@deepseek-ai/dsh-client-store'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { Script } from 'node:vm'
@@ -44,11 +45,7 @@ export function loadPublishedClient(name: string, services: Record<string, unkno
     if (moduleName === 'react') return React
     if (moduleName === 'react-dom') return ReactDOM
     if (moduleName === 'react/jsx-runtime') return JSX
-    // Native-open controller state is outside these copy-action tests; owner hooks are supplied below.
-    if (moduleName === '@deepseek-ai/dsh-client-store') return { createSnapshotStore: (initial: unknown) => ({
-      getSnapshot: () => initial, subscribe: () => () => {}, set: () => {},
-      update: () => { throw new Error('Native-open store update is outside this component fixture') },
-    }) }
+    if (moduleName === '@deepseek-ai/dsh-client-store') return ClientStore
     if (moduleName === '@deepseek-ai/dsh-client-ui-primitives') return primitives
     throw new Error(`Unprovided client dependency: ${moduleName}`)
   })

@@ -48,7 +48,7 @@ function Content() {
 }
 const sections = [{ id: 'agent-presets', label: 'Agent 预设' }, { id: 'general', label: '通用设置' }]
 const root = createRoot(document.getElementById('settings-root')!)
-root.render(<div data-slot="sidebar.settings"><SettingsRoot wide={true} reconnect={() => {}} useConnectionState={(select: any) => select('connected')} useSections={(select: any) => select(sections)} useOnboardingSteps={(select: any) => select([])} useSessions={(select: any) => select({ phase: 'ready', current: 'one', byId: { one: { blank: false } } })} t={(key: string) => key} renderSlot={(name: string) => <span data-slot={name}>{name === 'settings.trigger' || name === 'settings.header' ? '设置' : name === 'settings.close' ? '关闭设置' : name === 'settings.section' ? <Content /> : null}</span>} /></div>)
+root.render(<div data-slot="sidebar.settings"><SettingsRoot wide={true} reconnect={() => {}} useConnectionState={(select: any) => select('connected')} useSections={(select: any) => select(sections)} useOnboardingSteps={(select: any) => select([])} useSessions={(select: any) => select({ phase: 'ready', current: 'one', byId: { one: { blank: false } } })} t={(key: string) => key === 'trigger' ? '设置' : key} renderSlot={(name: string) => <span data-slot={name}>{name === 'settings.trigger' || name === 'settings.header' ? '设置' : name === 'settings.close' ? '关闭设置' : name === 'settings.section' ? <Content /> : null}</span>} /></div>)
 let remove: (() => void) | undefined
 const counters = { tickets: 0, microphone: 0, stopped: 0, closed: 0 }
 globalThis.fetch = async () => { counters.tickets++; return new Response(JSON.stringify({ error: 'Fixture transport stopped after visible-panel verification' }), { status: 503 }) }

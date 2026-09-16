@@ -4470,7 +4470,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deepseek-ai/dsh-web-app@npm:0.1.5-rc.2, @deepseek-ai/dsh-web-app@npm:^0.1.5-rc.2":
+"@deepseek-ai/dsh-web-app@npm:0.1.5-rc.2":
   version: 0.1.5-rc.2
   resolution: "@deepseek-ai/dsh-web-app@npm:0.1.5-rc.2"
   dependencies:
@@ -4560,6 +4560,99 @@ __metadata:
     "@deepseek-ai/dsh-shell-env": ^0.1.5-rc.2
     "@deepseek-ai/dsh-system-prompt": ^0.1.5-rc.2
   checksum: 10c0/f14e159f40c30c7e281c6ccefdee46c17c584545f7e781fed89513a38148b22dd90835b103e31ae9d38c7a7c3c8115d86c6fc073d2c0c66cb20f698d330f982e
+  languageName: node
+  linkType: hard
+
+"@deepseek-ai/dsh-web-app@patch:@deepseek-ai/dsh-web-app@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-web-app-npm-0.1.5-rc.2-71c8ac07b4.patch::locator=deepseek-harness-desktop%40workspace%3A.":
+  version: 0.1.5-rc.2
+  resolution: "@deepseek-ai/dsh-web-app@patch:@deepseek-ai/dsh-web-app@npm%3A0.1.5-rc.2#./.yarn/patches/@deepseek-ai-dsh-web-app-npm-0.1.5-rc.2-71c8ac07b4.patch::version=0.1.5-rc.2&hash=9b1275&locator=deepseek-harness-desktop%40workspace%3A."
+  dependencies:
+    "@deepseek-ai/dsh-agent-presets": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-api-remotes": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-api-session-controller": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-api-settings-controller": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-api-workspace-controller": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-api-workspace-files": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-app-boot": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-connection": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-file-upload": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-hmr": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-locale": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-modules": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-resources": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-agent-preset": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-approval": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-attachment": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-brand-official": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-chat": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-commands": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-conversation": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-cordis": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-deliverables": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-directory-picker-browse": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-directory-picker-native": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-goal": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-input-trigger": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-jobs": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-layout": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-message-feedback": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-model-selection": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-open-in-app": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-permission-presets": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-plan": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-reference": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-renderer": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-schedule": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-session": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-settings": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-settings-general": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-settings-models": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-settings-plugin-inventory": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-settings-plugins": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-sidebar": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-sidebar-documentpreview": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-sidebar-files": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-sidebar-right": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-skill": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-subagent": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-theme": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-tool": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-trajectory": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-user-questions": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-workflow-run": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-client-ui-workspace": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-cmdline": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-code-runtime-worker-thread": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-cordis-client-runner": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-cordis-host-runner": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-file-reference": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-file-reference-local": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-host-directory-picker-auto": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-host-directory-picker-browse": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-host-directory-picker-native": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-host-frontend-static": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-host-open-in-app": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-host-plugin-inventory": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-host-webserver": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-launch-environment": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-message-feedback": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-session-log-export": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-session-reference": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-session-stats": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-session-turn-outline": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-subprocess": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-tool-subagent": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-web-frontend": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/dsh-workspace": "npm:^0.1.5-rc.2"
+    "@deepseek-ai/schemastery": "npm:^3.18.2"
+    commander: "npm:^15.0.0"
+    open: "npm:^11.0.0"
+  peerDependencies:
+    "@deepseek-ai/cordis": ^4.0.2
+    "@deepseek-ai/cordis-plugin-loader": ^1.0.3
+    "@deepseek-ai/dsh-shell-env": ^0.1.5-rc.2
+    "@deepseek-ai/dsh-system-prompt": ^0.1.5-rc.2
+  checksum: 10c0/65980bc3b85ab91fe8ccacdd6990e82553880d1921f2e20ad6c4b51b7abc045d1cd274c2eb46ed476c53f1a188a45e3e28e5316a37f8b85f65e9e531e3f55d51
   languageName: node
   linkType: hard
 
@@ -9755,6 +9848,7 @@ __metadata:
     dsh-community-market: "npm:0.1.0-dev.0"
     electron: "npm:43.4.0"
     electron-builder: "npm:26.15.7"
+    immer: "npm:10.1.1"
     jsdom: "npm:29.1.1"
     katex: "npm:0.16.47"
     koffi: "npm:3.1.5"
@@ -9783,6 +9877,7 @@ __metadata:
     ws: "npm:8.21.3"
     yaml: "npm:^2.9.0"
     zod: "npm:4.4.3"
+    zustand: "npm:4.4.7"
   peerDependencies:
     electron: 43.4.0
   bin:
@@ -10745,6 +10840,13 @@ __metadata:
   dependencies:
     safer-buffer: "npm:>= 2.1.2 < 3.0.0"
   checksum: 10c0/be2fd2414f7e94be3a63063fa0ad5919c16bc7b6e00c77eea0765ced6db405739f38dd51016583058fba25cc1d0106ba30b83fbb7a7e32f824d4db76f23d8d33
+  languageName: node
+  linkType: hard
+
+"immer@npm:10.1.1":
+  version: 10.1.1
+  resolution: "immer@npm:10.1.1"
+  checksum: 10c0/b749e10d137ccae91788f41bd57e9387f32ea6d6ea8fd7eb47b23fd7766681575efc7f86ceef7fe24c3bc9d61e38ff5d2f49c2663b2b0c056e280a4510923653
   languageName: node
   linkType: hard
 
@@ -14270,6 +14372,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"use-sync-external-store@npm:1.2.0":
+  version: 1.2.0
+  resolution: "use-sync-external-store@npm:1.2.0"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0
+  checksum: 10c0/ac4814e5592524f242921157e791b022efe36e451fe0d4fd4d204322d5433a4fc300d63b0ade5185f8e0735ded044c70bcf6d2352db0f74d097a238cebd2da02
+  languageName: node
+  linkType: hard
+
 "utf8-byte-length@npm:^1.0.1":
   version: 1.0.5
   resolution: "utf8-byte-length@npm:1.0.5"
@@ -14705,6 +14816,26 @@ __metadata:
   version: 4.4.3
   resolution: "zod@npm:4.4.3"
   checksum: 10c0/7ea31b558e88f9faf44f31dd185e2e1cbf51fed3081787fb96cc2534749b50c0acfc6da7f0922a7353ed092dd358c7d50c28ea96c94d04af64191bd33152eca3
+  languageName: node
+  linkType: hard
+
+"zustand@npm:4.4.7":
+  version: 4.4.7
+  resolution: "zustand@npm:4.4.7"
+  dependencies:
+    use-sync-external-store: "npm:1.2.0"
+  peerDependencies:
+    "@types/react": ">=16.8"
+    immer: ">=9.0"
+    react: ">=16.8"
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    immer:
+      optional: true
+    react:
+      optional: true
+  checksum: 10c0/de507f09eb79039d74d282df6ffac6c7fb6b840ca3620b0392bcbe3f9049902802db5448b4002e6fcb32f903f7ec1aea14602049eb2a3a8410bfea7186d72fb7
   languageName: node
   linkType: hard
 

@@ -1,5 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto'
 import { readFile, realpath, stat } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import type { Readable } from 'node:stream'
 import type { SettingsScope } from '@deepseek-ai/dsh-settings'
@@ -27,9 +29,18 @@ const MAX_PNPM_STREAM_OUTPUT_BYTES = 32 * 1024
 const MAX_FAILURE_CAUSE_LENGTH = 4 * 1024
 const LIFECYCLE_SCRIPTS = ['preinstall', 'install', 'postinstall', 'prepare'] as const
 const BLOCKED_PRODUCT_PACKAGES = new Set(['dsh-plugin-desktop', 'dsh-community-market'])
-const DSH_RUNTIME_VERSION = '0.1.2-rc.1'
-const CORDIS_RUNTIME_VERSION = '4.0.2'
-const NODE_RUNTIME_VERSION = '24.18.1'
+/** Use the installed Host generation, not a release constant that can drift on upgrades. */
+function installedRuntimeVersion(name: '@deepseek-ai/dsh-session' | '@deepseek-ai/cordis'): string {
+  const manifest: unknown = JSON.parse(readFileSync(createRequire(import.meta.url).resolve(`${name}/package.json`), 'utf8'))
+  if (typeof manifest !== 'object' || manifest === null || !('version' in manifest)
+    || typeof manifest.version !== 'string' || valid(manifest.version) === null) {
+    throw new Error(`Community Market cannot identify the installed ${name} runtime`)
+  }
+  return manifest.version
+}
+const DSH_RUNTIME_VERSION = installedRuntimeVersion('@deepseek-ai/dsh-session')
+const CORDIS_RUNTIME_VERSION = installedRuntimeVersion('@deepseek-ai/cordis')
+const NODE_RUNTIME_VERSION = process.versions.node
 
 export type { MarketInstallReceipt } from '../api-types.js'
 

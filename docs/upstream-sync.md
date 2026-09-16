@@ -2,6 +2,33 @@
 
 ## 2026-09-16 UI 接入与完整门禁复核
 
+主核心 gitlink 与 `upstream.json` 已通过独立提交 `92c457eb09` 更新到
+`fb2c4b9e698e30edb738bca4cf0618587db7d203`，没有 Desktop 行为混入。子模块干净、
+`check:layout` 与后续根 `check` 通过。checkout 曾尝试旧 gitclone promisor 并超时；
+官方 origin 已成功取得固定对象，随后移除本机旧 promisor 标记，只让官方 origin 提供
+缺失对象。没有更换 `.gitmodules` 权威 URL，也没有复制其他项目 README。
+
+更细的 3 视口隐藏 Electron surface gate（1280×800、1920×1080、800×600）通过：
+每视口 20 次设置开关、浅/深色遮罩、portal 菜单、嵌套 Escape、焦点/inert 恢复、
+语音可见/收起/恢复、遮挡时禁止媒体请求。测试新增 Zustand/Immer dev 依赖以解析新版
+Client store，发布 Client factory 的组件测试也改用实际 store，不再用 store stub。
+
+最终旧版本扫描发现 Market 安装 verifier 仍硬编码旧核心版本；新增三个依赖字段的
+rc.2-only 接受/旧精确版本拒绝测试先复现失败，现改为读取实际加载的 dsh-session、
+Cordis 包版本和 process.versions.node。Market 完整 check **278 passed**。
+Web launcher 原补丁中的 Electron Node-mode 环境适配也已迁移，仅 Electron Host
+给短命 Node helper 设置标记，helper 在系统浏览器启动前清除；父级凭据仍由上游 scrub
+过滤，正常 Desktop 的 openBrowser:false 继续由自身 bundle 持有，不再修改官方 bundle。
+
+旧 0.1.2 / Sidebar 0.18 / Pi-AI 0.84.4 的 21 个非活动补丁已从当前树移除，确认
+manifest/lock/tests 无活动引用后才删除，可由 Git 历史恢复。DeepSeek 流式空 id/name
+修复已被上游 `acceptIdentity` 吸收，实际 SSE 回归通过；其他对应能力均已迁移到当前 patch。
+参考 Desktop 的新版 beta 隔离/0.1.6/无 ASAR/Phone Connect 不作为此 fork 运行时替代。
+参考仓库的新 console inheritance 问题在本机当前组合未复现：真实 Electron 受限
+PowerShell 的 read-only 与 workspace-write 均正常启动，写入范围分别被拒绝/允许，
+workspace 外写入始终拒绝；该结论仅覆盖本机 Windows。新版 footer 修复针对多个
+launcher 共存，此产品未引入 Phone Connect，不照搬其界面或上游 README。
+
 当前 Desktop workspace `check` 已完整通过：build、typecheck、全套 tests、247 节点
 runtime closure、Electron CLI/pnpm artifact、Loader、Profile/experience 与许可证检查。
 许可证扫描覆盖 655 个生产依赖，其中 2 个包含 LGPL notice 要求，仍须在打包时验证 notices。
