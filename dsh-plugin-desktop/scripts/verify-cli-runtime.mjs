@@ -65,6 +65,8 @@ function runElectronEntry(label, nodeArgs, entry, args, expectedOutput, extraEnv
     encoding: 'utf8',
     env,
     shell: false,
+    windowsHide: true,
+    timeout: 60_000,
   })
   verifyResult(label, result, expectedOutput)
 }
@@ -81,12 +83,16 @@ function runPnpm(env, args, cwd) {
         encoding: 'utf8',
         env,
         shell: false,
+        windowsHide: true,
+        timeout: 60_000,
       })
     : spawnSync('pnpm', args, {
         cwd,
         encoding: 'utf8',
         env,
         shell: false,
+        windowsHide: true,
+        timeout: 60_000,
       })
 }
 

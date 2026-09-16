@@ -112,6 +112,16 @@ class CapturedDesktopCliExit {
   constructor(readonly code: number) {}
 }
 
+/** rc.2 imports are inert; explicitly await its public runner inside our recovery boundary. */
+async function invokeDshCli(load: (url: string) => Promise<unknown>): Promise<void> {
+  const entry = await load(DSH_ENTRY_URL)
+  if (typeof entry !== 'object' || entry === null || !('runCli' in entry)
+    || typeof entry.runCli !== 'function') {
+    throw new Error('dsh-desktop: packaged DSH entry does not export runCli')
+  }
+  await entry.runCli({ desktopPlugin: true })
+}
+
 /** Run one built-in-terminal add inside the same durable recovery boundary as Market installs. */
 async function loadWithInstallRecovery(
   load: (url: string) => Promise<unknown>,
@@ -136,7 +146,7 @@ async function loadWithInstallRecovery(
     )
   }) as typeof process.exit
   try {
-    await load(DSH_ENTRY_URL)
+    await invokeDshCli(load)
   } catch (cause) {
     if (cause instanceof CapturedDesktopCliExit) capturedExitCode = cause.code
     else failure = cause
@@ -167,7 +177,7 @@ async function loadWithInstallRecovery(
  * @param environment - process environment inherited from the generated shim.
  * @param load - ESM loader used by the executable and focused tests.
  * @param argv - mutable process arguments presented to the upstream CLI.
- * @returns once the imported CLI entry completes its top-level work.
+ * @returns once the imported CLI's public runCli finishes.
  */
 export async function runDesktopDshCli(
   environment: NodeJS.ProcessEnv = process.env,
@@ -201,7 +211,7 @@ export async function runDesktopDshCli(
     await loadWithInstallRecovery(load, store)
     return
   }
-  await load(DSH_ENTRY_URL)
+  await invokeDshCli(load)
 }
 
 function isDirectExecution(): boolean {

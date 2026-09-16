@@ -2,6 +2,57 @@
 
 ## 2026-09-16 UI 接入与完整门禁复核
 
+当前 Desktop workspace `check` 已完整通过：build、typecheck、全套 tests、247 节点
+runtime closure、Electron CLI/pnpm artifact、Loader、Profile/experience 与许可证检查。
+许可证扫描覆盖 655 个生产依赖，其中 2 个包含 LGPL notice 要求，仍须在打包时验证 notices。
+根仓库 check、submodule pin 一致性和安装器级验收尚未据此宣称完成。
+
+后续核验三方 `git ls-remote` 已恢复可用（本机现有代理 `127.0.0.1:10808`，目标仍为
+三条权威 GitHub URL）：Harness/Sidebar HEAD 与目标 tags 未变；Desktop reference HEAD
+前进为 `474d3936d1ce498147ba444c0b182d5e877f5c2d`，v2.0.10 tag 仍为
+`697e7d782cbfc2b9e8fa0ac862ef26bba9ac1326`。npm tags 未变，当前没有跟随移动 HEAD。
+精确 family 审计读取了 123 个 rc.2 registry 元数据（tarball、integrity、exports、peers）
+和 241 个 Desktop/Market 声明及实际安装版本，全部匹配；不能仅以 CLI latest 推断其他包。
+
+UI 阶段提交 `5df876fce5`。CLI 现在显式 await 上游 `runCli`，安装恢复事务包围实际
+执行而不只包围 import；入口缺失时显式报错。CLI 审计补丁提供仅供 Desktop 封装调用的
+`desktopPlugin` 选项，只开放 `plugin --profile desktop`，公共 CLI 和 profile boot/dump
+仍保留上游 Desktop 禁止规则。真实子进程边界 4 项、bootstrap/资源 22 项通过，Electron
+RunAsNode 版本/扁平 Profile/pnpm lifecycle artifact smoke 通过。
+
+Session 迁移测试使用与旧 pin 生产写入顺序一致的 v0 fixtures，分别以 JSONL 和独立
+checksummed Zstd 帧测试；新 generation 写入后旧文件字节不变。已覆盖普通/空日志、
+撕裂尾部、损坏提交、未知 event/未来 generation、单 writer、read-only、close 和取消重试。
+迁移测试进一步证实新版 Inbox 忽略了正确的 inherited end-seed，导致旧 seeded Sidechat
+执行父 pending 输入。新增最小 AgentLoop patch 在该边界重置队列，并把 projection
+stateVersion 提升到 2；原始父日志不修改，后续子队列保持。直接/nested AgentRegistry fork、
+旧缓存失效与旧 seeded Sidechat 冷恢复均通过，迁移专组 **20 passed**。该投影修复取代
+“只在新建 Sidechat 清队列足够”的先前判断，不能以那批新建测试证明旧会话安全。
+
+已使用隐藏 Electron、全套真实 Host/Client 组合验证 system/native 外观的工作区、
+Commands、上传字节、图片输入、语音可见性、设置背景与外观选项；diagnostic 组合验证
+原生上游布局/Commands 且无 Desktop/第三方界面，均返回 healthy、无页面异常。
+本地 harness 先修复每个 mode 共用 DSH_HOME 的夹具污染，再独立重跑 diagnostic；
+这些是开发态隔离 Renderer 证据，不是安装器、真实供应商音频或 macOS/Linux GUI 验收。
+
+### rc.2 Community Market live-source replay
+
+使用当前生产 restricted client、每个精确 reviewed hostname 对应的既有策略，
+User-Agent `dsh-community-market/0.1`，Accept `application/json`，Accept-Encoding
+`gzip, identity`。观察字节和适配器读取同一 HTTP response 并校验解析结果一致，未使用
+另一表示的 totals/cursor/revision。每个来源只有一次网络响应，表中页数是本地归一化分页。
+
+| 来源与精确 endpoint | 表示/结果 | provider → normalized | 耗时 | compressed / decoded bytes | 既定 bound 与 headroom |
+| --- | --- | --- | --- | --- | --- |
+| 1024Store `https://deepseek1024.com/api/v1/plugins` | HTTP 200，JSON UTF-8，gzip | 500 → 500，5 页 | 3355.12 ms | 392163 / 2511165 | 16 MiB；compressed 16385053、decoded 14266051 bytes 余量；provider 10000、normalized 25000 条上限 |
+| dshfind `https://api.dshfind.com/v1/catalog` | HTTP 200，JSON UTF-8，gzip | 14872 → 14871，149 页 | 8337.99 ms | 2135717 / 14742735 | 32 MiB；compressed 31418715、decoded 18811697 bytes 余量；25000 条上限，normalized 10129 条余量 |
+
+回放时间为 `2026-09-16T17:11:17Z` / `17:11:26Z`。解压后同一表示 SHA-256 分别为
+`832a325b16b88f8dc5c1837d859780ca6dfd69fd7c32a0e4bea44319823232ef`、
+`fc22512c3291d6b7c1194476841ecf9be39875147f72897a8c28ed779d1b0723`。
+原策略 connect 8s、first-byte 12s、total 30s、normalized 25000 items / 10001 pages 保持，
+普通/用户来源不获得 gzip、大响应或 synthetic-proxy 例外。
+
 本轮固定候选仍为 Harness `0.1.5-rc.2` 与 Sidebar `0.19.1`。上一轮继续开发时重查
 官方 GitHub API 与 npm：Harness HEAD `0d1f50007f9bca3f52b06e1c3074fa14d5fb0720`、
 Sidebar HEAD `1fcf43ccbedd6e66370b7fb81df2b4dd0ef2604e`、Desktop reference HEAD

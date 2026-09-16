@@ -1520,6 +1520,41 @@ index 0000000000000000000000000000000000000000..caeacd1c1e9798165dcce6737e89113f
 +name: 标准模式
 +description: 功能完整的编码 Agent，支持文件编辑、Shell、文件与网页检索、Skills、计划、目标、子代理和工作流。
 +order: 1
+diff --git a/lib/bin.js b/lib/bin.js
+index 0ccc772a7c0c59f0b74d04a0093fb058235c143c..dc0c3924067c99ded58d9483e9f41eb438cb7592 100644
+--- a/lib/bin.js
++++ b/lib/bin.js
+@@ -79,7 +79,7 @@ function resolveBoot(program, profile, options, args) {
+ * @param version - version string printed by `--version`.
+ * @returns the resolved invocation.
+ */
+-function parseDshArgs(argv, version) {
++function parseDshArgs(argv, version, desktopPlugin = false) {
+ 	let resolved;
+ 	const program = new Command();
+ 	program.name("dsh").version(version, "-V, --version", "output the version number").description("dsh: boot a DeepSeek Harness profile — an ordered stack of plugin-bundle patch layers under your own overrides.").addHelpText("after", HELP_EXAMPLES).exitOverride().helpOption(false).allowUnknownOption().passThroughOptions().enablePositionalOptions().argument("[args...]", "arguments for the booted profile's app (see: dsh --profile <name> --help)").option("--profile <name>", "the profile under $DSH_HOME/profiles to boot").option("--from-default-profile <name>", "initialize a new custom profile from a shipped profile template").option("--patch <path>", "extra patch-list overlay applied after the profile layer (repeatable)", collect).option("--dump-config", "print the composed profile tree and exit").option("--dump-default-config", "print the profile tree without its user layer or --patch overlays and exit").action((args, options) => {
+@@ -106,7 +106,9 @@ function parseDshArgs(argv, version) {
+ 	plugin.requiredOption("--profile <name>", "the profile whose plugins to manage (initialized on first use)").allowUnknownOption().argument("[args...]", "pnpm arguments, forwarded verbatim (add <pkg>, remove <pkg>, why <pkg>, ...)").action((args, options) => {
+ 		rejectParentOptions("plugin");
+ 		if (options.profile === "") program.error("error: --profile needs a name");
+-		rejectElectronProfile(plugin, options.profile);
++		// Only the Desktop-owned wrapper may manage its existing profile's plugins.
++		// Boot/dump entry points and the public CLI keep the upstream restriction.
++		if (!desktopPlugin) rejectElectronProfile(plugin, options.profile);
+ 		if (args.length === 0) program.error("error: plugin needs pnpm arguments to forward (e.g. add <package>)");
+ 		resolved = {
+ 			mode: "plugin",
+@@ -138,8 +140,8 @@ function readVersion() {
+ * Run the public dsh command-line interface.
+ * @returns a promise that settles when the selected command mode finishes.
+ */
+-async function runCli() {
+-	const invocation = parseDshArgs(process.argv.slice(2), readVersion());
++async function runCli(options) {
++	const invocation = parseDshArgs(process.argv.slice(2), readVersion(), options?.desktopPlugin === true);
+ 	switch (invocation.mode) {
+ 		case "profile": {
+ 			const { runProfile } = await import("./profile-boot-BP_C0vpU.js");
 diff --git a/lib/plugin-Ddi42qoW.js b/lib/plugin-Ddi42qoW.js
 index bf2655e919230262e9a7b1560c3bda7ac50347ea..149340b549067ea0b390f9edaed1e2f485cec5a9 100644
 --- a/lib/plugin-Ddi42qoW.js

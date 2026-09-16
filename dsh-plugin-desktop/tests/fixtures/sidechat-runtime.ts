@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 /** Real Agent/Session/JSONL services; only the remote model is a deterministic fixture. */
-export async function sidechatRuntime() {
+export async function sidechatRuntime(compression: 'none' | 'zstd' = 'none') {
   const root = await mkdtemp(join(tmpdir(), 'sidechat-v3-'))
   const ctx = new Context()
   const calls: GenerateOptions[] = []
@@ -34,7 +34,7 @@ export async function sidechatRuntime() {
     ctx.llm.registerAdapter(['parent-provider', 'default-provider'], new CaptureAdapter())
     await ctx.plugin(SessionStore)
     await ctx.plugin(SessionProjectionRegistry)
-    await ctx.plugin(JsonlPersistence, { root, compression: 'none' })
+    await ctx.plugin(JsonlPersistence, { root, compression })
     await ctx.plugin(SystemPrompt, { personaPrefix: 'fixture {{provider}} / {{model}}' })
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(AgentDefaultModel, { provider: 'default-provider', model: 'default-model' })
