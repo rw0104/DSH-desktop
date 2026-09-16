@@ -1,6 +1,7 @@
 /** Headless smoke for the complete published DSH Web profile and renderer manifest. */
 
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { removeIsolatedTree } from '../../scripts/remove-isolated-tree.mjs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -375,5 +376,5 @@ try {
   uiProvider?.close()
   releasePackageResolver?.()
   pnpmRuntime?.dispose()
-  rmSync(home, { recursive: true, force: true })
+  removeIsolatedTree(home)
 }

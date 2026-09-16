@@ -2,6 +2,14 @@
 
 ## 2026-09-16 UI 接入与完整门禁复核
 
+包内 Renderer 探针在 system 组合完成后暴露了**测试清理故障**：探针曾在 Electron
+Node mode 下递归 rm 临时 Profile，其中的目录 junction 使 Electron rm 跟随到未验证
+unpacked staging 并删除部分文件，native 组合随后报 ENOENT。只影响本次可再生成的
+打包目录，旧验证安装器未动；该候选不交付。独立、自有 target 的最小夹具复现了该
+Electron 行为。已将 profile smoke 和包内探针改用仓库现有不跟随链接的 removeIsolatedTree，
+其 Node/Electron housekeeping 回归通过；包内每个 mode 前后另外校验 runtime 哨兵文件
+哈希，后续必须重新生成完整 artifact 再顺序验收，不在打包过程中运行包内探针。
+
 首次 rc.2 Windows 安装器生成成功且既有 package footprint/Profile/PE 校验通过，但
 追加的实际 ASAR 检查发现内含旧 `THIRD_PARTY_NOTICES.md`，该候选判定不合格，不交付。
 发出停止操作时构建已经正常退出，没有将活跃进程误当成失败重启。现已按 655 个当前

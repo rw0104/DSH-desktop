@@ -1,4 +1,4 @@
 # Bilingual-pair consistency record: Git blob hashes of the reviewed product READMEs.
 # Update both languages and these hashes together.
-README.md: a9504ca655bbdc868a8aa8d42f2e2d078691cd48
-README.en.md: fa3a587003187c7b6518895adf078eb830df2ed6
+README.md: 558cd094796fe11fee576117f5776cbc65562a49
+README.en.md: 446589b2457d3ec1d2c93b2c1a469285727771ac

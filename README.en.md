@@ -76,7 +76,7 @@ Select **+ → Upload files to workspace**. Files are saved in the workspace or 
 
 ### Complete code tasks in one workbench
 
-The maintained **Better Sidebar 0.18.0** supplies Explorer, the editor, unified file changes and Git/diffs, browser tabs, terminals, subagents, and background tasks.
+This integration branch uses the maintained **Better Sidebar 0.19.1**, supplying Explorer, the editor, unified file changes and Git/diffs, browser tabs, terminals, subagents, and background tasks.
 
 - **Sidechat:** extend a session into a side conversation, distinguish inherited history from the parent's pending input, and restore model selection after reloading.
 - **Pinned terminals:** keep a terminal at workspace or global scope across session switches; open supported links with Ctrl/Cmd+Click.
@@ -143,7 +143,7 @@ corepack yarn install --immutable
 corepack yarn dev
 ```
 
-The release pins Harness `0.1.2-rc.1` and Sidebar `0.18.0`. `deepseek-harness/` is an upstream submodule without direct source edits; desktop adaptations live in owned plugins and audited Yarn patches. The root workspace uses Yarn, while the upstream submodule retains its pnpm workspace. Run `corepack yarn check` for the complete headless gate.
+This integration branch pins Harness `0.1.5-rc.2` and Sidebar `0.19.1`; published downloads retain the versions documented in their respective Release notes. `deepseek-harness/` is an upstream submodule without direct source edits; desktop adaptations live in owned plugins and audited Yarn patches. The root workspace uses Yarn, while the upstream submodule retains its pnpm workspace. Run `corepack yarn check` for the complete headless gate.
 
 ## Community and acknowledgements
 

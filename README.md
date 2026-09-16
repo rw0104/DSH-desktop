@@ -76,7 +76,7 @@ Windows 安装器内置所需运行环境，无需预装 Node.js；支持选择�
 
 ### 在同一个工作台完成代码任务
 
-维护中的 **Better Sidebar 0.18.0** 提供 Explorer、编辑器、统一文件变动与 Git/diff、浏览器、终端、子 Agent 和后台任务面板。
+本集成分支采用维护中的 **Better Sidebar 0.19.1**，提供 Explorer、编辑器、统一文件变动与 Git/diff、浏览器、终端、子 Agent 和后台任务面板。
 
 - **Sidechat**：从会话延展侧边讨论，正确区分继承历史和父会话待处理输入；重载后恢复模型选择。
 - **固定终端**：支持工作区级或全局固定，跨会话继续使用同一终端；Ctrl/Cmd+Click 打开受支持的链接。
@@ -143,7 +143,7 @@ corepack yarn install --immutable
 corepack yarn dev
 ```
 
-正式版固定 Harness `0.1.2-rc.1` 和 Sidebar `0.18.0`。`deepseek-harness/` 是未直接修改的上游子模块；桌面适配位于自有插件和受审查的 Yarn patch。根工作区使用 Yarn，上游子模块保留自己的 pnpm 工作区。运行 `corepack yarn check` 执行完整无界面检查。
+本集成分支固定 Harness `0.1.5-rc.2` 和 Sidebar `0.19.1`，已发布下载的版本以对应 Release 说明为准。`deepseek-harness/` 是未直接修改的上游子模块；桌面适配位于自有插件和受审查的 Yarn patch。根工作区使用 Yarn，上游子模块保留自己的 pnpm 工作区。运行 `corepack yarn check` 执行完整无界面检查。
 
 ## 社区与致谢
 

@@ -46,7 +46,7 @@ Login-shell 恢复完成后，Launcher 才创建 layered launch-environment snap
 
 原生外观是为 macOS 与 Windows 显式组合的 desktop 呈现。Launcher 会在读取全部用户 patch 后禁用官方 `ui-layout` Loader row，保持官方 `ui-sidebar` 与 `ui-conversation` row 启用，并把所选模式应用到 `desktop-shell`。
 
-desktop Client 随后在自身 Cordis fiber 生命期内提供 `layout` service，并且只注册 `root` slot occupant。其 root 为不变的上游 sidebar、conversation、details 与 overlay contribution 声明 seat。官方 sidebar 继续作为 `sidebar` occupant，并继续声明 workspace browser、settings shell 与纯新增 footer action seat。这样会保留其组件行为、收起动画与第三方扩展点，而 desktop package 只拥有 frame 几何与原生材质。
+desktop Client 在 Conversation 激活前提供自身 Cordis fiber 生命期内的 `layout` service，并注册 `root` slot occupant。其 root 遵循 DSH 0.1.5 合同：`sidebar`、keyed `main`（含 `conversation` entry）、`rightbar` 与 `shell.overlay`；rightbar 的拥有者提供自身 Session 绑定。官方 sidebar 继续作为 `sidebar` occupant，并继续声明 workspace browser、settings shell 与纯新增 footer action seat。这样保留上游组件行为和扩展点，而 desktop package 拥有 frame 几何与原生材质。
 
 高级 theme presenter 会把当前上游 theme snapshot 投影到 document，包括 color scheme、解析后的 token 值、深色模式 marker 与 theme-color metadata。它订阅普通 theme 变化，generation dispose 时只移除由自身投影的状态。
 
@@ -216,5 +216,5 @@ corepack.cmd yarn dist:win-portable
 - `dshmarket@1.2.3` 仍是用户可选安装的第三方 package，而不是内置 marketplace。只有重新审计的版本同时消费可选 Desktop service、保留普通 DSH fallback，并包含再分发所需的完整 license notice 后，才会重新评估预装。
 - 更新交接只验证下载容器，不验证 publisher 身份。macOS 仍要求用户从已打开的 DMG 替换应用；Windows 会运行已下载的 NSIS 安装器，但本地 `dist:win` 产物没有签名。签名产物、Authenticode/publisher 校验、SmartScreen 信誉与原生升级测试仍是发布 gate。
 - 共享 carrier 使用 loopback HTTP 与 WebSocket，而不是 Electron IPC。替换它需要上游 DSH 提供 transport 扩展点，不属于该独立包的范围。
-- 该项目同时固定到已发布的 DSH `0.1.2-rc.1` family 及其对应的官方 `deepseek-harness/` release 源码。产品构建仍解析已发布包接口，不会直接链接源码 checkout。
+- 本次集成固定 DSH `0.1.5-rc.2` family、对应的官方 `deepseek-harness/` 源码与 Better Sidebar `0.19.1`。产品构建解析已发布包接口，不直接链接源码 checkout。验收状态见同步台账；这不表示已公开发布新版本。
 - `package:dir` 是用于 smoke 的未封装产物。`dist:win` 会额外生成未签名的 NSIS 测试安装包，但不会建立 Authenticode 身份或 SmartScreen 信誉。安装与升级行为、原生通知与终端、Windows ACL sandbox，以及每台目标机器上的原生材质外观仍属于目标平台验证边界。
