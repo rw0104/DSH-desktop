@@ -2,6 +2,13 @@
 
 ## 2026-09-16 Windows rc.2 最终候选验证
 
+补充正常启动证据：18:40 UTC 直接启动同一未修改包内 EXE，system/native/diagnostic
+三个独立进程均记录 health-commit / healthy，实际首次通知界面与布局类型匹配，随后
+正常退出 0。事先证明 Electron 的 user-data 参数隔离生效；DSH_HOME、user-data 和
+cwd 全部在隔离 runner 临时目录，没有真实 Profile、供应商音频或覆盖安装。结束后
+确认无残余产品进程，929 文件包树及安装器 SHA-256 不变。这补齐正常主进程启动项，
+仍不替代 Windows 安装向导 GUI、OS 目录对话框或真实音频验收。
+
 固定源码 `d9f4c740518d89ddfb4310c2690d91137331b26e` 的本地未签名候选已通过最终根
 check（Desktop 124 suites / 1005 passed / 11 skipped；Market 278 passed）、实体打包、
 安装器全树一致性、包内三组合 Renderer、旧 Profile 与 V0 Web Session inspect/page
