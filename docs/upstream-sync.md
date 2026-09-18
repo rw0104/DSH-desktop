@@ -21,6 +21,12 @@ DOM picker fixture 当作系统对话框证据。该两项继续明确为 Window
 
 本轮只更新来源记录和验证边界，不改变 gitlink、依赖、patch、安装器或产品代码。
 
+picker 边界的可执行回归另行通过：`electron-runtime.spec.ts`、`workspace-admission.spec.ts`、
+`directory-picker-route.spec.ts`、`plugin.spec.ts`、`published-directory-browser.spec.ts`
+共 5 个文件 / 96 项测试通过，覆盖 Windows `showOpenDialog` 参数、同源路由、取消/失败、
+卷策略和 renderer 重试。该证据验证产品边界和错误处理；由于 GUI 工具 token 不可用，
+仍不把它扩展为实际 OS 对话框人工选择已完成。
+
 ## 2026-09-16 Windows rc.2 最终候选验证
 
 补充正常启动证据：18:40 UTC 直接启动同一未修改包内 EXE，system/native/diagnostic
