@@ -1,5 +1,26 @@
 # Upstream synchronization ledger
 
+## 2026-09-18 最终来源复查与 GUI 边界
+
+最终复查仍固定使用 Harness `0.1.5-rc.2` 与 Sidebar `0.19.1`：Harness tag
+`fb2c4b9e698e30edb738bca4cf0618587db7d203` 未变，Sidebar tag
+`8753096a583ff2891d57a0074f1ac71cd5c6003e` 未变；两者的移动 HEAD 分别为
+`ddefc45fbc7f8e46dd73185e68295696d1297887` 与
+`1fcf43ccbedd6e66370b7fb81df2b4dd0ef2604e`。参考 Desktop HEAD 为
+`a934d988610605078001d7c22bbaa2435cbeb385`，稳定 tag `v2.0.10` 仍为
+`697e7d782cbfc2b9e8fa0ac862ef26bba9ac1326`。npm dist-tags 当前为 Harness
+latest/next=`0.1.5-rc.2`、alpha=`0.1.6-alpha.2`，Sidebar latest=`0.19.1`，
+参考 Desktop latest=`2.0.0`。Harness stable tag 与候选一致，因此不触发运行时切换；
+移动 HEAD 和 alpha 仍需独立兼容性审查，不静默跟随。
+
+Windows 包内正常 EXE 启动、三种外观和 Session/Profile 自动化均已完成。尝试补做
+安装器 GUI / OS 原生目录对话框时，Computer Use 初始化返回 `Codex auth token is
+unavailable`，且没有可用的 Windows GUI 窗口句柄；没有进行任何替代点击，也没有把
+DOM picker fixture 当作系统对话框证据。该两项继续明确为 Windows 未验收；真实麦克风、
+扬声器和供应商音频同样未验收。macOS/Linux 原生包内验收仍按用户确认保留未验收。
+
+本轮只更新来源记录和验证边界，不改变 gitlink、依赖、patch、安装器或产品代码。
+
 ## 2026-09-16 Windows rc.2 最终候选验证
 
 补充正常启动证据：18:40 UTC 直接启动同一未修改包内 EXE，system/native/diagnostic
