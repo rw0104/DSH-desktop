@@ -1,5 +1,49 @@
 # Upstream synchronization ledger
 
+## 2026-09-20 默认发布线复查与兼容修复
+
+本次继续完成 `0.1.5-rc.2 + Sidebar 0.19.1` 的本地测试交付。官方 npm
+`latest`/`next` 仍为 `0.1.5-rc.2`，`alpha` 为 `0.1.6-alpha.2`；默认发布线
+没有新的 runtime pin。以下来源在修改前重新查询，不使用其他仓库替代：
+
+| 来源 | 固定发布版本 | 本次远端 HEAD / npm |
+| --- | --- | --- |
+| `deepseek-ai/deepseek-harness` | rc.2=`fb2c4b9e698e30edb738bca4cf0618587db7d203` | HEAD / alpha.2=`ddefc45fbc7f8e46dd73185e68295696d1297887`；latest/next=rc.2 |
+| `omdsh-dev/DSH-better-sidebar` | 0.19.1=`8753096a583ff2891d57a0074f1ac71cd5c6003e` | HEAD=`1fcf43ccbedd6e66370b7fb81df2b4dd0ef2604e`；latest=0.19.1 |
+| `anywhere-labs/deepseek-harness-desktop` | v2.0.13=`a7825021a227bc5776525996fc5a794b23d707ac` | HEAD=`b0ed7c05a9ccb1370e50e132888e5d8718be4299`；npm `dsh-plugin-desktop` latest=2.0.0 |
+
+查询使用三方 `git ls-remote <repository> HEAD refs/heads/master refs/heads/main
+<release-tags>`、`gh api repos/<owner>/<repo>/commits/HEAD`、GitHub tag/release API
+和 `npm view <package> dist-tags version peerDependencies dist.integrity --json`。
+首次 Git transport 查询均连接失败；HTTP/1.1 重试后 Sidebar 与参考 Desktop 成功，
+Harness 再次连接超时，先使用官方 GitHub commit/ref API 核对其 HEAD 和两个发布 tag；
+最终 Git transport 重试也已成功，三方 HEAD/tag 与 API 结果全部相符。
+没有将网络失败当成“没有更新”。参考项目 release API 返回的网页为其更名后的
+`anywhere-labs/dsh-desktop`，查询入口仍是规定的原始仓库，且两个 URL 的仓库身份一致。
+rc.2 npm integrity 为 `sha512-8Xc8hCQHcIWRmTCVU/xZdp6/qMsWMeAd2ObChKDEsfhUPJFXx6H0lgeb1DxUMD86HZrrVN+1bCvn1ppjZ/fOxw==`；
+Sidebar 0.19.1 integrity 为 `sha512-Jr0tPJoDKUVkq+fioL6Td+YwXZ+PULx3CnBJ4iktaQGNP5y9hgpz6V7o7f4Yh2czheVKZsewurqCaiN10GQYeQ==`。
+
+[alpha.2 发布说明](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.6-alpha.2)
+明确改变客户端多 Session API/slots、插件依赖运行时解析及卸载、Creator 插件安装流程。
+Sidebar 已发布版本仍以 `^0.1.5-rc.1` 为 DSH peer 范围，不能据此宣称支持
+`0.1.6-alpha.2`。本轮不混用 alpha 包；后续迁移需逐个重放版本化 patch，验证
+多 Session 绑定、动态卸载、Profile/恢复事务、Sidechat 与正常/诊断三组合。
+
+参考 Desktop 自上次对照 `a934d988...` 新增 71 个提交，多数属于 Next/alpha.2、
+Agents Anywhere 或图标打包。采用与当前架构匹配的两处修复：参考
+`11a25776971913b9b35eecd2b466f6b0b98c4e95` 补全错误 cause/aggregate 诊断，
+并参考 `30130ee8be0f1641c62b1851d177d14e324cfca0` 在更新响应被拒绝时释放响应流。
+本产品的更新来源继续使用 `rw0104/DSH-desktop` 的 GitHub 资产元数据及现有 SHA-256/大小校验，
+不能套用参考项目的网站/镜像下载源。参考 materializer 文件在本 fork 不存在，
+Next 前端与原生浏览器不直接套用。Market 网络/缓存修复列入独立后续审查，未在此轮
+改变 Market 或生产 restricted client，也不借历史 live-source 结果声称本次重新回放。
+
+`corepack yarn install --immutable` 与修复前完整基线通过；新增 8 项回归先复现失败，
+修复后日志/更新四文件 67 项通过。最终根 `corepack yarn check` 退出 0：Desktop
+124 suites / 1013 passed / 11 skipped，Market 19 suites / 278 passed；包含构建、
+typecheck、CLI、Loader、Profile、三种 experience、247 节点运行图和 655 包许可证检查。
+Windows 实体安装器结果完成后补记，替代包验证前保留既有已验证 rc.2 安装器。
+
 ## 2026-09-18 最终来源复查与 GUI 边界
 
 最终复查仍固定使用 Harness `0.1.5-rc.2` 与 Sidebar `0.19.1`：Harness tag

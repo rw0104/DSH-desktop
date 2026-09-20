@@ -138,6 +138,7 @@ export async function downloadDesktopUpdate(options: DownloadDesktopUpdateOption
   }
 
   if (response.status !== 200) {
+    await discardResponseBody(response)
     throw new UpdateDownloadError(
       'http-status',
       `The update download service returned HTTP ${String(response.status)}.`,
@@ -147,7 +148,12 @@ export async function downloadDesktopUpdate(options: DownloadDesktopUpdateOption
   if (response.body === null) {
     throw new UpdateDownloadError('empty-body', 'The update download service returned an empty body.')
   }
-  assertDeclaredSize(response, artifact?.size)
+  try {
+    assertDeclaredSize(response, artifact?.size)
+  } catch (cause) {
+    await discardResponseBody(response)
+    throw cause
+  }
   const totalBytes = artifact?.size ?? declaredResponseSize(response)
   reportProgress(options.onProgress, {
     phase: 'downloading',
@@ -429,6 +435,11 @@ async function lstatOptional(filename: string): Promise<Awaited<ReturnType<typeo
     if ((cause as NodeJS.ErrnoException).code === 'ENOENT') return undefined
     throw cause
   }
+}
+
+/** Release rejected downloads while preserving the original validation failure. */
+async function discardResponseBody(response: Response): Promise<void> {
+  await response.body?.cancel().catch(() => undefined)
 }
 
 function assertDeclaredSize(response: Response, expectedSize?: number): void {

@@ -31,6 +31,36 @@ export interface DesktopChildProcessSource {
   off(event: 'child-process-gone', listener: (event: unknown, details: DesktopChildProcessDetails) => void): unknown
 }
 
+/** Preserve wrapped failures without letting a cyclic or deep error graph break logging. */
+function formatDesktopErrorDetails(error: unknown): string {
+  const ancestors = new Set<Error>()
+  let remaining = 128
+  const truncated = '[error details truncated]'
+  const render = (value: unknown, depth: number): string => {
+    if (remaining-- <= 0 || depth >= 32) return truncated
+    if (!(value instanceof Error)) return String(value)
+    if (ancestors.has(value)) return `${value.message} [circular error]`
+    ancestors.add(value)
+    try {
+      const details = [value.stack ?? value.message]
+      if (value.cause !== undefined) details.push(`cause=${render(value.cause, depth + 1)}`)
+      if (value instanceof AggregateError) {
+        for (const part of value.errors) {
+          if (remaining <= 0) {
+            details.push(truncated)
+            break
+          }
+          details.push(`error=${render(part, depth + 1)}`)
+        }
+      }
+      return details.join('\n')
+    } finally {
+      ancestors.delete(value)
+    }
+  }
+  return render(error, 0)
+}
+
 /** Render signed Electron exit codes with their Windows NTSTATUS bit pattern. */
 export function formatDesktopExitCode(exitCode: number): string {
   return `${String(exitCode)} / 0x${(exitCode >>> 0).toString(16).padStart(8, '0')}`
@@ -103,7 +133,6 @@ export class ElectronStderrLogger implements DesktopLogger {
   }
 
   errorCause(cause: unknown): void {
-    const text = cause instanceof Error ? cause.stack ?? cause.message : String(cause)
-    this.error(text)
+    this.error(formatDesktopErrorDetails(cause))
   }
 }

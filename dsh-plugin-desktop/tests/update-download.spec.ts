@@ -264,6 +264,39 @@ describe('desktop update installer download', () => {
     await expectNoPartialFiles(directory)
   })
 
+  it.each([
+    ['http-status', 503, undefined],
+    ['response-too-large', 200, String(MAX_UPDATE_DOWNLOAD_BYTES + 1)],
+    ['integrity-mismatch', 200, '1024'],
+  ] as const)('cancels a response rejected for %s even if stream cancellation fails', async (code, status, length) => {
+    const directory = await temporaryDirectory()
+    const bytes = windowsArtifact()
+    const version = '2.5.1'
+    const name = `DSH-Desktop-${version}-x64-Setup.exe`
+    const path = destinationPath(directory, 'win32', version)
+    const existing = Buffer.from('previous verified installer')
+    await writeFile(path, existing)
+    const cancel = vi.fn(() => { throw new Error('transport cancellation failed') })
+    const response = new Response(new ReadableStream<Uint8Array>({ cancel }), {
+      status,
+      headers: length === undefined ? {} : { 'content-length': length },
+    })
+
+    await expectFailure(downloadDesktopUpdate({
+      platform: 'win32', version, destinationPath: path,
+      artifact: {
+        version, name, size: bytes.byteLength,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+        url: `https://github.com/rw0104/DSH-desktop/releases/download/v${version}/${name}`,
+      },
+      request: async () => response,
+    }), code)
+
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(await readFile(path)).toEqual(existing)
+    await expectNoPartialFiles(directory)
+  })
+
   it('passes the caller signal and removes a partial file when aborted during streaming', async () => {
     const directory = await temporaryDirectory()
     const controller = new AbortController()

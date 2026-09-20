@@ -69,6 +69,78 @@ describe('ElectronStderrLogger', () => {
     expect(readFileSync(join(dir, `dsh-${day}.log`), 'utf8')).toContain('crash here')
   })
 
+  it('preserves aggregate stacks and nested causes while masking both outputs', () => {
+    const { s, dir } = sink()
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    try {
+      const cause = new Error('provider rejected Bearer nested.secret.token')
+      const aggregate = new AggregateError([
+        new Error('loader failed', { cause }),
+        new Error('cleanup failed'),
+      ], 'startup failed', { cause: 'profile unavailable' })
+
+      new ElectronStderrLogger(s).errorCause(aggregate)
+
+      const text = readFileSync(join(dir, `dsh-${todaySuffix()}.log`), 'utf8')
+      expect(text).toContain(aggregate.stack)
+      expect(text).toContain('loader failed')
+      expect(text).toContain('cleanup failed')
+      expect(text).toContain('provider rejected Bearer ****')
+      expect(text).toContain('cause=profile unavailable')
+      expect(text).not.toContain('nested.secret.token')
+      expect(stderrSpy).toHaveBeenCalledOnce()
+      expect(stderrSpy.mock.calls[0]?.[0]).toContain('provider rejected Bearer ****')
+      expect(stderrSpy.mock.calls[0]?.[0]).not.toContain('nested.secret.token')
+    } finally {
+      stderrSpy.mockRestore()
+    }
+  })
+
+  it.each(['cause', 'aggregate'] as const)('terminates a circular %s without losing the diagnostic', (kind) => {
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    try {
+      const error = kind === 'cause' ? new Error('circular loader') : new AggregateError([], 'circular loader')
+      if (error instanceof AggregateError) error.errors.push(error)
+      else error.cause = error
+
+      expect(() => new ElectronStderrLogger(undefined).errorCause(error)).not.toThrow()
+      expect(stderrSpy.mock.calls[0]?.[0]).toContain('circular loader')
+      expect(stderrSpy.mock.calls[0]?.[0]).toContain('[circular error]')
+    } finally {
+      stderrSpy.mockRestore()
+    }
+  })
+
+  it('keeps a shared cause in both aggregate branches without calling it circular', () => {
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    try {
+      const cause = new Error('shared network failure')
+      new ElectronStderrLogger(undefined).errorCause(new AggregateError([
+        new Error('first plugin', { cause }), new Error('second plugin', { cause }),
+      ], 'plugins failed'))
+
+      const text = String(stderrSpy.mock.calls[0]?.[0])
+      expect(text.match(/Error: shared network failure/gu)).toHaveLength(2)
+      expect(text).not.toContain('[circular error]')
+    } finally {
+      stderrSpy.mockRestore()
+    }
+  })
+
+  it('bounds pathological error graphs so reporting cannot overflow the stack', () => {
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    try {
+      let cause = new Error('root failure')
+      for (let index = 0; index < 2_000; index += 1) cause = new Error(`wrapper ${index}`, { cause })
+
+      expect(() => new ElectronStderrLogger(undefined).errorCause(cause)).not.toThrow()
+      expect(stderrSpy.mock.calls[0]?.[0]).toContain('wrapper 1999')
+      expect(stderrSpy.mock.calls[0]?.[0]).toContain('[error details truncated]')
+    } finally {
+      stderrSpy.mockRestore()
+    }
+  })
+
   it('masks secrets in the file and stderr outputs', () => {
     const { s, dir } = sink()
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
