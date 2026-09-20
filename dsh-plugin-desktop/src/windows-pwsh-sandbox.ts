@@ -108,7 +108,10 @@ export class DesktopWindowsPwshSandbox extends SandboxPwshExecutor {
     })
   }
 
-  protected override async runArgv(spec: ShellExecSpec, argv: readonly string[]): Promise<ShellRunResult> {
+  protected override async runArgv(
+    spec: ShellExecSpec,
+    argv: readonly string[],
+  ): Promise<{ result: ShellRunResult; spawnRequested: boolean }> {
     const adapted = this.adapt(spec, argv)
     return super.runArgv(adapted.spec, adapted.argv)
   }

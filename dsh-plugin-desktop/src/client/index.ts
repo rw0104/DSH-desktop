@@ -87,6 +87,7 @@ export const desktopClientServices = [
   'remote.credentials',
   'locale',
   'sessions',
+  'uiWorkspace',
   'conversation',
   'settingsScope',
   'theme',
@@ -120,7 +121,7 @@ function installDesktopClient(ctx: ClientContext, environment: DesktopClientEnvi
       create: input => ctx.workspaces.create(input),
       startSession: async workspaceId => {
         const sessionId = await ctx.sessions.create({ workspaceId })
-        ctx.sessions.open(sessionId)
+        ;(ctx as ClientContext & { uiWorkspace: { openSession(target: string): void } }).uiWorkspace.openSession(sessionId)
       },
       ...(environment.platform === 'win32'
         ? { validateDirectory: (path: string) => requestDesktopDirectoryValidation(path) }

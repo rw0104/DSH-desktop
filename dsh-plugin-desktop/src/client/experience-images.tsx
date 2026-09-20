@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import type { AttachmentPreviewProps } from '@deepseek-ai/dsh-client-ui-attachment/client'
 import { exportImage } from './image-export.ts'
 import { showContentMenu } from './content-menu.ts'
 
@@ -34,6 +33,13 @@ export function ImagePreview({ src, name, zh, onClose }: { src: string; name: st
 }
 
 /** Keep the upstream rail/gallery intact; enhance only its original-image preview. */
-export function DesktopImagePreview({ src, alt, labels, onClose }: AttachmentPreviewProps) {
+export interface DesktopImagePreviewProps {
+  src: string
+  alt: string
+  labels: { dialog: string }
+  onClose(): void
+}
+
+export function DesktopImagePreview({ src, alt, labels, onClose }: DesktopImagePreviewProps) {
   return <ImagePreview src={src} name={alt} zh={/[\u3400-\u9fff]/u.test(labels.dialog)} onClose={onClose} />
 }

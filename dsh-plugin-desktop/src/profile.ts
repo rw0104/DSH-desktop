@@ -307,7 +307,7 @@ function loadRecoveryFilteredProfile(
     if (template === undefined) {
       throw new Error(`${BIN_NAME}: profile ${JSON.stringify(profileName)} does not exist`)
     }
-    initProfile(profileDir, template.bundles, template.patchReload)
+    initProfile(profileDir, template.bundles)
   }
   const manifest = readProfileManifest(BIN_NAME, profileDir)
   const rawBundles = (manifest.dsh?.profile as { bundles?: unknown } | undefined)?.bundles
@@ -336,24 +336,27 @@ function loadRecoveryFilteredProfile(
     })
   }
   const patchPath = join(profileDir, PROFILE_PATCH_FILENAME)
-  const template = PROFILE_TEMPLATES[profileName]
-  const patchReload = template?.patchReload ?? 'live'
   return {
     name: profileName,
     dir: profileDir,
     layers,
     patchPath,
     patches: existsSync(patchPath) ? loadOverlayPatches(BIN_NAME, patchPath) : [],
-    patchReload,
   }
 }
 
 /** Resolve the agent presets shipped by the matching dsh CLI dependency. */
 export function shippedPresetRoot(moduleUrl: string = import.meta.url): string {
   const require = createRequire(moduleUrl)
-  return unpackedAsarPath(
-    join(dirname(require.resolve('@deepseek-ai/dsh/package.json')), 'config', 'agent-presets'),
-  )
+  try {
+    return unpackedAsarPath(
+      join(dirname(require.resolve('@deepseek-ai/dsh-agent-presets/package.json')), 'presets'),
+    )
+  } catch {
+    return unpackedAsarPath(
+      join(dirname(require.resolve('@deepseek-ai/dsh/package.json')), 'config', 'agent-presets'),
+    )
+  }
 }
 
 /** Read a row's object config without trusting arbitrary YAML values. */

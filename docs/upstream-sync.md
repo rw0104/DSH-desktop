@@ -1,5 +1,36 @@
 # Upstream synchronization ledger
 
+## 2026-09-20 alpha.2 实验接入结果
+
+用户将目标改为官方 `0.1.6-alpha.2` 实验包。官方 tag
+`ddefc45fbc7f8e46dd73185e68295696d1297887` 与 npm 精确包族已核对；rc.2
+候选保留在 `dist/` 作为回滚基线。
+
+alpha 迁移实际修改：可用 Harness 包切到 `0.1.6-alpha.2`；删除不存在的
+`dsh-code-runtime`；新增 alpha 的 `dsh-ptc-runtime`、`dsh-sandbox-policy`、
+`dsh-compaction-image-offload`、`dsh-plugin-manager`、`dsh-api-terminal-controller`、
+`dsh-subprocess`、`dsh-http-proxy`；Profile 改用
+`@deepseek-ai/dsh-agent-presets/presets`，`initProfile` 去掉已删除的 patchReload 参数；
+Windows sandbox 适配 alpha 的 `runArgv` 返回值；会话导航改用 `uiWorkspace.openSession`；
+移除已删除的 `attachmentPresentation` 注册；更新 alpha 物理 preset 打包路径；增加
+alpha 所需 `simple-icons@16.31.0`。
+
+验证：`corepack yarn install`、`corepack yarn typecheck`、`corepack yarn build` 退出 0。
+完整 `corepack yarn test` 为 **107 files passed / 16 failed，897 passed / 58 failed /
+11 skipped**。失败集中在未重放 rc.2 patches、alpha 删除图片协议注册 API、模型 capability
+schema、空 patch 解析、Desktop CLI/Windows runtime 旧合同和 Session Inbox 语义；详见
+`docs/local/upstream-20260920/alpha-test.log`，不能记为完整门禁通过。
+
+实验包构建跳过了 package preflight（因为完整测试失败），但 electron-builder、PE 生成和
+ASAR 构建完成。安装器：`dsh-plugin-desktop/dist/DSH-Desktop-2.2.8-x64-Setup-alpha2-experimental-20260920.exe`，
+SHA-256 见本地 `alpha-artifact.txt`。物理 package footprint 为 `1,059,905,748` bytes，
+超过 650 MiB gate；因此安装器仅是未签名本地实验构建，profile/package footprint 验证
+阻塞，不得发布。
+
+下一步：逐个重放或删除 19 个 rc.2 patches，先处理 app boot 空 patch、Windows process、
+deliverables、model capability 与 Session Inbox；重新设计 alpha preset 物理 fallback 与
+package closure，避免全量 1 GB 展开；重建测试与安装器，完整 check 和 footprint 通过后再考虑交付。
+
 ## 2026-09-20 默认发布线复查与兼容修复
 
 本次继续完成 `0.1.5-rc.2 + Sidebar 0.19.1` 的本地测试交付。官方 npm

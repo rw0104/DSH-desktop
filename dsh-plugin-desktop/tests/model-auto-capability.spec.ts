@@ -89,8 +89,8 @@ describe('automatic custom-model image capabilities', () => {
       const parsed = PiAi.Config({ providers: { custom: {
         api: 'openai-completions', baseURL: 'https://unused.invalid/v1', models: adopted,
       } } })
-      expect(parsed.providers.custom.models[0].inputCapabilitySource).toBe('provider')
-      expect(parsed.providers.custom.models[1].inputCapabilitySource).toBe('unknown')
+      expect(parsed.providers.custom.models[0].inputModalities).toEqual(['text', 'image'])
+      expect(parsed.providers.custom.models[1].inputModalities).toEqual(['text'])
       await restored.plugin(LlmRuntime)
       await restored.plugin(PiAi, parsed)
       expect((await restored.llm.resolveModelInfo('custom', 'private-visual')).inputModalities).toEqual(['text', 'image'])
@@ -106,7 +106,7 @@ describe('automatic custom-model image capabilities', () => {
       await ctx.plugin(LlmRuntime)
       await ctx.plugin(PiAi, { providers: {} })
       const found = await ctx.llm.discoverModels('llm-pi-ai', { provider: 'google' })
-      expect(found.some(model => model.inputModalities?.includes('image') && model.inputCapabilitySource === 'catalog')).toBe(true)
+      expect(found.some(model => model.inputModalities?.includes('image'))).toBe(true)
       expect(fetch).not.toHaveBeenCalled()
     } finally { await ctx.fiber.dispose() }
   })
@@ -128,7 +128,7 @@ describe('automatic custom-model image capabilities', () => {
       expect(new Headers(fetch.mock.calls[0]?.[1]?.headers).get('anthropic-version')).toBe('2023-06-01')
       expect(models).toEqual([{
         id: 'gateway-vision', name: 'Gateway Vision', contextWindow: 128000, maxTokens: 4096,
-        inputModalities: ['text', 'image'], inputCapabilitySource: 'provider',
+        inputModalities: ['text', 'image'],
       }])
     } finally { await ctx.fiber.dispose() }
   })

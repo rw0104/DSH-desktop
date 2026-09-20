@@ -102,7 +102,7 @@ export function verifyPackagedProfile(appOutDir, environment = process.env) {
     if (!String(profile.anchor).includes(`${join('resources', 'app.asar')}`)
       || !profile.layers.includes('@deepseek-ai/dsh-web-app')
       || !profile.layers.includes('dsh-better-sidebar')
-      || !String(profile.presetPath).includes(`${join('app.asar.unpacked', 'node_modules', '@deepseek-ai', 'dsh', 'config', 'agent-presets')}`)) {
+      || !String(profile.presetPath).includes(`${join('app.asar.unpacked', 'node_modules', '@deepseek-ai', 'dsh-agent-presets', 'presets')}`)) {
       throw new Error(`packaged Profile produced an unexpected physical/ASAR split: ${JSON.stringify(profile)}`)
     }
     if (profile.standardPreset !== 'standard') throw new Error('packaged Standard preset was not verified')

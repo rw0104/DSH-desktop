@@ -176,6 +176,7 @@ describe('desktop pnpm and community market integration', () => {
         stdin: undefined,
         stdout: Readable.from([]),
         stderr: Readable.from([]),
+        control: undefined,
         collected: {},
         done: (async () => {
           await removeInstalledProfilePlugin(profileDir)

@@ -88,9 +88,9 @@ export const REQUIRED_UNPACKED_RUNTIME_ENTRIES = [
   'lib/deliverable-copy.js',
   'lib/windows-agent-presets.js',
   'lib/windows-pwsh-sandbox.js',
-  'node_modules/@deepseek-ai/dsh/config/agent-presets/cordis/agent.cordis.yml',
-  'node_modules/@deepseek-ai/dsh/config/agent-presets/cordis/skills/cordis-plugin-development/SKILL.md',
-  'node_modules/@deepseek-ai/dsh/config/agent-presets/cordis/skills/editing-cordis-compositions/SKILL.md',
+  'node_modules/@deepseek-ai/dsh-agent-presets/presets/cordis/agent.cordis.yml',
+  'node_modules/@deepseek-ai/dsh-agent-presets/presets/cordis/skills/cordis-plugin-development/SKILL.md',
+  'node_modules/@deepseek-ai/dsh-agent-presets/presets/cordis/skills/editing-cordis-compositions/SKILL.md',
   'node_modules/pnpm/bin/pnpm.mjs',
   PHYSICAL_RUNTIME_MANIFEST,
 ] as const
