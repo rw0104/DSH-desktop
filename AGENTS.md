@@ -28,6 +28,52 @@ This repository owns the desktop product around an unmodified DeepSeek Harness c
 - Commit before major changes of direction and keep the submodule pin update separate from desktop behavior changes.
 - Keep the repository topology and package-manager split consistent with the [owning Agent Note](.agents/notes/implemented/process/2026-08-15-pinned-upstream-and-isolated-yarn-workspace.md).
 
+## Installed application and user-data isolation
+
+- Treat the installed application, its updater/download directories, the real
+  Harness home (normally `%USERPROFILE%\.dsh`), and Electron user-data (normally
+  `%APPDATA%\DSH Desktop`) as protected. Identify custom paths from the actual
+  installation and launch configuration; never assume the defaults are the only
+  protected locations. Development, build, test, and cleanup authorization does
+  not authorize installation, repair, migration, plugin operations, or writes in
+  these protected locations. Read-only diagnosis is allowed; writing requires
+  an explicit user request covering the particular installed application/data.
+- Before changing runtime code/dependencies, running development or test
+  applications, or cleaning build/dependency trees, audit the real Profile's
+  dependency links with `corepack yarn check:runtime-boundary` (pass `--home`
+  for a custom Harness home). This is a read-only audit, separate from isolated
+  test execution. A Profile link into this checkout, another development
+  checkout, or disposable staging makes that location part of the installed
+  runtime: changing it can break the installed application without changing its
+  EXE or ASAR. Do not proceed with mutations affecting a detected target until
+  that coupling is removed under an authorized recovery plan. Metadata-only
+  investigation and rule/documentation changes may continue.
+- Establish absolute, disposable `DSH_HOME`, `TEMP`, `TMP`, and `TMPDIR` before
+  importing or invoking any boot/Profile/session/plugin code, including one-off
+  Node commands. Use `scripts/run-isolated-check.mjs` for tests and smokes.
+  Graphical probes additionally require a unique `--user-data-dir`, an isolated
+  working directory, and an explicit launch. Never use plain `yarn dev`,
+  `yarn start`, CLI/Profile initialization, or package-manager operations with
+  an unset/default real home as a development probe. A temporary workspace or
+  working directory alone does not isolate session storage.
+- Never create symlinks, junctions, hard links, fallback package projections,
+  or configuration references from protected installed/user-data locations into
+  a checkout or temporary test package. Before writing/copying/deleting paths,
+  verify canonical destinations and link ancestry; do not mutate shared hard
+  link contents. Cleanup must unlink owned links without traversing their
+  targets. Never recursively clean the real Profile's `node_modules`, sessions,
+  settings, credentials, or recovery state as a test cleanup operation.
+- For an explicitly authorized installed-runtime repair, first record versions,
+  hashes, link targets, and a reviewed before/after plan with rollback metadata.
+  Preserve user plugins, credentials, settings, and session originals. A newer
+  test package must not be installed as an unrequested repair. Quarantine only
+  confirmed test records under a separately authorized plan; do not delete or
+  rewrite unknown user sessions to silence compatibility errors.
+- Report installed-file integrity and user-data/dependency isolation as separate
+  findings. "No installer was run" and unchanged EXE/ASAR timestamps do not
+  prove that the installed runtime or user data were unaffected. Historical
+  cross-links remain a risk after new tests adopt an isolated runner.
+
 ## Authoritative upstream repositories and update discipline
 
 The desktop product must track these three repositories explicitly; do not
