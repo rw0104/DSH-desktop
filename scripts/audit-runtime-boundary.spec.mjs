@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, symlink, readlink, writeFile, readFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, symlink, link, rename, readlink, writeFile, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -50,6 +50,17 @@ test('finds a broken link into disposable checkout staging', async () => fixture
   assert.equal((await auditRuntimeBoundary(f)).issues.length, 1)
 }))
 
+test('detects a hard link that shares checkout bytes with the protected Profile', async () => fixture(async f => {
+  const source = join(f.workspaceRoot, 'shared.js')
+  const profileCopy = join(f.modules, 'shared.js')
+  await writeFile(source, 'shared bytes')
+  await link(source, profileCopy)
+  const report = await auditRuntimeBoundary(f)
+  assert.equal(report.hardLinks, 1)
+  assert.ok(report.issues.some(issue => issue.kind === 'hardlink' && issue.path === profileCopy))
+  assert.equal(await readFile(source, 'utf8'), 'shared bytes')
+}))
+
 test('does not recurse through external links or link cycles', async () => fixture(async f => {
   await symlink(f.harnessHome, join(f.modules, 'cycle'), 'junction')
   const report = await auditRuntimeBoundary(f)
@@ -59,4 +70,20 @@ test('does not recurse through external links or link cycles', async () => fixtu
 
 test('an absent Profile tree is a clean read-only result', async () => fixture(async f => {
   assert.deepEqual((await auditRuntimeBoundary({ ...f, harnessHome: join(f.root, 'absent') })).issues, [])
+}))
+
+test('audits a checkout-targeting Profile root junction before resolving its contents', async () => fixture(async f => {
+  const profiles = join(f.harnessHome, 'profiles')
+  await rename(profiles, join(f.harnessHome, 'profiles-real'))
+  await symlink(f.workspaceRoot, profiles, 'junction')
+  const report = await auditRuntimeBoundary(f)
+  assert.ok(report.issues.some(issue => issue.path === profiles && issue.kind === 'checkout-link'))
+}))
+
+test('reports a dangling Profile root junction instead of treating it as absent', async () => fixture(async f => {
+  const profiles = join(f.harnessHome, 'profiles')
+  await rename(profiles, join(f.harnessHome, 'profiles-real'))
+  await symlink(join(f.root, 'removed-checkout'), profiles, 'junction')
+  const report = await auditRuntimeBoundary(f)
+  assert.ok(report.issues.some(issue => issue.path === profiles && issue.kind === 'broken-link'))
 }))

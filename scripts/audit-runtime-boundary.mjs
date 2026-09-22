@@ -16,6 +16,11 @@ export async function auditRuntimeBoundary({ workspaceRoot, harnessHome }) {
   const profiles = join(harnessHome, 'profiles')
   const issues = []
   let examinedLinks = 0
+  let examinedFiles = 0
+  let hardLinks = 0
+  let checkoutLinks = 0
+  let brokenLinks = 0
+  let externalLinks = 0
   async function inspect(path) {
     const info = await lstat(path)
     if (info.isSymbolicLink()) {
@@ -23,27 +28,49 @@ export async function auditRuntimeBoundary({ workspaceRoot, harnessHome }) {
       const target = resolve(dirname(path), await readlink(path))
       let canonicalTarget
       try { canonicalTarget = await realpath(path) } catch (error) {
-        if (error.code !== 'ENOENT') throw error
+        if (!['ENOENT', 'ENOTDIR', 'ELOOP'].includes(error.code)) throw error
+        brokenLinks++
+        issues.push({ path, kind: 'broken-link', target })
+        return
       }
-      if (within(resolve(workspaceRoot), target) || within(workspace, canonicalTarget ?? target)) {
-        issues.push({ path, target, ...(canonicalTarget ? { canonicalTarget } : {}) })
+      if (within(resolve(workspaceRoot), target) || within(workspace, canonicalTarget)) {
+        checkoutLinks++
+        issues.push({ path, kind: 'checkout-link', target, canonicalTarget })
+      } else {
+        externalLinks++
+      }
+      return
+    }
+    if (info.isFile()) {
+      examinedFiles++
+      if (info.nlink > 1) {
+        hardLinks++
+        issues.push({ path, kind: 'hardlink', linkCount: info.nlink })
       }
       return
     }
     if (!info.isDirectory()) return
     for (const entry of await readdir(path, { withFileTypes: true })) {
-      if (entry.isDirectory() || entry.isSymbolicLink()) await inspect(join(path, entry.name))
+      if (entry.isDirectory() || entry.isSymbolicLink() || entry.isFile()) await inspect(join(path, entry.name))
     }
   }
-  let canonicalProfiles
-  try { canonicalProfiles = await realpath(profiles) } catch (error) {
+  let profileInfo
+  try { profileInfo = await lstat(profiles) } catch (error) {
     if (error.code !== 'ENOENT') throw error
-    return { workspaceRoot: workspace, profiles, examinedLinks, issues }
+    return { workspaceRoot: workspace, profiles, examinedLinks, examinedFiles, hardLinks, checkoutLinks, brokenLinks, externalLinks, issues }
   }
-  if (within(workspace, canonicalProfiles)) issues.push({ path: profiles, target: canonicalProfiles })
-  else await inspect(profiles)
+  // Inspect the Profile root itself before resolving it. A dangling or
+  // checkout-targeting junction here must never be mistaken for an absent tree.
+  if (profileInfo.isSymbolicLink()) await inspect(profiles)
+  else if (profileInfo.isDirectory()) {
+    const canonicalProfiles = await realpath(profiles)
+    if (within(workspace, canonicalProfiles)) {
+      checkoutLinks++
+      issues.push({ path: profiles, kind: 'checkout-link', target: canonicalProfiles })
+    } else await inspect(profiles)
+  } else issues.push({ path: profiles, kind: 'invalid-profile-root' })
   issues.sort((a, b) => a.path.localeCompare(b.path))
-  return { workspaceRoot: workspace, profiles, examinedLinks, issues }
+  return { workspaceRoot: workspace, profiles, examinedLinks, examinedFiles, hardLinks, checkoutLinks, brokenLinks, externalLinks, issues }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -63,8 +90,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const report = await auditRuntimeBoundary({ workspaceRoot, harnessHome })
   if (json) console.log(JSON.stringify(report, null, 2))
   else {
-    console.log(`runtime-boundary: ${report.issues.length} checkout links among ${report.examinedLinks} inspected Profile links`)
-    for (const issue of report.issues.slice(0, 5)) console.log(`  ${issue.path} -> ${issue.canonicalTarget ?? issue.target}`)
+    console.log(`runtime-boundary: ${report.issues.length} boundary issues; ${report.checkoutLinks} checkout links, ${report.brokenLinks} broken links, ${report.hardLinks} hard links; ${report.externalLinks} valid external links also inspected`)
+    for (const issue of report.issues.slice(0, 5)) console.log(`  ${issue.kind}: ${issue.path} -> ${issue.canonicalTarget ?? issue.target ?? `hardlink x${issue.linkCount}`}`)
     if (report.issues.length) console.error('Protected Profile depends on this checkout. Review recovery before modifying linked runtime files. No files were changed.')
   }
   process.exitCode = report.issues.length ? 1 : 0
