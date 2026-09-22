@@ -1,6 +1,12 @@
 diff --git a/lib/index.js b/lib/index.js
 --- a/lib/index.js
 +++ b/lib/index.js
+@@ -1,4 +1,4 @@
+-import { createRequire, isBuiltin } from "node:module";
++import { createRequire, isBuiltin, registerHooks } from "node:module";
+ import { fileURLToPath, pathToFileURL } from "node:url";
+ import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+ import { parseEnv } from "node:util";
 @@ -1003,6 +1003,8 @@
  * @returns Detached ordered patches; this function does not update the Loader.
  */
@@ -10,7 +16,110 @@ diff --git a/lib/index.js b/lib/index.js
  	const profile = initialProfile ?? loadProfileDirectory(binName, context.dir, context.installAnchor, { userLayer: false });
  	const patches = structuredClone([
  		...profile.layers.flatMap((layer) => layer.patches),
-@@ -2223,6 +2225,7 @@
+@@ -1479,7 +1481,85 @@
+ 		return found;
+ 	}
+ };
++/** Adapt the existing routing policy to Electron's public synchronous hook API.
++ * CommonJS keeps the upstream Module resolver wrapper and its explicit-path logic.
++ * No Electron/V8 fingerprint or private node-addon binding is required here.
++ */
++function electronModules() {
++	const cjs = createRequire(import.meta.url)("node:module");
++	let frame;
++	let direct;
++	let esmConditions;
++	let cjsConditions;
++	const esm = {
++		getOrCreateModuleJob: true,
++		resolveSync(parent, request) {
++			return frame.nextResolve(request.specifier, {
++				...frame.context,
++				parentURL: parent,
++				importAttributes: request.attributes
++			});
++		}
++	};
++	const hooks = registerHooks({
++		resolve(request, context, nextResolve) {
++			if (direct !== void 0) {
++				const target = direct;
++				direct = void 0;
++				target.result = nextResolve(target.request, target.context);
++				return target.result;
++			}
++			if (context.conditions.includes("require")) {
++				cjsConditions = context.conditions;
++				return nextResolve(request, context);
++			}
++			esmConditions = context.conditions;
++			const previous = frame;
++			frame = { context, nextResolve };
++			try {
++				return { ...esm.resolveSync(context.parentURL, {
++					specifier: request,
++					attributes: context.importAttributes ?? EMPTY_ATTRIBUTES
++				}), shortCircuit: true };
++			} finally {
++				frame = previous;
++			}
++		}
++	});
++	// Ask the actual runtime for its conditions, including CLI custom conditions.
++	import.meta.resolve("node:module");
++	createRequire(import.meta.url).resolve("node:module");
++	if (esmConditions === void 0 || cjsConditions === void 0) {
++		hooks.deregister();
++		throw new Error("profile resolution: Electron synchronous hooks are unavailable");
++	}
++	return {
++		esm,
++		esmDefaultResolve(request, context) {
++			const previous = direct;
++			// Node's default ESM cache keys omit export conditions. Separate
++			// resolution-only CJS aliases from prior ESM requests while keeping
++			// the identical file path, package scope and native resolver.
++			const parent = new URL(context.parentURL);
++			parent.hash = "dsh-conditions=" + encodeURIComponent(JSON.stringify([...context.conditions]));
++			const target = { request, context: { ...context, parentURL: parent.href } };
++			direct = target;
++			try {
++				import.meta.resolve("node:module");
++				return target.result;
++			} finally {
++				direct = previous;
++			}
++		},
++		esmConditions,
++		cjs,
++		cjsConditions,
++		modern: true,
++		disposeHooks: () => hooks.deregister()
++	};
++}
+ function internalModules() {
++	if (process.versions.electron !== void 0) return electronModules();
+ 	const addon = createRequire(import.meta.url)("node-addon-require-builtin");
+ 	const esmModule = addon.requireBuiltin("internal/modules/esm/loader");
+ 	const cjsModule = addon.requireBuiltin("internal/modules/cjs/loader");
+@@ -1548,7 +1628,7 @@
+ */
+ function installProfileResolution(generation, behavior = "enforce") {
+ 	const router = new ResolutionRouter(generation);
+-	const { esm, esmDefaultResolve, esmConditions, cjs, cjsConditions, modern } = internalModules();
++	const { esm, esmDefaultResolve, esmConditions, cjs, cjsConditions, modern, disposeHooks } = internalModules();
+ 	const esmScope = /* @__PURE__ */ new Map();
+ 	const profilePaths = [...prefixes(generation.profilesDir), ...generation.profileDir === void 0 ? [] : prefixes(generation.profileDir)];
+ 	const profileUrls = profilePaths.map((path) => pathToFileURL(path).href);
+@@ -1839,6 +1919,7 @@
+ 			/* v8 ignore else -- registrations are disposed in reverse installation order */
+ 			if (cjs._resolveFilename === wrappedFilename) cjs._resolveFilename = originalFilename;
+ 			restoreEsm();
++			disposeHooks?.();
+ 		}
+ 	};
+ }
+@@ -2223,6 +2304,7 @@
  	} catch (error) {
  		throw new Error(`${binName}: failed to parse ${label} ${file}: ${String(error)}`);
  	}
@@ -30,3 +139,115 @@ diff --git a/lib/types/profile-context.d.ts b/lib/types/profile-context.d.ts
      readonly name: string;
      /** Packaged applications supply their bundled runtime instead of a PATH executable. */
      readonly packageManager?: ProfilePnpmInvocation;
+diff --git a/lib/worker/profile-resolution-bootstrap.js b/lib/worker/profile-resolution-bootstrap.js
+--- a/lib/worker/profile-resolution-bootstrap.js
++++ b/lib/worker/profile-resolution-bootstrap.js
+@@ -1,4 +1,4 @@
+-import { createRequire, isBuiltin } from "node:module";
++import { createRequire, isBuiltin, registerHooks } from "node:module";
+ import { getEnvironmentData } from "node:worker_threads";
+ import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync, statSync } from "node:fs";
+ import { basename, dirname, join, resolve, sep } from "node:path";
+@@ -448,7 +448,85 @@
+ 		return found;
+ 	}
+ };
++/** Adapt the existing routing policy to Electron's public synchronous hook API.
++ * CommonJS keeps the upstream Module resolver wrapper and its explicit-path logic.
++ * No Electron/V8 fingerprint or private node-addon binding is required here.
++ */
++function electronModules() {
++	const cjs = createRequire(import.meta.url)("node:module");
++	let frame;
++	let direct;
++	let esmConditions;
++	let cjsConditions;
++	const esm = {
++		getOrCreateModuleJob: true,
++		resolveSync(parent, request) {
++			return frame.nextResolve(request.specifier, {
++				...frame.context,
++				parentURL: parent,
++				importAttributes: request.attributes
++			});
++		}
++	};
++	const hooks = registerHooks({
++		resolve(request, context, nextResolve) {
++			if (direct !== void 0) {
++				const target = direct;
++				direct = void 0;
++				target.result = nextResolve(target.request, target.context);
++				return target.result;
++			}
++			if (context.conditions.includes("require")) {
++				cjsConditions = context.conditions;
++				return nextResolve(request, context);
++			}
++			esmConditions = context.conditions;
++			const previous = frame;
++			frame = { context, nextResolve };
++			try {
++				return { ...esm.resolveSync(context.parentURL, {
++					specifier: request,
++					attributes: context.importAttributes ?? EMPTY_ATTRIBUTES
++				}), shortCircuit: true };
++			} finally {
++				frame = previous;
++			}
++		}
++	});
++	// Ask the actual runtime for its conditions, including CLI custom conditions.
++	import.meta.resolve("node:module");
++	createRequire(import.meta.url).resolve("node:module");
++	if (esmConditions === void 0 || cjsConditions === void 0) {
++		hooks.deregister();
++		throw new Error("profile resolution: Electron synchronous hooks are unavailable");
++	}
++	return {
++		esm,
++		esmDefaultResolve(request, context) {
++			const previous = direct;
++			// Node's default ESM cache keys omit export conditions. Separate
++			// resolution-only CJS aliases from prior ESM requests while keeping
++			// the identical file path, package scope and native resolver.
++			const parent = new URL(context.parentURL);
++			parent.hash = "dsh-conditions=" + encodeURIComponent(JSON.stringify([...context.conditions]));
++			const target = { request, context: { ...context, parentURL: parent.href } };
++			direct = target;
++			try {
++				import.meta.resolve("node:module");
++				return target.result;
++			} finally {
++				direct = previous;
++			}
++		},
++		esmConditions,
++		cjs,
++		cjsConditions,
++		modern: true,
++		disposeHooks: () => hooks.deregister()
++	};
++}
+ function internalModules() {
++	if (process.versions.electron !== void 0) return electronModules();
+ 	const addon = createRequire(import.meta.url)("node-addon-require-builtin");
+ 	const esmModule = addon.requireBuiltin("internal/modules/esm/loader");
+ 	const cjsModule = addon.requireBuiltin("internal/modules/cjs/loader");
+@@ -517,7 +595,7 @@
+ */
+ function installProfileResolution(generation, behavior = "enforce") {
+ 	const router = new ResolutionRouter(generation);
+-	const { esm, esmDefaultResolve, esmConditions, cjs, cjsConditions, modern } = internalModules();
++	const { esm, esmDefaultResolve, esmConditions, cjs, cjsConditions, modern, disposeHooks } = internalModules();
+ 	const esmScope = /* @__PURE__ */ new Map();
+ 	const profilePaths = [...prefixes(generation.profilesDir), ...generation.profileDir === void 0 ? [] : prefixes(generation.profileDir)];
+ 	const profileUrls = profilePaths.map((path) => pathToFileURL(path).href);
+@@ -808,6 +886,7 @@
+ 			/* v8 ignore else -- registrations are disposed in reverse installation order */
+ 			if (cjs._resolveFilename === wrappedFilename) cjs._resolveFilename = originalFilename;
+ 			restoreEsm();
++			disposeHooks?.();
+ 		}
+ 	};
+ }

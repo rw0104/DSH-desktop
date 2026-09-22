@@ -385,6 +385,9 @@ try {
   }
   console.log(`verify-profile-client-batches: ${graph.batches.length} HTTP batches parsed and registered.`)
   const ids = new Set(graph.entries.map(entry => entry.id))
+  if (!diagnostic && !ids.has(HOST_SERVICE_PLUGIN_NAME)) {
+    throw new Error('Profile-local client plugin disappeared after live disable/re-enable')
+  }
   for (const id of [
     'dsh-plugin-desktop',
     '@deepseek-ai/dsh-client-ui-conversation',

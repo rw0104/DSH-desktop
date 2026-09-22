@@ -69,14 +69,20 @@ export function verifyPackagedProfile(appOutDir, environment = process.env) {
       "const release=installProfilePackageResolver(prepared.bareModuleBaseUrl);",
       "const installed=createRequire(desktopInstallAnchor());",
       "const {Context}=await import(pathToFileURL(installed.resolve('@deepseek-ai/cordis')).href);",
+      "const {PluginPackages,createProfileResolutionGeneration}=await import(pathToFileURL(installed.resolve('@deepseek-ai/dsh-app-boot')).href);",
       "const context=new Context(); context.baseUrl=prepared.bareModuleBaseUrl;",
       "context.provide('sessionProjections',{register:()=>()=>{}});",
       "try {",
+      "await context.plugin(PluginPackages,{generation:await createProfileResolutionGeneration({installAnchor:desktopInstallAnchor(),home:prepared.homeDir,profile:prepared.profile})});",
+      "if(!context.pluginPackages)throw new Error('packaged Profile resolver failed to mount');",
+      "const packageInfo=context.pluginPackages.packageOf('@deepseek-ai/dsh-web-app',prepared.bareModuleBaseUrl);",
+      "if(packageInfo?.version!==installed('@deepseek-ai/dsh-web-app/package.json').version)throw new Error('packaged Profile metadata mismatch');",
       `const presets=new WindowsAgentPresets(context,{default:'standard',includeShippedRoot:true,includeUserRoot:false,roots:[{path:shippedPresetRoot(${JSON.stringify(profileUrl)}),trust:'system'}]});`,
       "const standard=await presets.resolve('standard');",
       "if(standard.broken!==undefined)throw new Error('packaged Standard preset is broken: '+standard.broken);",
       'console.log(JSON.stringify({',
       "standardPreset: standard.id,",
+      "profileResolution: 'active',",
       'anchor: desktopInstallAnchor(),',
       'layers: prepared.profile.layers.map(layer => layer.packageName),',
       `presetPath: shippedPresetRoot(${JSON.stringify(profileUrl)})`,
@@ -106,6 +112,7 @@ export function verifyPackagedProfile(appOutDir, environment = process.env) {
       throw new Error(`packaged Profile produced an unexpected physical/ASAR split: ${JSON.stringify(profile)}`)
     }
     if (profile.standardPreset !== 'standard') throw new Error('packaged Standard preset was not verified')
+    if (profile.profileResolution !== 'active') throw new Error('packaged official Profile resolver was not verified')
     return { cliVersion, pnpmVersion, profile }
   } finally {
     rmSync(probeRoot, { recursive: true, force: true })

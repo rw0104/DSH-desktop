@@ -1,0 +1,17 @@
+diff --git a/lib/index.js b/lib/index.js
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -728,6 +728,13 @@
+ 				return this.nearestPackage(moduleUrl);
+ 			}
+ 			try {
++				// Electron has no private Node loader. The official Profile service
++				// owns package metadata even when exports hides package.json.
++				const packages = this.ctx.get("pluginPackages");
++				if (packages !== void 0) {
++					const pkg = packages.packageOf(loaderName, baseUrl);
++					return pkg === void 0 ? void 0 : { path: pkg.manifestPath, packageName: pkg.name };
++				}
+ 				return {
+ 					path: createRequire(baseUrl).resolve(`${expectedPackageName}/package.json`),
+ 					packageName: expectedPackageName

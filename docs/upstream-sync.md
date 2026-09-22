@@ -1,5 +1,31 @@
 # Upstream synchronization ledger
 
+## 2026-09-22 Electron Profile resolver 兼容修复
+
+从 `122ee2deb5` 构建的候选通过完整 Windows preflight、安装器 payload 一致性和
+251 个 ASAR alpha.2 包族检查，但实际 ASAR Host 在 `PluginPackages` 构造时失败。
+官方 `node-addon-require-builtin@0.1.6` 不接受 Electron 43.4.0 的 Node 24.18.1 /
+V8 15.0.245.28-electron.0 指纹；npm 当前没有更新版本。该候选不作为已验证交付物。
+
+受审查的 app-boot patch 为 Electron 增加 `node:module.registerHooks` ESM 适配层，
+复用官方 ResolutionRouter、CommonJS Module 包装、条件导出、verify/enforce、增量替换
+和 Worker environment-data 传播，不伪造 addon 指纹，也不关闭 Profile 解析。
+普通 Node 保持官方 backend。CommonJS `#imports` 的解析上下文按条件分离缓存键，
+防止 Node 的 ESM 默认缓存复用之前的 import 导出；文件路径和 package scope 不变。
+两个官方发布 bundle（Host / Worker）都应用同一实现。
+
+真实 Electron Renderer 又暴露了 client-modules 的无内部 Loader 回退：它要求插件导出
+`package.json`，使已成功激活的本地插件缺失客户端。新增独立审计 patch，仅在没有内部
+Loader 时通过官方 `PluginPackages.packageOf` 定位 manifest；未提供该服务的宿主继续
+使用原有回退。第三方插件无需扩大 exports，缺失的包保持不可见。对应真实运行回归
+先出现 2 个失败，再通过 2 项；Host smoke 也强制检查实时启停后的本地客户端仍在图中。
+
+真实 Node 与 Electron 的同一回归均通过：ESM/CJS 条件导出、`#imports`、局部优先级、
+陈旧共享投影排除、私有 subpath 拒绝、损坏局部包不回退、其他 Profile 范围、显式 CJS
+搜索路径、增量注册/重映射拒绝、Worker 继承与上下文卸载恢复、verify 模式检测不同
+磁盘目标。Windows preflight 纳入该测试，成品 verifier 现在实际构造官方 PluginPackages，
+避免只测试旧 Desktop resolver 时漏报。完整门禁和重建后的成品结论将在验收后补记。
+
 ## 2026-09-22 官方插件管理与多会话接入
 
 Desktop 现在在 Host 启动前提供官方 `ProfileContext`、`PluginPackages` 和 application

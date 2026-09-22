@@ -1399,7 +1399,7 @@ __metadata:
 
 "@deepseek-ai/dsh-app-boot@patch:@deepseek-ai/dsh-app-boot@npm%3A0.1.6-alpha.2#./.yarn/patches/@deepseek-ai-dsh-app-boot-npm-0.1.6-alpha.2-desktop.patch::locator=deepseek-harness-desktop%40workspace%3A.":
   version: 0.1.6-alpha.2
-  resolution: "@deepseek-ai/dsh-app-boot@patch:@deepseek-ai/dsh-app-boot@npm%3A0.1.6-alpha.2#./.yarn/patches/@deepseek-ai-dsh-app-boot-npm-0.1.6-alpha.2-desktop.patch::version=0.1.6-alpha.2&hash=05a18f&locator=deepseek-harness-desktop%40workspace%3A."
+  resolution: "@deepseek-ai/dsh-app-boot@patch:@deepseek-ai/dsh-app-boot@npm%3A0.1.6-alpha.2#./.yarn/patches/@deepseek-ai-dsh-app-boot-npm-0.1.6-alpha.2-desktop.patch::version=0.1.6-alpha.2&hash=b55061&locator=deepseek-harness-desktop%40workspace%3A."
   dependencies:
     "@deepseek-ai/dsh-atomic-write": "npm:^0.1.6-alpha.2"
     "@deepseek-ai/dsh-package-manifest": "npm:^0.1.6-alpha.2"
@@ -1414,7 +1414,7 @@ __metadata:
     "@deepseek-ai/dsh-home-paths": ^0.1.6-alpha.2
     "@deepseek-ai/dsh-launch-environment": ^0.1.6-alpha.2
     "@deepseek-ai/dsh-system-prompt": ^0.1.6-alpha.2
-  checksum: 10c0/bac94a30191727e375b02d36548ffa858a3fdd62a0d763ba26c2315e4d602e23fef2d10e94a8cfb321bc8af2c9c049f8cbf468301d6ffc5943cf17ba2921c4dc
+  checksum: 10c0/91d7ee766ccf1f0d201885f1681bfaeecf60cc834e85b74456afde61360ac6752599218fba215e1b1fa9d3d29472b03da09b97c098dd04a7df69996e8f06b8b2
   languageName: node
   linkType: hard
 
@@ -1659,12 +1659,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deepseek-ai/dsh-client-modules@npm:0.1.6-alpha.2, @deepseek-ai/dsh-client-modules@npm:^0.1.6-alpha.2":
+"@deepseek-ai/dsh-client-modules@npm:0.1.6-alpha.2":
   version: 0.1.6-alpha.2
   resolution: "@deepseek-ai/dsh-client-modules@npm:0.1.6-alpha.2"
   peerDependencies:
     "@deepseek-ai/cordis": ^4.0.2
   checksum: 10c0/6bb155d8619f7755c3ab08516190ea8bda781a6aa49ecede62677561343c68ed7adfa72de7544c1b1a1bd2a637e2427b492f5c66df5f2c68a916277405da6567
+  languageName: node
+  linkType: hard
+
+"@deepseek-ai/dsh-client-modules@patch:@deepseek-ai/dsh-client-modules@npm%3A0.1.6-alpha.2#./.yarn/patches/@deepseek-ai-dsh-client-modules-npm-0.1.6-alpha.2-desktop.patch::locator=deepseek-harness-desktop%40workspace%3A.":
+  version: 0.1.6-alpha.2
+  resolution: "@deepseek-ai/dsh-client-modules@patch:@deepseek-ai/dsh-client-modules@npm%3A0.1.6-alpha.2#./.yarn/patches/@deepseek-ai-dsh-client-modules-npm-0.1.6-alpha.2-desktop.patch::version=0.1.6-alpha.2&hash=20f84c&locator=deepseek-harness-desktop%40workspace%3A."
+  peerDependencies:
+    "@deepseek-ai/cordis": ^4.0.2
+  checksum: 10c0/ef624236db8ae6d34153d19a8fbc3f6966a26db836bffab6bb21599828fa8a232b416c26a4a9512a45bdd4eb27f1d5557e710fe4da32de3d52e309f77377e650
   languageName: node
   linkType: hard
 
