@@ -1,5 +1,21 @@
 # Upstream synchronization ledger
 
+## 2026-09-22 alpha.2 最终本地交付验收
+
+源码提交 `20135e0dc5c7e9f45f1ccc3f3d53f62e5d8caf3a` 已完成 Windows x64 实验候选。
+最终 immutable / root check 退出 0：Desktop **128 suites / 1033 passed / 11 skipped**，
+Market **19 suites / 278 passed**；Windows preflight **234 项**、打包专项 **15 项**通过。
+
+真实 ASAR Host/Renderer 与正常 EXE 的 system/native/diagnostic 三组合全部 healthy；
+多 Session 引用/草稿/标签生命周期、包内离线 pnpm 安装与四文件 WAL、旧 Profile 与
+V0→V3 迁移均通过。安装器的 4080 文件 / 1,060,031,581 bytes 与测试目录一致，
+全部测试后完整文件树保持不变。251 个 ASAR 内核包均为 alpha.2。
+
+安装器 `DSH-Desktop-2.2.8-x64-Setup-alpha2-integration-20260922.exe`：350,342,294 bytes，SHA-256
+`8a2f63c0b5c68f552dea39898875196d72298259efbf11575331db68c8c4046d`。未签名、仅本地测试，没有发布 tag/Release、推送或覆盖安装。
+完整证据、体积依据、未验收项和回滚边界见
+[alpha.2 版本验证记录](releases/v2.2.8-harness-0.1.6-alpha.2-validation.md)。
+
 ## 2026-09-22 Electron Profile resolver 兼容修复
 
 从 `122ee2deb5` 构建的候选通过完整 Windows preflight、安装器 payload 一致性和
@@ -24,7 +40,7 @@ Loader 时通过官方 `PluginPackages.packageOf` 定位 manifest；未提供该
 陈旧共享投影排除、私有 subpath 拒绝、损坏局部包不回退、其他 Profile 范围、显式 CJS
 搜索路径、增量注册/重映射拒绝、Worker 继承与上下文卸载恢复、verify 模式检测不同
 磁盘目标。Windows preflight 纳入该测试，成品 verifier 现在实际构造官方 PluginPackages，
-避免只测试旧 Desktop resolver 时漏报。完整门禁和重建后的成品结论将在验收后补记。
+避免只测试旧 Desktop resolver 时漏报。完整门禁与重建成品均已通过，结果见本页最终本地交付验收。
 
 ## 2026-09-22 官方插件管理与多会话接入
 
