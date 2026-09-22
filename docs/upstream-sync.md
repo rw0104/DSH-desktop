@@ -29,6 +29,15 @@ blob 一致；延迟 Windows confinement 的取消与子进程环境回归通过
 通过。以上是源码/Host 证据，实际 Renderer、Plugin Manager 的 Profile 上下文接入和
 重新打包仍需补齐，旧实验安装器不因此升级为已验证。
 
+实际隐藏 Electron Renderer 随后发现 Sidebar 0.19.1 仍把
+`conversation.chat.turnTail` 当作 chain 注册，alpha.2 的 list slot 因缺少 id 报错。
+受审查的 Sidebar patch 补稳定 id 并在组件中按真实 owner 选择文件，保留暂停/关闭编辑器
+时不贡献界面的规则；Sidechat/Subagent 跳转接到 alpha 的 `uiWorkspace.openSession`。
+对应 17 项聚焦回归、typecheck 通过。修复后 system/native Renderer 的上传字节、图片输入、
+Commands、语音可见和设置遮罩均通过，报告 healthy 且没有页面异常。
+诊断组合的测试按钮名称按官方新文案 `Add files or run commands` 更新后也通过，保持
+官方布局并且没有 Desktop/第三方界面。这是当前开发态实际 Client 证据，尚非新安装器验收。
+
 旧 alpha 草稿包实测物理树 1,059,905,748 bytes；其中官方
 `@deepseek-ai/libreoffice-kit-win32-x64` 为 340,863,012 bytes，用于新 Office 预览。
 ASAR 为 283,265,286 bytes，比较 rc.2 的其余增量主要来自新版 Web 资源。旧 650 MiB

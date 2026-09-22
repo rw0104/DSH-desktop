@@ -9684,7 +9684,7 @@ __metadata:
 
 "dsh-better-sidebar@patch:dsh-better-sidebar@npm%3A0.19.1#./.yarn/patches/dsh-better-sidebar-npm-0.19.1-9c03a56b00.patch::locator=deepseek-harness-desktop%40workspace%3A.":
   version: 0.19.1
-  resolution: "dsh-better-sidebar@patch:dsh-better-sidebar@npm%3A0.19.1#./.yarn/patches/dsh-better-sidebar-npm-0.19.1-9c03a56b00.patch::version=0.19.1&hash=bfabdb&locator=deepseek-harness-desktop%40workspace%3A."
+  resolution: "dsh-better-sidebar@patch:dsh-better-sidebar@npm%3A0.19.1#./.yarn/patches/dsh-better-sidebar-npm-0.19.1-9c03a56b00.patch::version=0.19.1&hash=d7a2a7&locator=deepseek-harness-desktop%40workspace%3A."
   dependencies:
     "@codemirror/commands": "npm:^6.10.4"
     "@codemirror/lang-cpp": "npm:^6.0.3"
@@ -9740,7 +9740,7 @@ __metadata:
       optional: true
     "@huanlin/dsh-plugin-better-locale":
       optional: true
-  checksum: 10c0/843166ae8809ef06f3032dda677d4e54deebafce8501de775ca22fae190ae5c8fd1b02179f6e22502239a43f2d811fd03e7df4ecbf57679815b4d5d3df4e426e
+  checksum: 10c0/059d66149bb5354845e79b1629b41cbae213b6e728a3ae9bd9349e3533f14111d5311425b2d8020f4d6f3e54b8814cdac57f2d5dce07c1ee69dc0079a2a8a0a6
   languageName: node
   linkType: hard
 

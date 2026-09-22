@@ -1,8 +1,28 @@
 diff --git a/lib/client.js b/lib/client.js
-index f137630721b2f11268ad498c0bda41851c96bdf1..2612883bb3d892977cf527988faacad71191883d 100644
 --- a/lib/client.js
 +++ b/lib/client.js
-@@ -4427,6 +4427,107 @@ window.__ModuleLoader__.load({
+@@ -3490,6 +3490,7 @@
+ 		function registerTurnTailInterception(ctx, store) {
+ 			return ctx.slots.inject("conversation.chat.turnTail", () => ctx.slots.register({
+ 				name: "conversation.chat.turnTail",
++                id: "dsh-better-sidebar-produced-files",
+ 				select: (owner) => {
+ 					if (store.getSuspended()) return null;
+ 					if (store.getPrefs().tabsEnabled["editor"] === false) return null;
+@@ -3505,7 +3506,11 @@
+ 						revealInExplorer(ctx, store, sessionId, files);
+ 					}
+ 				})
+-			}, SidebarProducedFiles));
++			}, (props) => {
++                if (store.getSuspended() || store.getPrefs().tabsEnabled["editor"] === false) return null;
++                const matched = selectProducedFiles(props);
++                return matched === null ? null : react.createElement(SidebarProducedFiles, { ...props, matched });
++            }));
+ 		}
+ 		//#endregion
+ 		//#region node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+@@ -4427,6 +4432,107 @@
  		* host-owned menus are never touched.
  		*/
  		/** body attribute carrying the flip tokens (whitespace-separated words). */
@@ -110,7 +130,7 @@ index f137630721b2f11268ad498c0bda41851c96bdf1..2612883bb3d892977cf527988faacad7
  		const SUBMENU_FLIP_ATTR = "data-dsh-sidebar-submenu";
  		/**
  		* Mirror of the primitive's submenu geometry (Menu.module.css): card
-@@ -4784,7 +4885,7 @@ window.__ModuleLoader__.load({
+@@ -4784,7 +4890,7 @@
  			const [copiedPath, setCopiedPath] = (0, react.useState)(null);
  			/** Open context menu: the row path (and whether it is a directory) plus the cursor position. */
  			const [rowMenu, setRowMenu] = (0, react.useState)(null);
@@ -119,7 +139,7 @@ index f137630721b2f11268ad498c0bda41851c96bdf1..2612883bb3d892977cf527988faacad7
  			/** The row being renamed inline: its path plus the edit buffer. */
  			const [renaming, setRenaming] = (0, react.useState)(null);
  			/** The delete awaiting the confirmation modal's yes. */
-@@ -5392,7 +5493,7 @@ window.__ModuleLoader__.load({
+@@ -5392,7 +5498,7 @@
  						onClose: () => {
  							setRowMenu(null);
  						},
@@ -128,7 +148,7 @@ index f137630721b2f11268ad498c0bda41851c96bdf1..2612883bb3d892977cf527988faacad7
  							...rowMenu?.isDir === false && onOpenFileNewTab !== void 0 ? [{
  								id: "open-new-tab",
  								label: t("openFileNewTab"),
-@@ -5441,7 +5542,7 @@ window.__ModuleLoader__.load({
+@@ -5441,7 +5547,7 @@
  									danger: true
  								}
  							] : []
@@ -137,7 +157,34 @@ index f137630721b2f11268ad498c0bda41851c96bdf1..2612883bb3d892977cf527988faacad7
  						onSelect: (id) => {
  							const target = rowMenu;
  							if (target === null) return;
-@@ -14477,7 +14578,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+@@ -11857,7 +11963,7 @@
+ 			const openChild = (0, react.useCallback)((address) => {
+ 				onOpenChild?.(address);
+ 				try {
+-					sessions.openSubagent?.(address);
++					ctx.get("uiWorkspace")?.openSession(address);
+ 				} catch (error) {
+ 					console.error("[dsh-better-sidebar] openSubagent failed:", error);
+ 				}
+@@ -11866,7 +11972,7 @@
+ 			const openMain = (0, react.useCallback)(() => {
+ 				if (rootId === void 0) return;
+ 				try {
+-					sessions.open?.(rootId);
++					ctx.get("uiWorkspace")?.openSession(rootId);
+ 				} catch (error) {
+ 					console.error("[dsh-better-sidebar] open session failed:", error);
+ 				}
+@@ -13055,7 +13161,7 @@
+ 					const title = summary === void 0 ? "" : threadDisplayTitle(summary.displayTitle).trim();
+ 					const binding = ctx.sessions.binding?.(newId);
+ 					if (binding !== void 0 && title !== "") await binding.session.rename(title);
+-					ctx.sessions.open?.(newId);
++					ctx.get("uiWorkspace")?.openSession(newId);
+ 					setSaved(true);
+ 				} catch (cause) {
+ 					setError(cause instanceof Error ? cause.message : String(cause));
+@@ -14477,7 +14583,7 @@
  			const { paneId, tabs, active, onActivate, onClose, onNewTab, newTabOptions, onDropTab, onPinTab, getTabIcon, getTabBadge } = props;
  			const [menuOpen, setMenuOpen] = (0, react.useState)(false);
  			const [tabMenu, setTabMenu] = (0, react.useState)(null);
@@ -146,7 +193,7 @@ index f137630721b2f11268ad498c0bda41851c96bdf1..2612883bb3d892977cf527988faacad7
  			const [dragOver, setDragOver] = (0, react.useState)(false);
  			const listRef = (0, react.useRef)(null);
  			const tabMenuIndex = tabMenu === null ? -1 : tabs.findIndex((tab) => tab.id === tabMenu.tabId);
-@@ -14659,7 +14760,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+@@ -14659,7 +14765,7 @@
  							onClose: () => {
  								setTabMenu(null);
  							},
@@ -155,7 +202,7 @@ index f137630721b2f11268ad498c0bda41851c96bdf1..2612883bb3d892977cf527988faacad7
  								const targetTab = tabMenuIndex >= 0 ? tabs[tabMenuIndex] : void 0;
  								const isTerminal = targetTab?.type === "terminal";
  								const isPinnedVirtual = targetTab !== void 0 && isPinnedVirtualTab(targetTab);
-@@ -14703,7 +14804,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+@@ -14703,7 +14809,7 @@
  										...tabMenuIndex >= tabs.length - 1 ? { disabled: true } : {}
  									}
  								];
@@ -164,7 +211,7 @@ index f137630721b2f11268ad498c0bda41851c96bdf1..2612883bb3d892977cf527988faacad7
  							onSelect: (id) => {
  								const target = tabMenu;
  								if (target === null) return;
-@@ -18665,7 +18766,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+@@ -18665,7 +18771,7 @@
  		}
  		//#endregion
  		//#region \0dsh-css:/home/runner/work/DSH-better-sidebar/DSH-better-sidebar/src/client/layout.css.mjs
@@ -174,10 +221,9 @@ index f137630721b2f11268ad498c0bda41851c96bdf1..2612883bb3d892977cf527988faacad7
  		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
  			const tag = document.createElement("style");
 diff --git a/lib/index.js b/lib/index.js
-index 74c717132dba4087c5d7355e17f2aff58731c150..d4f322fb2311fedb039640b5466dd2bb5ff207f4 100644
 --- a/lib/index.js
 +++ b/lib/index.js
-@@ -14,6 +14,7 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
+@@ -14,6 +14,7 @@
  import { createUserMessage } from "@deepseek-ai/dsh-llm";
  import { snapshotSubagentDescriptor } from "@deepseek-ai/dsh-subagent";
  import { SessionLogOffset } from "@deepseek-ai/dsh-session";
@@ -185,7 +231,7 @@ index 74c717132dba4087c5d7355e17f2aff58731c150..d4f322fb2311fedb039640b5466dd2bb
  //#region src/prefs-shared.ts
  /**
  * Shared "Side card" preference vocabulary (types + constants), consumed by
-@@ -4032,15 +4033,19 @@ const threadDisposers = /* @__PURE__ */ new Map();
+@@ -4032,15 +4033,19 @@
  *  prompt is then delivered alone, a logged degradation). */
  const pendingSnapshots = /* @__PURE__ */ new Map();
  /** Resolve the parent's preset and build the child's composition setup
@@ -209,7 +255,7 @@ index 74c717132dba4087c5d7355e17f2aff58731c150..d4f322fb2311fedb039640b5466dd2bb
  			await presets.mount(agentCtx, resolved.id);
  		}
  	};
-@@ -4049,13 +4054,14 @@ async function composeChildSetup(ctx, presetId) {
+@@ -4049,13 +4054,14 @@
  *  recorded preset wins, newest selection event first). */
  async function composePersistedSetup(ctx, childId) {
  	const persistence = ctx.get("sessionPersistence");
@@ -229,7 +275,6 @@ index 74c717132dba4087c5d7355e17f2aff58731c150..d4f322fb2311fedb039640b5466dd2bb
  }
 diff --git a/lib/sidechat-model.js b/lib/sidechat-model.js
 new file mode 100644
-index 0000000000000000000000000000000000000000..ee8587e241d65841a1d7448f6e0f4e947de5b34d
 --- /dev/null
 +++ b/lib/sidechat-model.js
 @@ -0,0 +1,29 @@
@@ -264,7 +309,6 @@ index 0000000000000000000000000000000000000000..ee8587e241d65841a1d7448f6e0f4e94
 +}
 diff --git a/lib/types/sidechat-model.d.ts b/lib/types/sidechat-model.d.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..af870c6211063fb7deedfe8356af09c034e5ff32
 --- /dev/null
 +++ b/lib/types/sidechat-model.d.ts
 @@ -0,0 +1,4 @@
@@ -273,7 +317,6 @@ index 0000000000000000000000000000000000000000..af870c6211063fb7deedfe8356af09c0
 +/** Bind each explicit setup Agent's durable selection to prompt and request assembly. */
 +export declare function installSidechatModelSelection(host: Context, agentCtx: Context, agent: Agent): void;
 diff --git a/package.json b/package.json
-index 6dbba70ec8026d33525fac25c3c9e808fecb4693..b361e6ed380c431e14186ec465d43dad6de274a8 100644
 --- a/package.json
 +++ b/package.json
 @@ -56,6 +56,7 @@
@@ -285,10 +328,9 @@ index 6dbba70ec8026d33525fac25c3c9e808fecb4693..b361e6ed380c431e14186ec465d43dad
      "lib/client.js",
      "lib/client-registry.js",
 diff --git a/src/client/FileTree.tsx b/src/client/FileTree.tsx
-index 2873f51f9cb2eadc210d5c02b9f911162bca0fc9..c817ec70df291ef88c615abe4d8346314ca0a51a 100644
 --- a/src/client/FileTree.tsx
 +++ b/src/client/FileTree.tsx
-@@ -34,7 +34,7 @@ import { FenceErrorNotice } from './FenceErrorNotice.tsx'
+@@ -34,7 +34,7 @@
  import { builtinFileIcon, builtinFolderIcon } from './file-icons.tsx'
  import { IconUploadOutline16, IconVscode16 } from './icons.tsx'
  import { isImeComposition } from './ime-guard.ts'
@@ -297,7 +339,7 @@ index 2873f51f9cb2eadc210d5c02b9f911162bca0fc9..c817ec70df291ef88c615abe4d834631
  import type { OpenWithTarget } from './open-with.ts'
  import { relativeTo } from './paths.ts'
  import { t } from './locales.ts'
-@@ -187,9 +187,8 @@ export function FileTree(props: {
+@@ -187,9 +187,8 @@
    const [copiedPath, setCopiedPath] = useState<string | null>(null)
    /** Open context menu: the row path (and whether it is a directory) plus the cursor position. */
    const [rowMenu, setRowMenu] = useState<{ path: string; isDir: boolean; x: number; y: number } | null>(null)
@@ -309,7 +351,7 @@ index 2873f51f9cb2eadc210d5c02b9f911162bca0fc9..c817ec70df291ef88c615abe4d834631
    /** The row being renamed inline: its path plus the edit buffer. */
    const [renaming, setRenaming] = useState<{ path: string; value: string } | null>(null)
    /** The delete awaiting the confirmation modal's yes. */
-@@ -826,7 +825,7 @@ export function FileTree(props: {
+@@ -826,7 +825,7 @@
        <Menu
          open={rowMenu !== null}
          onClose={() => { setRowMenu(null) }}
@@ -318,7 +360,7 @@ index 2873f51f9cb2eadc210d5c02b9f911162bca0fc9..c817ec70df291ef88c615abe4d834631
            // The open escapes head the FILE menu (dirs only get copy).
            ...(rowMenu?.isDir === false && onOpenFileNewTab !== undefined
              ? [{ id: 'open-new-tab', label: t('openFileNewTab'), icon: <IconCodeOutline16 size={14} /> }]
-@@ -854,7 +853,7 @@ export function FileTree(props: {
+@@ -854,7 +853,7 @@
                  { id: 'delete', label: t('delete'), icon: <IconTrashOutline16 size={14} />, danger: true },
                ]
              : []),
@@ -327,11 +369,43 @@ index 2873f51f9cb2eadc210d5c02b9f911162bca0fc9..c817ec70df291ef88c615abe4d834631
          onSelect={(id) => {
            const target = rowMenu
            if (target === null) return
+diff --git a/src/client/SideChatView.tsx b/src/client/SideChatView.tsx
+--- a/src/client/SideChatView.tsx
++++ b/src/client/SideChatView.tsx
+@@ -659,7 +659,7 @@
+       if (binding !== undefined && title !== '') {
+         await binding.session.rename(title)
+       }
+-      ctx.sessions.open?.(newId)
++      ctx.get('uiWorkspace')?.openSession(newId)
+       setSaved(true)
+     } catch (cause) {
+       setError(cause instanceof Error ? cause.message : String(cause))
+diff --git a/src/client/SubagentView.tsx b/src/client/SubagentView.tsx
+--- a/src/client/SubagentView.tsx
++++ b/src/client/SubagentView.tsx
+@@ -702,7 +702,7 @@
+     // highlighted) — the README "page stays open" contract.
+     onOpenChild?.(address)
+     try {
+-      sessions.openSubagent?.(address)
++      ctx.get('uiWorkspace')?.openSession(address)
+     } catch (error) {
+       console.error('[dsh-better-sidebar] openSubagent failed:', error)
+     }
+@@ -712,7 +712,7 @@
+   const openMain = useCallback((): void => {
+     if (rootId === undefined) return
+     try {
+-      sessions.open?.(rootId)
++      ctx.get('uiWorkspace')?.openSession(rootId)
+     } catch (error) {
+       console.error('[dsh-better-sidebar] open session failed:', error)
+     }
 diff --git a/src/client/TabBar.tsx b/src/client/TabBar.tsx
-index 7d5ce443f33ea1c07002e5e2d4de67b298ce2f50..c24070e951352822822eb4b291910ff16d4a22a8 100644
 --- a/src/client/TabBar.tsx
 +++ b/src/client/TabBar.tsx
-@@ -15,7 +15,7 @@ import {
+@@ -15,7 +15,7 @@
  import type { SidebarTab } from './state.ts'
  import { isAgentTabId } from './state.ts'
  import { isPinnedVirtualTab } from './pinned.ts'
@@ -340,7 +414,7 @@ index 7d5ce443f33ea1c07002e5e2d4de67b298ce2f50..c24070e951352822822eb4b291910ff1
  import { IconPinOutline16 } from './icons.tsx'
  import { t } from './locales.ts'
  import css from './sidebar.module.css'
-@@ -87,9 +87,8 @@ export function TabBar(props: {
+@@ -87,9 +87,8 @@
    // The tab right-click context menu: the target tab plus the cursor
    // position (the portaled Menu anchors there, following the git lens/FileTree).
    const [tabMenu, setTabMenu] = useState<{ tabId: string; x: number; y: number } | null>(null)
@@ -352,7 +426,7 @@ index 7d5ce443f33ea1c07002e5e2d4de67b298ce2f50..c24070e951352822822eb4b291910ff1
    const [dragOver, setDragOver] = useState(false)
    const listRef = useRef<HTMLDivElement>(null)
    // The context target's index in the render-time tab snapshot; -1 when the
-@@ -290,7 +289,7 @@ export function TabBar(props: {
+@@ -290,7 +289,7 @@
          <Menu
            open={tabMenu !== null && tabMenuIndex >= 0}
            onClose={() => { setTabMenu(null) }}
@@ -361,7 +435,7 @@ index 7d5ce443f33ea1c07002e5e2d4de67b298ce2f50..c24070e951352822822eb4b291910ff1
              // The target tab drives the pin entry's shape: terminal tabs
              // get either a "Pin ▸" submenu (unpinned) or a single "Unpin"
              // row (pinned). Non-terminal tabs and missing onPinTab get no
-@@ -326,7 +325,7 @@ export function TabBar(props: {
+@@ -326,7 +325,7 @@
                { id: 'closeLeft', label: t('closeLeftTabs'), ...(tabMenuIndex <= 0 ? { disabled: true } : {}) },
                { id: 'closeRight', label: t('closeRightTabs'), ...(tabMenuIndex >= tabs.length - 1 ? { disabled: true } : {}) },
              ]
@@ -370,11 +444,40 @@ index 7d5ce443f33ea1c07002e5e2d4de67b298ce2f50..c24070e951352822822eb4b291910ff1
            onSelect={(id) => {
              const target = tabMenu
              if (target === null) return
+diff --git a/src/client/intercept.tsx b/src/client/intercept.tsx
+--- a/src/client/intercept.tsx
++++ b/src/client/intercept.tsx
+@@ -6,6 +6,7 @@
+  * deliverables entry; when nothing was produced the selector returns null
+  * and the original row renders unchanged.
+  */
++import { createElement } from 'react'
+ import { IconCodeOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+ import type { Context } from '../context-types.ts'
+ import { revealPaths, type SidebarStore } from './state.ts'
+@@ -112,6 +113,7 @@
+ export function registerTurnTailInterception(ctx: Context, store: SidebarStore): () => void {
+   return ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
+     name: 'conversation.chat.turnTail',
++    id: 'dsh-better-sidebar-produced-files',
+     // Decline the takeover while the editor tab type is disabled in the side
+     // card settings: the produced-files row falls back to the default
+     // deliverables behavior instead of offering chips that cannot open. Also
+@@ -127,5 +129,9 @@
+       openInSidebar: (path: string) => { openSidebarFile(ctx, store, sessionId, path) },
+       onShowInFolder: (files: readonly string[]) => { revealInExplorer(ctx, store, sessionId, files) },
+     }),
+-  }, SidebarProducedFiles))
++  }, (props) => {
++    if (store.getSuspended() || store.getPrefs().tabsEnabled['editor'] === false) return null
++    const matched = selectProducedFiles(props)
++    return matched === null ? null : createElement(SidebarProducedFiles, { ...props, matched })
++  }))
+ }
 diff --git a/src/client/layout.css b/src/client/layout.css
-index 3a3e798dca655f24db03efd9b892a37530d41a00..27b40890957886eed2a0640ce35ca0e2c072a458 100644
 --- a/src/client/layout.css
 +++ b/src/client/layout.css
-@@ -139,3 +139,8 @@ body[data-dsh-sidebar-submenu~="left"] div[role="menu"] div[role="menu"]::before
+@@ -139,3 +139,8 @@
    left: auto;
    right: -4px;
  }
@@ -385,7 +488,6 @@ index 3a3e798dca655f24db03efd9b892a37530d41a00..27b40890957886eed2a0640ce35ca0e2
 +[data-dsh-sidebar-submenu-side="overlap"]::before { display: none; }
 diff --git a/src/client/menu-placement.ts b/src/client/menu-placement.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..724d144ec0d4cbf3839a9ff862a5ff73db11ad72
 --- /dev/null
 +++ b/src/client/menu-placement.ts
 @@ -0,0 +1,90 @@
@@ -481,7 +583,6 @@ index 0000000000000000000000000000000000000000..724d144ec0d4cbf3839a9ff862a5ff73
 +}
 diff --git a/src/sidechat-model.ts b/src/sidechat-model.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..be221b394d2d661b3bae5588f81eb79637af0bbc
 --- /dev/null
 +++ b/src/sidechat-model.ts
 @@ -0,0 +1,33 @@
@@ -519,10 +620,9 @@ index 0000000000000000000000000000000000000000..be221b394d2d661b3bae5588f81eb796
 +  })
 +}
 diff --git a/src/sidechat-routes.ts b/src/sidechat-routes.ts
-index 9d60df490c1c004737df250e5fb7fd6b471ca123..1639644489e8846e3c6cf81cfa384585a4484390 100644
 --- a/src/sidechat-routes.ts
 +++ b/src/sidechat-routes.ts
-@@ -25,7 +25,6 @@ import { randomUUID } from 'node:crypto'
+@@ -25,7 +25,6 @@
  import { createUserMessage, type ContentBlock, type UserMessage } from '@deepseek-ai/dsh-llm'
  import type { Agent, AgentSetup, CreateAgentOptions, ResumeAgentOptions } from '@deepseek-ai/dsh-agent'
  import { snapshotSubagentDescriptor } from '@deepseek-ai/dsh-subagent'
@@ -530,7 +630,7 @@ index 9d60df490c1c004737df250e5fb7fd6b471ca123..1639644489e8846e3c6cf81cfa384585
  import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
  import { SessionLogOffset } from '@deepseek-ai/dsh-session'
  import type {
-@@ -52,6 +51,7 @@ import {
+@@ -52,6 +51,7 @@
  import type { AssistantLiveBuffer } from './assistant-live.ts'
  import { requireString, SidebarError } from './wire.ts'
  import { readPersistedSession } from './session-store.ts'
@@ -538,7 +638,7 @@ index 9d60df490c1c004737df250e5fb7fd6b471ca123..1639644489e8846e3c6cf81cfa384585
  
  /** The six Side Chat routes of the sidebar API (wire method names). */
  export interface SidechatRoutes {
-@@ -96,20 +96,28 @@ const threadDisposers = new Map<string, () => Promise<void>>()
+@@ -96,20 +96,28 @@
  const pendingSnapshots = new Map<string, string>()
  
  /** Resolve the parent's preset and build the child's composition setup
@@ -571,7 +671,7 @@ index 9d60df490c1c004737df250e5fb7fd6b471ca123..1639644489e8846e3c6cf81cfa384585
    }
  }
  
-@@ -121,16 +129,19 @@ async function composePersistedSetup(
+@@ -121,16 +129,19 @@
  ): Promise<AgentSetup> {
    const persistence = ctx.get('sessionPersistence') as SidebarSessionPersistenceService | undefined
    if (persistence === undefined) {
@@ -594,7 +694,7 @@ index 9d60df490c1c004737df250e5fb7fd6b471ca123..1639644489e8846e3c6cf81cfa384585
  }
  
  /** One text-block prompt (the thread boundary + question, or a follow-up). */
-@@ -249,16 +260,11 @@ export function buildSidechatApi(ctx: Context, live?: AssistantLiveBuffer): Side
+@@ -249,16 +260,11 @@
          data: descriptor as unknown as Record<string, unknown>,
        }
        const seed = [...inheritance.seed, descriptorEvent]
