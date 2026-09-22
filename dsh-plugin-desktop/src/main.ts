@@ -51,6 +51,7 @@ import { LogFileSink } from './log-files.ts'
 import { maskSecrets } from './mask-secrets.ts'
 import { resolveDesktopShellEnvironment } from './shell-environment.ts'
 import { installProfilePackageResolver } from './module-resolution.ts'
+import { installDesktopProfileLive } from './profile-live.ts'
 import { packagedDependencyPath } from './packaged-runtime-path.ts'
 import {
   DesktopInstallRecoveryStore,
@@ -562,6 +563,7 @@ async function start(): Promise<void> {
     startupStage = 'host-boot'
     lifecycleRecorder.transitionStartupStage(startupStage)
     const releasePackageResolver = installProfilePackageResolver(prepared.bareModuleBaseUrl)
+    let profileLive: Awaited<ReturnType<typeof installDesktopProfileLive>> | undefined
     const ctx = await boot(
       BIN_NAME,
       prepared.rootConfig,
@@ -585,6 +587,13 @@ async function start(): Promise<void> {
         hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, environment)
         hostCtx.provide('desktopRuntime', runtime)
         hostCtx.provide('desktopPnpmBootstrap', desktopPnpmBootstrap)
+        profileLive = await installDesktopProfileLive(hostCtx, {
+          prepared, bootstrap: desktopPnpmBootstrap, telemetryDisabled: process.env.DSH_TELEMETRY_DISABLED,
+          recompose: () => prepareDesktopProfile(
+            process.env.DSH_TELEMETRY_DISABLED, homeDir, process.platform, activeProfileName, pluginManagementStatePath,
+            { mode: prepared.mode, windowStyle: prepared.windowStyle, port: prepared.port, experience: prepared.experience },
+          ),
+        })
         await hostCtx.plugin(DesktopActionsService, {
           openTerminal: () => { runtime.openTerminal() },
           requestRestart: () => runtime.requestRestart(),
@@ -609,6 +618,7 @@ async function start(): Promise<void> {
           requestRestart: () => runtime.requestRestart(),
         })
         provideCmdline(hostCtx, {
+          ready: profileLive.ready,
           args: ['--host', '127.0.0.1', '--port', String(prepared.port)],
           exit: requestQuit,
         })
@@ -619,6 +629,7 @@ async function start(): Promise<void> {
       throw cause
     })
     generation.bindHost(ctx)
+    profileLive?.commitReady()
     const resolvedDesktopSettings = ctx.settings.get(DESKTOP_SETTINGS_NAMESPACE) as DesktopSettings | undefined
     const reconciliation = reconcileDesktopProfilePreferences(storedProfilePreferences, resolvedDesktopSettings ?? {
       mode: prepared.mode, windowStyle: prepared.windowStyle, port: prepared.port, logLevel: 'info',

@@ -25,6 +25,7 @@ export default defineConfig([
       index: 'src/index.ts',
       'module-resolution': 'src/module-resolution.ts',
       profile: 'src/profile.ts',
+      'profile-live': 'src/profile-live.ts',
       'profile-manager': 'src/profile-manager.ts',
       'profile-service': 'src/profile-service.ts',
       'desktop-plugins': 'src/desktop-plugins.ts',

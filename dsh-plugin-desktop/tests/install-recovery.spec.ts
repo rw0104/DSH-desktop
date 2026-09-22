@@ -24,11 +24,13 @@ const PREINSTALL = {
   'package.json': '{"name":"fixture-private-marker","private":true}\n',
   'pnpm-lock.yaml': 'lockfileVersion: "9.0"\n# lock-private-marker\n',
   'pnpm-workspace.yaml': 'packages:\n  - fixture-private-marker\n',
+  'cordis.patch.yml': '# original profile layer\n[]\n',
 } as const
 const POSTINSTALL = {
   'package.json': '{"name":"fixture-private-marker","private":true,"dependencies":{"plugin-a":"1.0.0"}}\n',
   'pnpm-lock.yaml': 'lockfileVersion: "9.0"\n# installed-plugin-a\n',
   'pnpm-workspace.yaml': 'packages:\n  - fixture-private-marker\n  - installed-plugin-a\n',
+  'cordis.patch.yml': '- id: plugin-a\n  disabled: false\n',
 } as const
 
 interface Fixture {
@@ -111,6 +113,22 @@ describe('Desktop plugin install recovery state location', () => {
 })
 
 describe('Desktop plugin install recovery WAL', () => {
+  it('recovers legacy three-file transactions without claiming an unrelated user patch', async () => {
+    const target = fixture()
+    const transaction = await begin(target)
+    const legacy = JSON.parse(readFileSync(target.statePath, 'utf8'))
+    legacy.files = legacy.files.slice(0, 3)
+    writeFileSync(target.statePath, JSON.stringify(legacy))
+    for (const name of ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml'] as const) {
+      writeFileSync(join(target.profileDir, name), POSTINSTALL[name])
+    }
+    writeFileSync(join(target.profileDir, 'cordis.patch.yml'), '# unrelated existing edit\n[]\n')
+    expect((await store(target).read())?.files).toHaveLength(3)
+    expect((await store(target).restoreCurrentInstall(transaction.transactionId, 'install-failed')).status).toBe('restored')
+    expect(readFileSync(join(target.profileDir, 'package.json'), 'utf8')).toBe(PREINSTALL['package.json'])
+    expect(readFileSync(join(target.profileDir, 'cordis.patch.yml'), 'utf8')).toBe('# unrelated existing edit\n[]\n')
+  })
+
   it('publishes hash-only prepared metadata after private allowlisted preimages', async () => {
     const target = fixture()
     const transaction = await begin(target)

@@ -1,5 +1,31 @@
 # Upstream synchronization ledger
 
+## 2026-09-22 官方插件管理与多会话接入
+
+Desktop 现在在 Host 启动前提供官方 `ProfileContext`、`PluginPackages` 和 application
+readiness。官方 Plugin Manager 与 HMR 保持上游实现；下游补丁补足两处桌面边界：
+配置重载回调重新应用 launcher-owned 的布局、诊断、Windows provider 和 loopback 约束；
+没有模块监听根时，HMR 只启用配置监听，不要求 Electron 公开 Node 内部模块。
+
+官方包操作持有 Profile 锁时，由 Desktop policy 包住完整 install/remove 事务，不再
+嵌套调用另一个争用相同锁的 CLI。日志新增 `cordis.patch.yml` 备份，仍能读取旧三文件
+事务。失败/取消恢复文件与运行图；成功可即时激活，但持久安装仍需下一次启动健康门禁。
+已有插件可重复实时启停；待确认安装存在时拒绝其他写操作。诊断管理界面只读，既不读取
+也不消费正常恢复日志。Desktop carrier、必需 bundle 和端口/布局约束不开放禁用。
+
+验证包括一次真实 **离线 pnpm 本地包安装、即时激活、四文件 awaiting-restart 日志与
+后续变更拦截**，以及真实 Host 插件的 disable/re-enable。恢复与侧栏专项为
+27 passed / 2 skipped。多会话实际 Renderer 又复现并修复了 Sidebar 把未采用 Session 的
+`openTabIn` 无操作当成成功、以及调用者 tab id 无法关闭排队标签的问题；现在按
+`mainView` 引用识别主会话，等待 native inventory，按会话保留/取消排队打开并映射 native id。
+
+system/native/diagnostic 三种实际 Renderer 均 healthy、errors=[]；正常两种外观额外
+验证了两会话同时持有、同会话引用共享、草稿隔离、按会话开关标签和释放后重新打开。
+`corepack yarn install --immutable` 与最终 `corepack yarn check` 均退出 0：Desktop
+**127 suites / 1031 passed / 11 skipped**，Market **19 suites / 278 passed**；包含三组合
+Host/Profile、真实插件启停、CLI、Loader、typecheck、build、269 节点 closure 和 640 包
+许可证检查。该源码完成验证后将重新封装；最终安装器证据单独记录，不继承旧草稿包状态。
+
 ## 2026-09-22 alpha.2 补丁迁移与验收修复
 
 本轮仍以用户明确选择的 `0.1.6-alpha.2` 为目标。官方源码 pin 已在独立提交

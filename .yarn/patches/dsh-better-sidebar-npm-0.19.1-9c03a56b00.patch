@@ -1,7 +1,26 @@
 diff --git a/lib/client.js b/lib/client.js
 --- a/lib/client.js
 +++ b/lib/client.js
-@@ -3490,6 +3490,7 @@
+@@ -4,6 +4,10 @@
+ 		var module = { exports: {} };
+ 		var exports = module.exports;
+ 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
++/** Main-view ownership is separate from the alpha Session catalog. */
++function currentSidebarSession(snapshot) {
++    return Object.values(snapshot.byId ?? {}).find(session => (session.retainedBy?.mainView ?? 0) > 0)?.id ?? snapshot.current;
++}
+ 		//#region \0rolldown/runtime.js
+ 		var __create = Object.create;
+ 		var __defProp = Object.defineProperty;
+@@ -1402,6 +1406,7 @@
+ 						sessionId: targetSessionId,
+ 						kind: seed.type,
+ 						params: {
++							sidebarTabId: synthetic.id,
+ 							title,
+ 							...seed.url === void 0 ? {} : { url: seed.url },
+ 							...seed.diff === void 0 ? {} : { diff: seed.diff },
+@@ -3490,6 +3495,7 @@
  		function registerTurnTailInterception(ctx, store) {
  			return ctx.slots.inject("conversation.chat.turnTail", () => ctx.slots.register({
  				name: "conversation.chat.turnTail",
@@ -9,7 +28,7 @@ diff --git a/lib/client.js b/lib/client.js
  				select: (owner) => {
  					if (store.getSuspended()) return null;
  					if (store.getPrefs().tabsEnabled["editor"] === false) return null;
-@@ -3505,7 +3506,11 @@
+@@ -3505,7 +3511,11 @@
  						revealInExplorer(ctx, store, sessionId, files);
  					}
  				})
@@ -22,7 +41,7 @@ diff --git a/lib/client.js b/lib/client.js
  		}
  		//#endregion
  		//#region node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
-@@ -4427,6 +4432,107 @@
+@@ -4427,6 +4437,107 @@
  		* host-owned menus are never touched.
  		*/
  		/** body attribute carrying the flip tokens (whitespace-separated words). */
@@ -130,7 +149,7 @@ diff --git a/lib/client.js b/lib/client.js
  		const SUBMENU_FLIP_ATTR = "data-dsh-sidebar-submenu";
  		/**
  		* Mirror of the primitive's submenu geometry (Menu.module.css): card
-@@ -4784,7 +4890,7 @@
+@@ -4784,7 +4895,7 @@
  			const [copiedPath, setCopiedPath] = (0, react.useState)(null);
  			/** Open context menu: the row path (and whether it is a directory) plus the cursor position. */
  			const [rowMenu, setRowMenu] = (0, react.useState)(null);
@@ -139,7 +158,7 @@ diff --git a/lib/client.js b/lib/client.js
  			/** The row being renamed inline: its path plus the edit buffer. */
  			const [renaming, setRenaming] = (0, react.useState)(null);
  			/** The delete awaiting the confirmation modal's yes. */
-@@ -5392,7 +5498,7 @@
+@@ -5392,7 +5503,7 @@
  						onClose: () => {
  							setRowMenu(null);
  						},
@@ -148,7 +167,7 @@ diff --git a/lib/client.js b/lib/client.js
  							...rowMenu?.isDir === false && onOpenFileNewTab !== void 0 ? [{
  								id: "open-new-tab",
  								label: t("openFileNewTab"),
-@@ -5441,7 +5547,7 @@
+@@ -5441,7 +5552,7 @@
  									danger: true
  								}
  							] : []
@@ -157,7 +176,7 @@ diff --git a/lib/client.js b/lib/client.js
  						onSelect: (id) => {
  							const target = rowMenu;
  							if (target === null) return;
-@@ -11857,7 +11963,7 @@
+@@ -11857,7 +11968,7 @@
  			const openChild = (0, react.useCallback)((address) => {
  				onOpenChild?.(address);
  				try {
@@ -166,7 +185,7 @@ diff --git a/lib/client.js b/lib/client.js
  				} catch (error) {
  					console.error("[dsh-better-sidebar] openSubagent failed:", error);
  				}
-@@ -11866,7 +11972,7 @@
+@@ -11866,7 +11977,7 @@
  			const openMain = (0, react.useCallback)(() => {
  				if (rootId === void 0) return;
  				try {
@@ -175,7 +194,7 @@ diff --git a/lib/client.js b/lib/client.js
  				} catch (error) {
  					console.error("[dsh-better-sidebar] open session failed:", error);
  				}
-@@ -13055,7 +13161,7 @@
+@@ -13055,7 +13166,7 @@
  					const title = summary === void 0 ? "" : threadDisplayTitle(summary.displayTitle).trim();
  					const binding = ctx.sessions.binding?.(newId);
  					if (binding !== void 0 && title !== "") await binding.session.rename(title);
@@ -184,7 +203,7 @@ diff --git a/lib/client.js b/lib/client.js
  					setSaved(true);
  				} catch (cause) {
  					setError(cause instanceof Error ? cause.message : String(cause));
-@@ -14477,7 +14583,7 @@
+@@ -14477,7 +14588,7 @@
  			const { paneId, tabs, active, onActivate, onClose, onNewTab, newTabOptions, onDropTab, onPinTab, getTabIcon, getTabBadge } = props;
  			const [menuOpen, setMenuOpen] = (0, react.useState)(false);
  			const [tabMenu, setTabMenu] = (0, react.useState)(null);
@@ -193,7 +212,7 @@ diff --git a/lib/client.js b/lib/client.js
  			const [dragOver, setDragOver] = (0, react.useState)(false);
  			const listRef = (0, react.useRef)(null);
  			const tabMenuIndex = tabMenu === null ? -1 : tabs.findIndex((tab) => tab.id === tabMenu.tabId);
-@@ -14659,7 +14765,7 @@
+@@ -14659,7 +14770,7 @@
  							onClose: () => {
  								setTabMenu(null);
  							},
@@ -202,7 +221,7 @@ diff --git a/lib/client.js b/lib/client.js
  								const targetTab = tabMenuIndex >= 0 ? tabs[tabMenuIndex] : void 0;
  								const isTerminal = targetTab?.type === "terminal";
  								const isPinnedVirtual = targetTab !== void 0 && isPinnedVirtualTab(targetTab);
-@@ -14703,7 +14809,7 @@
+@@ -14703,7 +14814,7 @@
  										...tabMenuIndex >= tabs.length - 1 ? { disabled: true } : {}
  									}
  								];
@@ -211,7 +230,264 @@ diff --git a/lib/client.js b/lib/client.js
  							onSelect: (id) => {
  								const target = tabMenu;
  								if (target === null) return;
-@@ -18665,7 +18771,7 @@
+@@ -15545,7 +15656,7 @@
+ 		*/
+ 		function activateTasksPage(ctx, sessionId, options) {
+ 			const column = ctx.get("sidebarRight");
+-			const park = options.background && ctx.sessions.list.getSnapshot().current === sessionId && isNarrowWidth(window.innerWidth) && column?.isExpanded?.() === false;
++			const park = options.background && currentSidebarSession(ctx.sessions.list.getSnapshot()) === sessionId && isNarrowWidth(window.innerWidth) && column?.isExpanded?.() === false;
+ 			ctx.get("betterSidebar")?.openTab({
+ 				type: "subagent",
+ 				title: t("subagent")
+@@ -16015,7 +16126,7 @@
+ 			}, []);
+ 			const layoutViewportHeight = visualViewportHeight ?? viewport.height;
+ 			const sessionList = (0, react.useSyncExternalStore)((0, react.useMemo)(() => (callback) => ctx.sessions.list.subscribe(callback), [ctx]), (0, react.useCallback)(() => ctx.sessions.list.getSnapshot(), [ctx]));
+-			const current = sessionList.current;
++			const current = currentSidebarSession(sessionList);
+ 			const snapshot = (0, react.useSyncExternalStore)((0, react.useCallback)((callback) => store.subscribe(callback), [store]), (0, react.useCallback)(() => store.getSnapshot(), [store]));
+ 			(0, react.useEffect)(() => {
+ 				store.setSession(current);
+@@ -17137,118 +17248,126 @@
+ 		//#endregion
+ 		//#region src/client/native/surface.ts
+ 		/** The active session id, as the client list reports it. */
+-		function activeSessionId(ctx) {
+-			try {
+-				return ctx.sessions.list.getSnapshot().current;
+-			} catch {
+-				return;
+-			}
+-		}
+-		/**
+-		* Bind the plugin's write face to the native controller.
+-		* @param ctx - the client context (session list + `ctx.sidebarRight`).
+-		* @param records - the plugin's native tab record registry.
+-		* @returns the surface, plus a disposer unbinding its session subscription.
+-		*/
+-		function createNativeSurface(ctx, records) {
+-			const pending = [];
+-			const controller = () => ctx.get("sidebarRight");
+-			const place = (entry) => {
+-				const api = controller();
+-				if (api === void 0) return false;
+-				const active = activeSessionId(ctx);
+-				const onScreen = active !== void 0 && active === entry.sessionId;
+-				if (entry.kind === "tab") {
+-					const options = {
+-						params: entry.params,
+-						revealIfOpened: entry.revealIfOpened
+-					};
+-					if (onScreen) {
+-						api.openTab(entry.tabKind, options);
+-						return true;
+-					}
+-					if (api.openTabIn !== void 0) {
+-						api.openTabIn(entry.sessionId, entry.tabKind, options);
+-						return true;
+-					}
+-					return false;
+-				}
+-				const options = {
+-					...entry.line === void 0 ? {} : { params: { line: entry.line } },
+-					revealIfOpened: entry.revealIfOpened
+-				};
+-				if (onScreen) {
+-					api.openResource(entry.address, options);
+-					return true;
+-				}
+-				if (api.openResourceIn !== void 0) {
+-					api.openResourceIn(entry.sessionId, entry.address, options);
+-					return true;
+-				}
+-				return false;
+-			};
+-			const flushPending = () => {
+-				if (pending.length === 0) return;
+-				for (let index = pending.length - 1; index >= 0; index--) {
+-					const entry = pending[index];
+-					if (entry !== void 0 && place(entry)) pending.splice(index, 1);
+-				}
+-			};
+-			const enqueue = (entry) => {
+-				if (!place(entry)) pending.push(entry);
+-			};
+-			const unsubscribe = ctx.sessions.list.subscribe(flushPending);
+-			return {
+-				openTab({ sessionId, kind, params, revealIfOpened }) {
+-					enqueue({
+-						kind: "tab",
+-						sessionId,
+-						tabKind: kind,
+-						params,
+-						revealIfOpened
+-					});
+-				},
+-				openResource({ sessionId, address, line, revealIfOpened }) {
+-					enqueue({
+-						kind: "resource",
+-						sessionId,
+-						address,
+-						line,
+-						revealIfOpened
+-					});
+-				},
+-				fileAddress(sessionId, cwd, path) {
+-					return fileAddressFor(sessionId, cwd, path);
+-				},
+-				close(sessionId, tabId) {
+-					const record = records.get(tabId);
+-					if (record === void 0) return void 0;
+-					records.drop(tabId);
+-					const api = controller();
+-					if (api !== void 0) {
+-						if (sessionId === activeSessionId(ctx)) api.close(tabId);
+-						else if (api.closeIn !== void 0) api.closeIn(sessionId, tabId);
+-					}
+-					return {
+-						type: record.tab.type,
+-						title: record.tab.title
+-					};
+-				},
+-				update(tabId, patch) {
+-					if (!records.has(tabId)) return false;
+-					records.update(tabId, patch);
+-					return true;
+-				},
+-				activate(tabId) {
+-					return records.has(tabId);
+-				},
+-				has: (tabId) => records.has(tabId),
+-				flushPending,
+-				dispose: () => {
+-					unsubscribe();
+-				}
+-			};
+-		}
++function activeSessionId(ctx) {
++    return currentSidebarSession(ctx.sessions.list.getSnapshot());
++}
++function createNativeSurface(ctx, records) {
++    const pending = [];
++    const aliases = new Map();
++    const key = (sessionId, tabId) => `${sessionId}\0${tabId}`;
++    const controller = () => ctx.get('sidebarRight');
++    const place = (entry) => {
++        const api = controller();
++        if (!api)
++            return false;
++        // Concrete per-session methods are no-ops before a seat adopts its store.
++        // Keep the request until inventory publishes the adopted guide/tab list.
++        if (api.tabsIn && api.tabsIn(entry.sessionId).length === 0)
++            return false;
++        const onScreen = activeSessionId(ctx) === entry.sessionId;
++        if (entry.kind === 'tab') {
++            const before = new Set(api.tabsIn?.(entry.sessionId).map(tab => tab.id) ?? []);
++            const options = { params: entry.params, revealIfOpened: entry.revealIfOpened };
++            if (api.openTabIn)
++                api.openTabIn(entry.sessionId, entry.tabKind, options);
++            else if (onScreen)
++                api.openTab(entry.tabKind, options);
++            else
++                return false;
++            const id = entry.params.sidebarTabId;
++            if (id !== undefined) {
++                const alias = aliases.get(key(entry.sessionId, id));
++                const tabs = api.tabsIn?.(entry.sessionId) ?? [];
++                const opened = tabs.find(tab => !before.has(tab.id)) ?? tabs.find(tab => tab.kind === entry.tabKind);
++                if (alias && opened)
++                    alias.nativeId = opened.id;
++            }
++            return true;
++        }
++        const options = { ...(entry.line === undefined ? {} : { params: { line: entry.line } }), revealIfOpened: entry.revealIfOpened };
++        if (api.openResourceIn)
++            api.openResourceIn(entry.sessionId, entry.address, options);
++        else if (onScreen)
++            api.openResource(entry.address, options);
++        else
++            return false;
++        return true;
++    };
++    let flushing = false;
++    let observed;
++    let offInventory;
++    const flushPending = () => {
++        if (flushing)
++            return;
++        flushing = true;
++        try {
++            const api = controller();
++            if (api !== observed) {
++                offInventory?.();
++                observed = api;
++                offInventory = api?.openTabs?.subscribe(flushPending);
++            }
++            for (let index = pending.length - 1; index >= 0; index--) {
++                const entry = pending[index];
++                if (entry && place(entry))
++                    pending.splice(index, 1);
++            }
++        }
++        finally {
++            flushing = false;
++        }
++    };
++    const enqueue = (entry) => {
++        if (entry.kind === 'tab' && entry.params.sidebarTabId !== undefined) {
++            const id = entry.params.sidebarTabId;
++            aliases.set(key(entry.sessionId, id), { sessionId: entry.sessionId, type: entry.tabKind, title: entry.params.title ?? entry.tabKind });
++            const previous = pending.findIndex(item => item.kind === 'tab' && item.sessionId === entry.sessionId && item.params.sidebarTabId === id);
++            if (previous >= 0)
++                pending.splice(previous, 1);
++        }
++        pending.push(entry);
++        flushPending();
++    };
++    const unsubscribe = ctx.sessions.list.subscribe(flushPending);
++    flushPending();
++    return {
++        openTab: ({ sessionId, kind, params, revealIfOpened }) => enqueue({ kind: 'tab', sessionId, tabKind: kind, params, revealIfOpened }),
++        openResource: ({ sessionId, address, line, revealIfOpened }) => enqueue({ kind: 'resource', sessionId, address, line, revealIfOpened }),
++        fileAddress: (sessionId, cwd, path) => fileAddressFor(sessionId, cwd, path),
++        close(sessionId, tabId) {
++            const aliasKey = key(sessionId, tabId);
++            const alias = aliases.get(aliasKey);
++            const pendingIndex = pending.findIndex(item => item.kind === 'tab' && item.sessionId === sessionId && item.params.sidebarTabId === tabId);
++            if (pendingIndex >= 0)
++                pending.splice(pendingIndex, 1);
++            if (alias && alias.nativeId === undefined) {
++                aliases.delete(aliasKey);
++                return { type: alias.type, title: alias.title };
++            }
++            const nativeId = alias?.nativeId ?? tabId;
++            const record = records.get(nativeId);
++            if (!alias && (!record || record.scope.sessionId !== sessionId))
++                return undefined;
++            const api = controller();
++            if (api?.closeIn)
++                api.closeIn(sessionId, nativeId);
++            else if (api && sessionId === activeSessionId(ctx))
++                api.close(nativeId);
++            records.drop(nativeId);
++            for (const [id, item] of aliases)
++                if (item.sessionId === sessionId && (id === aliasKey || item.nativeId === nativeId))
++                    aliases.delete(id);
++            return { type: alias?.type ?? record.tab.type, title: alias?.title ?? record.tab.title };
++        },
++        update(tabId, patch) { if (!records.has(tabId))
++            return false; records.update(tabId, patch); return true; },
++        activate: tabId => records.has(tabId),
++        has: tabId => records.has(tabId),
++        flushPending,
++        dispose() { unsubscribe(); offInventory?.(); pending.length = 0; aliases.clear(); },
++    };
++}
++
+ 		//#endregion
+ 		//#region src/client/link-intercept.ts
+ 		/**
+@@ -18665,7 +18784,7 @@
  		}
  		//#endregion
  		//#region \0dsh-css:/home/runner/work/DSH-better-sidebar/DSH-better-sidebar/src/client/layout.css.mjs
@@ -381,6 +657,23 @@ diff --git a/src/client/SideChatView.tsx b/src/client/SideChatView.tsx
        setSaved(true)
      } catch (cause) {
        setError(cause instanceof Error ? cause.message : String(cause))
+diff --git a/src/client/Sidebar.tsx b/src/client/Sidebar.tsx
+--- a/src/client/Sidebar.tsx
++++ b/src/client/Sidebar.tsx
+@@ -1,3 +1,4 @@
++import { currentSidebarSession } from './session-selection.ts'
+ /**
+  * The sidebar shell: ONE surface — the bottom workbench docked to the
+  * conversation column.
+@@ -197,7 +198,7 @@
+     useMemo(() => (callback: () => void) => ctx.sessions.list.subscribe(callback), [ctx]),
+     useCallback(() => ctx.sessions.list.getSnapshot(), [ctx]),
+   )
+-  const current = sessionList.current
++  const current = currentSidebarSession(sessionList)
+ 
+   // Per-session sidebar state.
+   const snapshot = useSyncExternalStore(
 diff --git a/src/client/SubagentView.tsx b/src/client/SubagentView.tsx
 --- a/src/client/SubagentView.tsx
 +++ b/src/client/SubagentView.tsx
@@ -581,6 +874,303 @@ new file mode 100644
 +  }, [menu, owner])
 +  return owner
 +}
+diff --git a/src/client/native/surface.ts b/src/client/native/surface.ts
+--- a/src/client/native/surface.ts
++++ b/src/client/native/surface.ts
+@@ -1,149 +1,115 @@
+-/**
+- * The plugin's write face over DSH's native right Sidebar (`ctx.sidebarRight`).
+- *
+- * The service speaks in the plugin's own vocabulary (tab type, seed, session
+- * scope); this module turns those into the native surface's vocabulary
+- * (kind + navigation params, or a `dsh-resource://` address) and forwards
+- * tab-record operations to the plugin's native record registry.
+- *
+- * Two native limits shape the implementation:
+- *
+- * - the surface exists only while a session's panel is mounted, and the
+- *   service's public face (`ISidebarRight`) writes only into THAT session.
+- *   The controller also carries `openTabIn` / `openResourceIn` /
+- *   `closeIn`, which act on any session whose store the runtime has minted;
+- *   both are probed at call time, and an open for a session that has no
+- *   store yet is QUEUED and replayed when that session comes on screen;
+- * - layout state is memory-only, so a queued open is not durable either.
+- */
++/** Native Sidebar adaptation with queued opens and stable caller tab identities. */
+ import type { Context } from '../../context-types.ts'
+ import { fileAddressFor } from '../resource-address.ts'
++import { currentSidebarSession } from '../session-selection.ts'
+ import type { NativeTabParams, SidebarSurface } from '../service.ts'
+ import type { NativeTabRecords } from './tab-adapter.tsx'
+ 
+-/** One open the surface could not place yet. */
+ type Pending =
+   | { kind: 'tab'; sessionId: string; tabKind: string; params: NativeTabParams; revealIfOpened: boolean }
+   | { kind: 'resource'; sessionId: string; address: string; line: number | undefined; revealIfOpened: boolean }
+-
+-/** The controller face this module uses (a structural slice of `ISidebarRight`). */
+ interface NativeController {
+   openTab(kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
+   openResource(address: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
+   close(tabId: string): void
+-  /** Not part of `ISidebarRight`: the concrete controller's per-session writes. */
+   openTabIn?(sessionId: string, kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
+   openResourceIn?(sessionId: string, address: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
+   closeIn?(sessionId: string, tabId: string): void
++  tabsIn?(sessionId: string): readonly { id: string; kind: string; title: string }[]
++  openTabs?: { subscribe(listener: () => void): () => void }
+ }
+-
+-/** The plugin's write face over the native surface. */
+-export interface NativeSurface extends SidebarSurface {
+-  /** Replay opens that were queued for a session that had no mounted surface. */
+-  flushPending(): void
+-  /** Stop observing the session list. */
+-  dispose(): void
++export interface NativeSurface extends SidebarSurface { flushPending(): void; dispose(): void }
++function activeSessionId(ctx: Context): string | undefined {
++  return currentSidebarSession(ctx.sessions.list.getSnapshot())
+ }
+-
+-/** The active session id, as the client list reports it. */
+-function activeSessionId(ctx: Context): string | undefined {
+-  try {
+-    return ctx.sessions.list.getSnapshot().current
+-  } catch {
+-    return undefined
++export function createNativeSurface(ctx: Context, records: NativeTabRecords): NativeSurface {
++  const pending: Pending[] = []
++  const aliases = new Map<string, { sessionId: string; type: string; title: string; nativeId?: string }>()
++  const key = (sessionId: string, tabId: string) => `${sessionId}\0${tabId}`
++  const controller = () => ctx.get('sidebarRight') as unknown as NativeController | undefined
++  const place = (entry: Pending): boolean => {
++    const api = controller()
++    if (!api) return false
++    // Concrete per-session methods are no-ops before a seat adopts its store.
++    // Keep the request until inventory publishes the adopted guide/tab list.
++    if (api.tabsIn && api.tabsIn(entry.sessionId).length === 0) return false
++    const onScreen = activeSessionId(ctx) === entry.sessionId
++    if (entry.kind === 'tab') {
++      const before = new Set(api.tabsIn?.(entry.sessionId).map(tab => tab.id) ?? [])
++      const options = { params: entry.params, revealIfOpened: entry.revealIfOpened }
++      if (api.openTabIn) api.openTabIn(entry.sessionId, entry.tabKind, options)
++      else if (onScreen) api.openTab(entry.tabKind, options)
++      else return false
++      const id = entry.params.sidebarTabId
++      if (id !== undefined) {
++        const alias = aliases.get(key(entry.sessionId, id))
++        const tabs = api.tabsIn?.(entry.sessionId) ?? []
++        const opened = tabs.find(tab => !before.has(tab.id)) ?? tabs.find(tab => tab.kind === entry.tabKind)
++        if (alias && opened) alias.nativeId = opened.id
++      }
++      return true
++    }
++    const options = { ...(entry.line === undefined ? {} : { params: { line: entry.line } }), revealIfOpened: entry.revealIfOpened }
++    if (api.openResourceIn) api.openResourceIn(entry.sessionId, entry.address, options)
++    else if (onScreen) api.openResource(entry.address, options)
++    else return false
++    return true
++  }
++  let flushing = false
++  let observed: NativeController | undefined
++  let offInventory: (() => void) | undefined
++  const flushPending = () => {
++    if (flushing) return
++    flushing = true
++    try {
++      const api = controller()
++      if (api !== observed) {
++        offInventory?.()
++        observed = api
++        offInventory = api?.openTabs?.subscribe(flushPending)
++      }
++      for (let index = pending.length - 1; index >= 0; index--) {
++        const entry = pending[index]
++        if (entry && place(entry)) pending.splice(index, 1)
++      }
++    } finally { flushing = false }
++  }
++  const enqueue = (entry: Pending) => {
++    if (entry.kind === 'tab' && entry.params.sidebarTabId !== undefined) {
++      const id = entry.params.sidebarTabId
++      aliases.set(key(entry.sessionId, id), { sessionId: entry.sessionId, type: entry.tabKind, title: entry.params.title ?? entry.tabKind })
++      const previous = pending.findIndex(item => item.kind === 'tab' && item.sessionId === entry.sessionId && item.params.sidebarTabId === id)
++      if (previous >= 0) pending.splice(previous, 1)
++    }
++    pending.push(entry)
++    flushPending()
++  }
++  const unsubscribe = ctx.sessions.list.subscribe(flushPending)
++  flushPending()
++  return {
++    openTab: ({ sessionId, kind, params, revealIfOpened }) => enqueue({ kind: 'tab', sessionId, tabKind: kind, params, revealIfOpened }),
++    openResource: ({ sessionId, address, line, revealIfOpened }) => enqueue({ kind: 'resource', sessionId, address, line, revealIfOpened }),
++    fileAddress: (sessionId, cwd, path) => fileAddressFor(sessionId, cwd, path),
++    close(sessionId, tabId) {
++      const aliasKey = key(sessionId, tabId)
++      const alias = aliases.get(aliasKey)
++      const pendingIndex = pending.findIndex(item => item.kind === 'tab' && item.sessionId === sessionId && item.params.sidebarTabId === tabId)
++      if (pendingIndex >= 0) pending.splice(pendingIndex, 1)
++      if (alias && alias.nativeId === undefined) { aliases.delete(aliasKey); return { type: alias.type, title: alias.title } }
++      const nativeId = alias?.nativeId ?? tabId
++      const record = records.get(nativeId)
++      if (!alias && (!record || record.scope.sessionId !== sessionId)) return undefined
++      const api = controller()
++      if (api?.closeIn) api.closeIn(sessionId, nativeId)
++      else if (api && sessionId === activeSessionId(ctx)) api.close(nativeId)
++      records.drop(nativeId)
++      for (const [id, item] of aliases) if (item.sessionId === sessionId && (id === aliasKey || item.nativeId === nativeId)) aliases.delete(id)
++      return { type: alias?.type ?? record!.tab.type, title: alias?.title ?? record!.tab.title }
++    },
++    update(tabId, patch) { if (!records.has(tabId)) return false; records.update(tabId, patch); return true },
++    activate: tabId => records.has(tabId),
++    has: tabId => records.has(tabId),
++    flushPending,
++    dispose() { unsubscribe(); offInventory?.(); pending.length = 0; aliases.clear() },
+   }
+ }
+-
+-/**
+- * Bind the plugin's write face to the native controller.
+- * @param ctx - the client context (session list + `ctx.sidebarRight`).
+- * @param records - the plugin's native tab record registry.
+- * @returns the surface, plus a disposer unbinding its session subscription.
+- */
+-export function createNativeSurface(ctx: Context, records: NativeTabRecords): NativeSurface {
+-  const pending: Pending[] = []
+-  const controller = (): NativeController | undefined =>
+-    ctx.get('sidebarRight') as unknown as NativeController | undefined
+-
+-  const place = (entry: Pending): boolean => {
+-    const api = controller()
+-    if (api === undefined) return false
+-    const active = activeSessionId(ctx)
+-    const onScreen = active !== undefined && active === entry.sessionId
+-    if (entry.kind === 'tab') {
+-      const options = { params: entry.params, revealIfOpened: entry.revealIfOpened }
+-      if (onScreen) {
+-        api.openTab(entry.tabKind, options)
+-        return true
+-      }
+-      if (api.openTabIn !== undefined) {
+-        api.openTabIn(entry.sessionId, entry.tabKind, options)
+-        return true
+-      }
+-      return false
+-    }
+-    const options = {
+-      ...(entry.line === undefined ? {} : { params: { line: entry.line } }),
+-      revealIfOpened: entry.revealIfOpened,
+-    }
+-    if (onScreen) {
+-      api.openResource(entry.address, options)
+-      return true
+-    }
+-    if (api.openResourceIn !== undefined) {
+-      api.openResourceIn(entry.sessionId, entry.address, options)
+-      return true
+-    }
+-    return false
+-  }
+-
+-  const flushPending = (): void => {
+-    if (pending.length === 0) return
+-    for (let index = pending.length - 1; index >= 0; index--) {
+-      const entry = pending[index]
+-      if (entry !== undefined && place(entry)) pending.splice(index, 1)
+-    }
+-  }
+-
+-  const enqueue = (entry: Pending): void => {
+-    if (!place(entry)) pending.push(entry)
+-  }
+-
+-  const unsubscribe = ctx.sessions.list.subscribe(flushPending)
+-  return {
+-    openTab({ sessionId, kind, params, revealIfOpened }) {
+-      enqueue({ kind: 'tab', sessionId, tabKind: kind, params, revealIfOpened })
+-    },
+-    openResource({ sessionId, address, line, revealIfOpened }) {
+-      enqueue({ kind: 'resource', sessionId, address, line, revealIfOpened })
+-    },
+-    fileAddress(sessionId, cwd, path) {
+-      return fileAddressFor(sessionId, cwd, path)
+-    },
+-    close(sessionId, tabId) {
+-      const record = records.get(tabId)
+-      if (record === undefined) return undefined
+-      records.drop(tabId)
+-      const api = controller()
+-      if (api !== undefined) {
+-        if (sessionId === activeSessionId(ctx)) api.close(tabId)
+-        else if (api.closeIn !== undefined) api.closeIn(sessionId, tabId)
+-      }
+-      return { type: record.tab.type, title: record.tab.title }
+-    },
+-    update(tabId, patch) {
+-      if (!records.has(tabId)) return false
+-      records.update(tabId, patch)
+-      return true
+-    },
+-    activate(tabId) {
+-      // The native surface has no cross-pane activation face the plugin needs:
+-      // a tab is focused by opening its (kind, address) again, which the
+-      // native open already de-duplicates.
+-      return records.has(tabId)
+-    },
+-    has: tabId => records.has(tabId),
+-    flushPending,
+-    dispose: () => { unsubscribe() },
+-  }
+-}
+diff --git a/src/client/service.ts b/src/client/service.ts
+--- a/src/client/service.ts
++++ b/src/client/service.ts
+@@ -420,6 +420,7 @@
+  * params (the native surface passes them back on every navigation).
+  */
+ export interface NativeTabParams {
++  sidebarTabId?: string
+   /** Overrides the descriptor's title for this instance. */
+   title?: string
+   /** A file path (the editor window's content seed). */
+@@ -925,6 +926,7 @@
+           sessionId: targetSessionId,
+           kind: seed.type,
+           params: {
++            sidebarTabId: synthetic.id,
+             title,
+             ...(seed.url === undefined ? {} : { url: seed.url }),
+             ...(seed.diff === undefined ? {} : { diff: seed.diff }),
+diff --git a/src/client/session-selection.ts b/src/client/session-selection.ts
+new file mode 100644
+--- /dev/null
++++ b/src/client/session-selection.ts
+@@ -0,0 +1,7 @@
++/** Main-view ownership is separate from the alpha Session catalog. */
++export function currentSidebarSession(snapshot: {
++  current?: string
++  byId?: Record<string, { id: string; retainedBy?: Readonly<Partial<Record<string, number>>> }>
++}): string | undefined {
++  return Object.values(snapshot.byId ?? {}).find(session => (session.retainedBy?.mainView ?? 0) > 0)?.id ?? snapshot.current
++}
+diff --git a/src/client/sidebar/use-host-feeds.ts b/src/client/sidebar/use-host-feeds.ts
+--- a/src/client/sidebar/use-host-feeds.ts
++++ b/src/client/sidebar/use-host-feeds.ts
+@@ -1,3 +1,4 @@
++import { currentSidebarSession } from '../session-selection.ts'
+ /**
+  * Host-feed subscriptions (extracted from Sidebar.tsx, behavior identical):
+  * the WebSocket pushes (agent terminals, agent opens) and the session-list
+@@ -67,7 +68,7 @@
+   const park = options.background
+     // The face acts on the MOUNTED session: parking is only meaningful (and
+     // only safe) when the activation targets the one on screen.
+-    && ctx.sessions.list.getSnapshot().current === sessionId
++    && currentSidebarSession(ctx.sessions.list.getSnapshot()) === sessionId
+     && isNarrowWidth(window.innerWidth)
+     // Only a column the user had COLLAPSED is put back: an expanded one is in
+     // use, and closing it under the user would be worse than the takeover.
 diff --git a/src/sidechat-model.ts b/src/sidechat-model.ts
 new file mode 100644
 --- /dev/null

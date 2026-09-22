@@ -38,6 +38,7 @@ export const DESKTOP_INSTALL_RECOVERY_FILES = [
   'package.json',
   'pnpm-lock.yaml',
   'pnpm-workspace.yaml',
+  'cordis.patch.yml',
 ] as const
 
 export type DesktopInstallRecoveryFilename = typeof DESKTOP_INSTALL_RECOVERY_FILES[number]
@@ -46,6 +47,7 @@ const FILE_LIMITS: Record<DesktopInstallRecoveryFilename, number> = {
   'package.json': MAX_PACKAGE_MANIFEST_BYTES,
   'pnpm-lock.yaml': MAX_LOCKFILE_BYTES,
   'pnpm-workspace.yaml': MAX_WORKSPACE_BYTES,
+  'cordis.patch.yml': MAX_WORKSPACE_BYTES,
 }
 
 export type DesktopInstallRecoveryPhase =
@@ -237,8 +239,10 @@ function validFileRecord(value: unknown, expectedName: DesktopInstallRecoveryFil
 
 function validFileRecords(value: unknown): value is readonly DesktopInstallRecoveryFileRecord[] {
   return Array.isArray(value)
-    && value.length === DESKTOP_INSTALL_RECOVERY_FILES.length
-    && DESKTOP_INSTALL_RECOVERY_FILES.every((name, index) => validFileRecord(value[index], name))
+    // Earlier Desktop WALs captured three files. Retain their recovery path;
+    // new transactions also protect the official Plugin Manager's user layer.
+    && (value.length === DESKTOP_INSTALL_RECOVERY_FILES.length || value.length === 3)
+    && DESKTOP_INSTALL_RECOVERY_FILES.slice(0, value.length).every((name, index) => validFileRecord(value[index], name))
 }
 
 function parseTransaction(value: unknown): DesktopInstallRecoveryTransaction {

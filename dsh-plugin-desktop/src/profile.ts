@@ -489,7 +489,7 @@ export function prepareDesktopProfile(
   )
   const rootConfig = join(profileDir, DESKTOP_PROFILE_ROOT)
   const bareModuleBaseUrl = pathToFileURL(join(profile.dir, 'package.json')).href
-  writeFileSync(rootConfig, '[]\n')
+  if (!existsSync(rootConfig) || readFileSync(rootConfig, 'utf8') !== '[]\n') writeFileSync(rootConfig, '[]\n')
 
   const desktopPatches = loadOverlayPatches(BIN_NAME, DESKTOP_PATCH_PATH)
   const bundlePatches: PatchOptions[] = []

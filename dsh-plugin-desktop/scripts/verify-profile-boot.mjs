@@ -17,6 +17,7 @@ import { DESKTOP_SETTINGS_NAMESPACE } from '../lib/index.js'
 import { installDesktopPnpmRuntime } from '../lib/desktop-runtime-environment.js'
 import { installProfilePackageResolver } from '../lib/module-resolution.js'
 import { prepareDesktopProfile } from '../lib/profile.js'
+import { installDesktopProfileLive } from '../lib/profile-live.js'
 import { DesktopProfileService } from '../lib/profile-service.js'
 import { verifyClientRegistrations } from './verify-client-bundles.ts'
 
@@ -30,6 +31,7 @@ const uiStatePath = process.env.DSH_UI_STATE_FILE
 const rendererReports = []
 const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-profile-'))
 let ctx
+let profileLive
 let releasePackageResolver
 let pnpmRuntime
 let mountedSpec
@@ -79,7 +81,7 @@ try {
     // Its required injection must keep it pending until that service mounts.
     ...diagnostic ? [] : [{
       insert: [{
-        id: 'desktop-host-services-smoke-plugin',
+        id: 'profile-host-services-smoke-plugin',
         name: HOST_SERVICE_PLUGIN_NAME,
       }],
     }],
@@ -166,6 +168,14 @@ try {
         installRecoveryStatePath: join(home, 'plugin-install-recovery', 'state.json'),
         generationId: 'profile-smoke-generation',
       })
+      profileLive = await installDesktopProfileLive(host, {
+        prepared, bootstrap: host.desktopPnpmBootstrap,
+        recompose: () => {
+          const current = prepareDesktopProfile('1', home, process.platform, 'desktop', undefined,
+            { mode: prepared.mode, windowStyle: prepared.windowStyle, port: prepared.port, experience: prepared.experience })
+          return { ...current, patches: [...diagnostic ? [] : [{ insert: [{ id: 'profile-host-services-smoke-plugin', name: HOST_SERVICE_PLUGIN_NAME }] }], ...current.patches] }
+        }, telemetryDisabled: '1',
+      })
       await host.plugin(DesktopProfileService, {
         current: {
           name: 'desktop',
@@ -182,12 +192,52 @@ try {
         requestRestart: () => {},
       })
       provideCmdline(host, {
+        ready: profileLive.ready,
         args: ['--host', '127.0.0.1', '--port', '0', '--no-open'],
         exit: () => {},
       })
     },
     prepared.bareModuleBaseUrl,
   )
+  profileLive.commitReady()
+  if (ctx.get('pluginManager') === undefined || ctx.get('pluginPackages') === undefined || ctx.get('hmr') === undefined) {
+    throw new Error('assembled Profile is missing official live plugin-management services')
+  }
+  if (!diagnostic) {
+    const entry = (await ctx.pluginManager.listPlugins()).find(value => value.moduleName === HOST_SERVICE_PLUGIN_NAME)
+    if (!entry || entry.readOnlyReason !== undefined) throw new Error('Live Profile fixture is not manageable')
+    const disabled = await ctx.pluginManager.setPluginEnabled(entry.entryId, false)
+    if (disabled.application !== 'applied' || ctx.get(HOST_SERVICE_PROBE_KEY) !== undefined) {
+      throw new Error(`Official live disable failed: ${JSON.stringify(disabled)}`)
+    }
+    const enabled = await ctx.pluginManager.setPluginEnabled(entry.entryId, true)
+    if (enabled.application !== 'applied' || ctx.get(HOST_SERVICE_PROBE_KEY) === undefined) {
+      throw new Error(`Official live enable failed: ${JSON.stringify(enabled)}`)
+    }
+    console.log('verify-profile-live: official plugin manager disabled and re-enabled a real Host plugin.')
+    if (process.argv.includes('--plugin-install')) {
+      // An actual local pnpm add, with no registry dependency and no user Profile.
+      const packageDir = join(home, 'install-fixture')
+      mkdirSync(packageDir)
+      writeFileSync(join(packageDir, 'package.json'), JSON.stringify({
+        name: 'dsh-fixture-alpha-installed', version: '1.0.0', type: 'module', main: 'index.js',
+        dsh: { bundle: { patch: './cordis.patch.yml' } },
+      }))
+      writeFileSync(join(packageDir, 'index.js'), 'export function apply(ctx) { ctx.provide("alphaInstalledProbe", "ready"); }\n')
+      writeFileSync(join(packageDir, 'cordis.patch.yml'), '- insert:\n    - id: alpha-installed-probe\n      name: dsh-fixture-alpha-installed\n')
+      ctx.profileContext.packageManager.env.npm_config_offline = 'true'
+      const installed = await ctx.pluginManager.installBundle(packageDir)
+      if (installed.application !== 'restart-required' || installed.bundle !== 'dsh-fixture-alpha-installed'
+        || ctx.get('alphaInstalledProbe') !== 'ready') {
+        throw new Error(`Official plugin installation failed: ${JSON.stringify(installed)}`)
+      }
+      const state = JSON.parse(readFileSync(join(home, 'plugin-install-recovery', 'state.json'), 'utf8'))
+      if (state.phase !== 'awaiting-restart' || state.files.length !== 4) throw new Error('Official installation escaped the Desktop recovery boundary')
+      const refused = await ctx.pluginManager.setPluginEnabled(entry.entryId, false)
+      if (refused.application !== 'failed' || ctx.get(HOST_SERVICE_PROBE_KEY) === undefined) throw new Error('A pending install allowed another profile mutation')
+      console.log('verify-profile-install: real offline pnpm add, live activation, four-file WAL and restart gate passed.')
+    }
+  }
   if (uiStatePath) {
     for (const ref of ['DASHSCOPE_API_KEY', 'DEEPSEEK_API_KEY', 'DSH_UI_FIXTURE_KEY']) {
       if (!(await ctx.credentials.describe(ref)).configured) await ctx.credentials.set(ref, 'sk-isolated-surface-fixture')
