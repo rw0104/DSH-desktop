@@ -1,0 +1,37 @@
+diff --git a/lib/client.js b/lib/client.js
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -14956,6 +14956,7 @@
+ 			const phase = settling ? "settling" : hero ? "hero" : "active";
+ 			return (0, react_jsx_runtime.jsxs)("div", {
+ 				className: ConversationRoot_module_css_default.root,
++                "data-dsh-conversation-drop-target": "",
+ 				"data-phase": phase,
+ 				children: [sessionId === void 0 ? null : renderSlot("conversation.session.header", {}), renderFactorySlot("conversation.content", {
+ 					variant: "main",
+@@ -16351,7 +16352,7 @@
+ 								children: [(0, react_jsx_runtime.jsxs)("div", {
+ 									className: InputBar_module_css_default.tools,
+ 									children: [
+-										(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
++										renderSlot("conversation.input.add", { locked: subagent !== null || locked || machineBusy || addFiles === void 0, onAddImages: intakeFiles, onCommands: onToggleCommandMenu }, { fallback: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
+ 											label: t("input.commands"),
+ 											side: "top",
+ 											delayMs: 500,
+@@ -16366,7 +16367,7 @@
+ 												onClick: onToggleCommandMenu,
+ 												children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutline16, { size: 14 })
+ 											})
+-										}),
++										}) }),
+ 										(0, react_jsx_runtime.jsx)("input", {
+ 											ref: fileInputRef,
+ 											type: "file",
+@@ -16949,6 +16950,7 @@
+ 				name: "conversation.composer.bar",
+ 				locale: NS,
+ 				children: {
++					"conversation.input.add": { kind: "single", scope: "session-maybe" },
+ 					"conversation.input.attachments": {
+ 						kind: "single",
+ 						scope: "session-maybe"

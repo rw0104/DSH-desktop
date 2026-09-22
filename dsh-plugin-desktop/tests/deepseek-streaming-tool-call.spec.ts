@@ -54,6 +54,7 @@ describe('DeepSeek streaming tool calls', () => {
     ])))
 
     const connection = resolveAdapterOptions({
+      protocol: 'chat-completions',
       baseURL: 'https://example.test/v1',
       thinking: 'disabled',
     })

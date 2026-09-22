@@ -25,6 +25,16 @@ test('attributes nested dependency files to their closest package', () => {
   assert.equal(packageOwner('lib/main.js'), '(application)')
 })
 
+test('allows the reviewed alpha Office tree but rejects a duplicated native engine', () => {
+  const report = {
+    physical: { fileCount: 4079, bytes: 1_059_905_748 },
+    violations: { sourceMaps: [], declarations: [], testPaths: [], examplePaths: [], documentationPaths: [] },
+  }
+  assert.deepEqual(packageFootprintFailures(report), [])
+  const duplicated = { ...report, physical: { ...report.physical, bytes: report.physical.bytes + 340_863_012 } }
+  assert.ok(packageFootprintFailures(duplicated).some(message => message.startsWith('physical bytes')))
+})
+
 test('reports every hard release budget independently', () => {
   const report = {
     physical: { fileCount: 19, bytes: 101 },

@@ -143,7 +143,7 @@ corepack yarn install --immutable
 corepack yarn dev
 ```
 
-本集成分支固定 Harness `0.1.5-rc.2` 和 Sidebar `0.19.1`，已发布下载的版本以对应 Release 说明为准。`deepseek-harness/` 是未直接修改的上游子模块；桌面适配位于自有插件和受审查的 Yarn patch。根工作区使用 Yarn，上游子模块保留自己的 pnpm 工作区。运行 `corepack yarn check` 执行完整无界面检查。
+本实验集成分支固定 Harness `0.1.6-alpha.2` 和 Sidebar `0.19.1`，接入验收进度见[同步台账](docs/upstream-sync.md)。已发布下载的版本以对应 Release 说明为准。`deepseek-harness/` 是未直接修改的上游子模块；桌面适配位于自有插件和受审查的 Yarn patch。根工作区使用 Yarn，上游子模块保留自己的 pnpm 工作区。运行 `corepack yarn check` 执行完整无界面检查。
 
 ## 社区与致谢
 

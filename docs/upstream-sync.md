@@ -1,5 +1,66 @@
 # Upstream synchronization ledger
 
+## 2026-09-22 alpha.2 补丁迁移与验收修复
+
+本轮仍以用户明确选择的 `0.1.6-alpha.2` 为目标。官方源码 pin 已在独立提交
+`715e58b7d9` 固定为 `ddefc45fbc7f8e46dd73185e68295696d1297887`，未修改子模块源码。
+9 月 22 日三方 `git ls-remote` 连接重置，GitHub commit API 返回 Harness HEAD
+`c36a83ff6bb95e3f82cf79f9be7c724270a8aa61`（0.1.7-alpha.1）、Sidebar HEAD
+`1fcf43ccbedd6e66370b7fb81df2b4dd0ef2604e`、参考 Desktop HEAD
+`03a682dadd9cebe8a801a9a4577c8e7942142d1a`。npm 查询仍返回 Harness
+latest/next=0.1.5-rc.2、alpha=0.1.6-alpha.2；Sidebar latest=0.19.1；参考 Desktop
+latest=2.0.0。移动 HEAD 不替代用户选定版本，0.1.7 未经过本产品兼容验收。
+
+9 月 20 日草稿曾删除未重放补丁与原生图片测试；这不满足保留产品能力的接入要求。
+原生图片协议、自动能力来源与附件预览服务是本 fork 提供的扩展，不能把缺失误称为官方
+删除后可直接舍弃。当前恢复这些测试并重放 17 个 alpha.2 产品补丁；另外两项 Windows
+隐藏窗口实现已确认被官方 subprocess/win32-process 吸收。新生成的 Remote 使用 schema
+工厂，CLI plugin 入口改为异步；回归按真实已发布接口迁移。
+
+文件变更卡片继续使用 alpha 的 diff/review，Desktop 复制按钮走原有 Host 授权路由；
+不含 alpha summary 的旧历史仍可打开和复制已产生的文件。两种历史的真实发布组件回归
+5 项通过。原生图片等核心首轮 84 项通过；完整根门禁、组合启动及包内验收仍在进行，
+不能复用 rc.2 门禁或未验证安装器作为 alpha 通过证据。
+
+本轮最终根 `corepack yarn check` 已退出 0：Desktop **124 suites / 1016 passed /
+11 skipped**，Market **19 suites / 278 passed**，包含 build、typecheck、CLI、Loader、
+三组合 Host/Profile smoke 与许可证检查。官方 alpha preset 的 10 个文件与固定源码 Git
+blob 一致；延迟 Windows confinement 的取消与子进程环境回归通过。独立 footprint 4 项
+通过。以上是源码/Host 证据，实际 Renderer、Plugin Manager 的 Profile 上下文接入和
+重新打包仍需补齐，旧实验安装器不因此升级为已验证。
+
+旧 alpha 草稿包实测物理树 1,059,905,748 bytes；其中官方
+`@deepseek-ai/libreoffice-kit-win32-x64` 为 340,863,012 bytes，用于新 Office 预览。
+ASAR 为 283,265,286 bytes，比较 rc.2 的其余增量主要来自新版 Web 资源。旧 650 MiB
+预算不足，不通过移除 Office 功能或跳过门禁解决；后续预算调整需保留该来源审查及
+实体安装器检查。物理字节上限调整为 **1050 MiB（1,101,004,800 bytes）**，保留约
+39 MiB 余量；18,000 文件上限与 source map、声明、测试/示例/文档零容忍规则不变。
+回归使用实测 tree，确认单份官方 Office 引擎可通过、重复展开同一引擎仍被拒绝。
+草稿包尚未通过 Profile 验证，仍不得作为交付或公开 Release。
+
+精确 npm registry 审计已核对 **170 个发布包 / 293 处工作区声明与实际安装版本**，
+都为 alpha.2，metadata 含 tarball/integrity；运行时检查的 **269 个 first-party 节点**闭合。
+Market 安装兼容性回归更新到实际加载的 alpha.2，继续拒绝只声明旧 runtime 的插件。
+
+### 2026-09-22 Market 生产来源回放
+
+使用生产 restricted client 的 DNS pinning、HTTP、解析和大小限制，仅观测同一次响应；
+User-Agent 为 `dsh-community-market/0.1`，Accept 为 `application/json`，
+Accept-Encoding 为 `gzip, identity`。两个端点都是单次原子表示，均返回 HTTP 200、
+`application/json; charset=utf-8` 和 gzip，没有改用其他表示的 total/revision。
+
+| 精确 endpoint | provider → normalized | 压缩 / 解码 bytes | 耗时 | 每种 body 上限；解码余量 | provider item 上限；余量 |
+| --- | --- | --- | --- | --- | --- |
+| `https://deepseek1024.com/api/v1/plugins` | 500 → 500 | 380,475 / 2,448,305 | 3290.68 ms | 16,777,216；14,328,911 | 10,000；9,500 |
+| `https://api.dshfind.com/v1/catalog` | 15,604 → 15,603 | 2,288,053 / 15,721,117 | 8441.56 ms | 33,554,432；17,833,315 | 25,000；9,396 |
+
+采样为 13:00:59 / 13:01:08 UTC；解码表示 SHA-256 分别为
+`6d9ae83227bbf3b33775022f2e739754ba21dd7c477e451afea254ac18035783` 和
+`2010edda813edcf2b3add541a7771950dc4e7c63288f84f54b57b52eb9415289`。
+适配后分别分页 5 / 157，低于 10,001 页上限；25,000 normalized items 余量为
+24,500 / 9,397。dshfind 同表示内过滤 1 条记录，源完整性校验通过。未提高传输限额，
+gzip/合成代理例外仍只属于精确内置 reviewed clients，普通来源没有继承。
+
 ## 2026-09-20 alpha.2 实验接入结果
 
 用户将目标改为官方 `0.1.6-alpha.2` 实验包。官方 tag
@@ -18,8 +79,8 @@ alpha 所需 `simple-icons@16.31.0`。
 验证：`corepack yarn install`、`corepack yarn typecheck`、`corepack yarn build` 退出 0。
 完整 `corepack yarn test` 为 **107 files passed / 16 failed，897 passed / 58 failed /
 11 skipped**。失败集中在未重放 rc.2 patches、alpha 删除图片协议注册 API、模型 capability
-schema、空 patch 解析、Desktop CLI/Windows runtime 旧合同和 Session Inbox 语义；详见
-`docs/local/upstream-20260920/alpha-test.log`，不能记为完整门禁通过。
+schema、空 patch 解析、Desktop CLI/Windows runtime 旧合同和 Session Inbox 语义，
+不能记为完整门禁通过。本节保留当时草稿状态，后续结果以前述最新记录为准。
 
 实验包构建跳过了 package preflight（因为完整测试失败），但 electron-builder、PE 生成和
 ASAR 构建完成。安装器：`dsh-plugin-desktop/dist/DSH-Desktop-2.2.8-x64-Setup-alpha2-experimental-20260920.exe`，

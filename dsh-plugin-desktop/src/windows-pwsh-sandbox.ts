@@ -110,8 +110,20 @@ export class DesktopWindowsPwshSandbox extends SandboxPwshExecutor {
 
   protected override async runArgv(
     spec: ShellExecSpec,
-    argv: readonly string[],
+    argv: readonly string[] | ((signal: AbortSignal) => Promise<readonly string[]>),
   ): Promise<{ result: ShellRunResult; spawnRequested: boolean }> {
+    if (typeof argv === 'function') {
+      // Alpha prepares confinement under the executor's deadline. Adapt only
+      // after preparation, without changing the caller's shared execution spec.
+      const preparedSpec = { ...spec }
+      return super.runArgv(preparedSpec, async signal => {
+        const prepared = await argv(signal)
+        signal.throwIfAborted()
+        const adapted = this.adapt(preparedSpec, prepared)
+        Object.assign(preparedSpec, adapted.spec)
+        return adapted.argv
+      })
+    }
     const adapted = this.adapt(spec, argv)
     return super.runArgv(adapted.spec, adapted.argv)
   }

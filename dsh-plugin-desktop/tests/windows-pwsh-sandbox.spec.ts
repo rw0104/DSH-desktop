@@ -1,7 +1,10 @@
-import type { ShellExecSpec } from '@deepseek-ai/dsh-shell'
+import type { ShellExecSpec, ShellRunResult } from '@deepseek-ai/dsh-shell'
+import { PwshLocalExecutor } from '@deepseek-ai/dsh-pwsh-local'
+import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   adaptWindowsAclExecution,
+  DesktopWindowsPwshSandbox,
   desktopWindowsPwshConfig,
   desktopWindowsPwshPath,
   type WindowsAclAdaptation,
@@ -29,6 +32,49 @@ const adaptation: WindowsAclAdaptation = {
 }
 
 describe('Windows Electron PowerShell sandbox adaptation', () => {
+  it.runIf(process.platform === 'win32').each([false, true])('adapts deferred confinement under the upstream deadline (cancelled=%s)', async cancelled => {
+    type Prepare = (signal: AbortSignal) => Promise<readonly string[]>
+    type Result = { result: ShellRunResult; spawnRequested: boolean }
+    const parent = PwshLocalExecutor.prototype as unknown as { runArgv(spec: ShellExecSpec, argv: readonly string[] | Prepare): Promise<Result> }
+    class Probe extends DesktopWindowsPwshSandbox {
+      invoke(spec: ShellExecSpec, prepare: Prepare) { return this.runArgv(spec, prepare) }
+    }
+    const instance = Object.create(Probe.prototype) as Probe
+    const originalElectron = Object.getOwnPropertyDescriptor(process.versions, 'electron')
+    Object.defineProperty(process.versions, 'electron', { value: '43.4.0', configurable: true })
+    const controller = new AbortController()
+    const spec = Object.freeze(shellSpec(Object.freeze({ KEEP: 'unchanged' })))
+    const runner = fileURLToPath(import.meta.resolve('@deepseek-ai/dsh-sandbox-windows-acl/runner'))
+    const captured: Array<{ spec: ShellExecSpec; argv: readonly string[] }> = []
+    const prepare = vi.fn(async (signal: AbortSignal) => {
+      expect(signal).toBe(controller.signal)
+      if (cancelled) controller.abort(new Error('confinement cancelled'))
+      return [process.execPath, runner, '--', 'powershell.exe']
+    })
+    const result = { result: {} as ShellRunResult, spawnRequested: true }
+    const run = vi.spyOn(parent, 'runArgv').mockImplementation(async (childSpec, argv) => {
+      expect(typeof argv).toBe('function')
+      const values = await (argv as Prepare)(controller.signal)
+      captured.push({ spec: childSpec, argv: values })
+      return result
+    })
+    try {
+      if (cancelled) {
+        await expect(instance.invoke(spec, prepare)).rejects.toThrow('confinement cancelled')
+        expect(captured).toHaveLength(0)
+      } else {
+        expect(await instance.invoke(spec, prepare)).toBe(result)
+        expect(captured[0]?.argv).toEqual([process.execPath, expect.stringContaining('windows-acl-runner.js'), runner, '--', 'powershell.exe'])
+        expect(captured[0]?.spec.env).toEqual({ KEEP: 'unchanged', ELECTRON_RUN_AS_NODE: '1' })
+      }
+      expect(spec.env).toEqual({ KEEP: 'unchanged' })
+      expect(prepare).toHaveBeenCalledOnce()
+    } finally {
+      run.mockRestore()
+      if (originalElectron) Object.defineProperty(process.versions, 'electron', originalElectron)
+      else Reflect.deleteProperty(process.versions, 'electron')
+    }
+  })
   it('prefers stable Windows PowerShell locations over PATH-provided portable pwsh', () => {
     const programFilesPwsh = desktopWindowsPwshPath({
       ProgramFiles: 'C:\\Program Files',

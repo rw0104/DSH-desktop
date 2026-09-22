@@ -9,7 +9,10 @@ import { listPackage, statFile } from '@electron/asar'
 
 export const WINDOWS_PACKAGE_FOOTPRINT_BUDGET = Object.freeze({
   physicalFiles: 18_000,
-  physicalBytes: 650 * 1024 * 1024,
+  // Alpha.2 bundles the official Office preview engine (341 MB on Windows).
+  // The reviewed 1,059,905,748-byte tree leaves ~39 MiB for runtime changes.
+  // See the 2026-09-22 audit in docs/upstream-sync.md before changing this bound.
+  physicalBytes: 1050 * 1024 * 1024,
   sourceMaps: 0,
   declarations: 0,
   testFiles: 0,

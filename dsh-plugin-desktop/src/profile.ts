@@ -348,15 +348,9 @@ function loadRecoveryFilteredProfile(
 /** Resolve the agent presets shipped by the matching dsh CLI dependency. */
 export function shippedPresetRoot(moduleUrl: string = import.meta.url): string {
   const require = createRequire(moduleUrl)
-  try {
-    return unpackedAsarPath(
-      join(dirname(require.resolve('@deepseek-ai/dsh-agent-presets/package.json')), 'presets'),
-    )
-  } catch {
-    return unpackedAsarPath(
-      join(dirname(require.resolve('@deepseek-ai/dsh/package.json')), 'config', 'agent-presets'),
-    )
-  }
+  return unpackedAsarPath(
+    join(dirname(require.resolve('@deepseek-ai/dsh-agent-presets/package.json')), 'presets'),
+  )
 }
 
 /** Read a row's object config without trusting arbitrary YAML values. */

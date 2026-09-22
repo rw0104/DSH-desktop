@@ -1,0 +1,57 @@
+diff --git a/lib/index.js b/lib/index.js
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -1972,6 +1972,8 @@
+ 					id: model.id,
+ 					name: model.name,
+ 					...model.description === void 0 ? {} : { description: model.description },
++					...resolved.inputModalities === void 0 ? {} : { inputModalities: resolved.inputModalities },
++					...resolved.outputModalities === void 0 ? {} : { outputModalities: resolved.outputModalities },
+ 					...reasoning === void 0 ? {} : { reasoning }
+ 				};
+ 			}));
+diff --git a/lib/typert.host.js b/lib/typert.host.js
+--- a/lib/typert.host.js
++++ b/lib/typert.host.js
+@@ -530,6 +530,8 @@
+   'id': z.string().readonly(),
+   'name': z.string().readonly(),
+   'description': z.string().readonly().optional(),
++    'inputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
++    'outputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
+   'reasoning': z.object({
+   'efforts': z.array(z.object({
+   'id': z.string().readonly(),
+diff --git a/lib/typert.remote-client.js b/lib/typert.remote-client.js
+--- a/lib/typert.remote-client.js
++++ b/lib/typert.remote-client.js
+@@ -530,6 +530,8 @@
+   'id': z.string().readonly(),
+   'name': z.string().readonly(),
+   'description': z.string().readonly().optional(),
++    'inputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
++    'outputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).readonly().optional(),
+   'reasoning': z.object({
+   'efforts': z.array(z.object({
+   'id': z.string().readonly(),
+diff --git a/lib/types/types.d.ts b/lib/types/types.d.ts
+--- a/lib/types/types.d.ts
++++ b/lib/types/types.d.ts
+@@ -2,7 +2,7 @@
+ import type { AttachmentIdType, ImageAttachmentLimits, ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment';
+ import type { Branded } from '@deepseek-ai/dsh-brand';
+ import type { LlmAttemptId, MessageId } from '@deepseek-ai/dsh-llm/brand';
+-import type { ContentBlock } from '@deepseek-ai/dsh-llm';
++import type { ContentBlock, ModelModality } from '@deepseek-ai/dsh-llm';
+ import type { SessionId, SessionSeqCursor } from '@deepseek-ai/dsh-session/types';
+ import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/types';
+ import type { JobId } from '@deepseek-ai/dsh-jobs/brand';
+@@ -109,6 +109,8 @@
+     readonly id: string;
+     readonly name: string;
+     readonly description?: string;
++    readonly inputModalities?: readonly ModelModality[];
++    readonly outputModalities?: readonly ModelModality[];
+     readonly reasoning?: ModelReasoning;
+ }
+ /** One provider and its successfully loaded model catalog. */

@@ -1,0 +1,153 @@
+diff --git a/lib/client.js b/lib/client.js
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -167,6 +167,13 @@
+ 		* @returns the labeled text and image checkboxes.
+ 		*/
+ 		function ModelInputTypes({ model, field, position, disabled, fallback, t, onChange }) {
++            if (field === "input") return react.createElement(ModelInputControl, {
++                model, field, t, disabled, onChange: next => {
++                    const result = { ...model, ...next };
++                    for (const key of Object.keys(result)) if (result[key] === void 0) delete result[key];
++                    onChange(result);
++                }
++            });
+ 			const modalities = model[field];
+ 			const selected = Array.isArray(modalities) && modalities.length > 0 ? modalities : fallback ?? ["text"];
+ 			return (0, react_jsx_runtime.jsxs)("fieldset", {
+@@ -366,6 +373,13 @@
+ 					index,
+ 					key: "modelMaxTokensInvalid"
+ 				};
++				for (const field of ["inputModalities", "input"]) {
++					const modalities = model[field];
++					if (modalities !== void 0 && (!Array.isArray(modalities) || !modalities.includes("text") || modalities.some((modality) => modality !== "text" && modality !== "image") || new Set(modalities).size !== modalities.length)) return {
++						index,
++						key: "modelInputInvalid"
++					};
++				}
+ 			}
+ 		}
+ 		/**
+@@ -569,12 +583,52 @@
+ 			return value === void 0 ? "" : formatCapacity(value);
+ 		}
+ 		/** Adopt a candidate, preserving disclosed capacities and input types. */
++		/** Automatic is the default; manual modes only correct an endpoint or inference. */
++		function ModelInputControl({ model, field, t, disabled, onChange }) {
++			const input = model[field];
++			const source = model.inputCapabilitySource;
++			const manual = Array.isArray(input) && input.length > 0 && source === void 0;
++			const nameHint = [model.id, model.name].some(value => typeof value === "string" && /(?:^|[\s/:._-])(?:vision|vl)(?:$|[\s/:._-])/i.test(value));
++			const evidenceKey = manual ? "modelInputManual" : source === "unknown" ? "modelInputUnknown" : source === "provider" ? "modelInputProvider" : source === "catalog" ? "modelInputCatalog" : source === "name" || nameHint ? "modelInputName" : "modelInputUnknown";
++			return (0, react_jsx_runtime.jsxs)(react.Fragment, { children: [
++				(0, react_jsx_runtime.jsxs)("select", {
++					className: ModelsSection_module_css_default["input"],
++					"aria-label": t("modelImageInput"), disabled,
++					value: manual ? input.includes("image") ? "image" : "text" : "auto",
++					onChange: event => onChange({
++						[field]: event.target.value === "auto" ? void 0 : event.target.value === "image" ? ["text", "image"] : ["text"],
++						inputCapabilitySource: void 0
++					}),
++					children: [
++						(0, react_jsx_runtime.jsx)("option", { value: "auto", children: t("modelInputAuto") }),
++						(0, react_jsx_runtime.jsx)("option", { value: "image", children: t("modelInputForceImage") }),
++						(0, react_jsx_runtime.jsx)("option", { value: "text", children: t("modelInputForceText") })
++					]
++				}),
++				(0, react_jsx_runtime.jsx)("small", { children: t(evidenceKey) })
++			] });
++		}
++
++		function mergeDiscoveredModel(existing, candidate) {
++			if (existing === void 0) return adopt(candidate);
++			existing = { ...existing, ...candidate.outputModalities === void 0 ? {} : { output: [...candidate.outputModalities] }, ...candidate.imageGenerationApi === void 0 ? {} : { imageGenerationApi: candidate.imageGenerationApi }, ...candidate.supportsTools === void 0 ? {} : { supportsTools: candidate.supportsTools } };
++			if (Array.isArray(existing.input) && existing.input.length > 0 && existing.inputCapabilitySource === void 0) return existing;
++			if (candidate.inputModalities === void 0 && candidate.inputCapabilitySource === void 0) return existing;
++			const { input, inputCapabilitySource, ...rest } = existing;
++			const adopted = adopt(candidate);
++			return { ...rest, ...adopted.input === void 0 ? {} : { input: adopted.input }, ...adopted.inputCapabilitySource === void 0 ? {} : { inputCapabilitySource: adopted.inputCapabilitySource } };
++		}
++
+ 		function adopt(candidate) {
+ 			return {
+ 				id: candidate.id,
+ 				...candidate.name === void 0 ? {} : { name: candidate.name },
+ 				...candidate.contextWindow === void 0 ? {} : { contextWindow: candidate.contextWindow },
+ 				...candidate.maxTokens === void 0 ? {} : { maxTokens: candidate.maxTokens },
++				...candidate.outputModalities === void 0 ? {} : { output: [...candidate.outputModalities] },
++				...candidate.imageGenerationApi === void 0 ? {} : { imageGenerationApi: candidate.imageGenerationApi },
++				...candidate.supportsTools === void 0 ? {} : { supportsTools: candidate.supportsTools },
++				...candidate.inputCapabilitySource === void 0 ? {} : { inputCapabilitySource: candidate.inputCapabilitySource },
+ 				...candidate.inputModalities === void 0 ? {} : { input: [...candidate.inputModalities] }
+ 			};
+ 		}
+@@ -643,6 +697,11 @@
+ 			const patch = (index, next) => {
+ 				onChange(models.map((model, at) => {
+ 					if (at !== index) return model;
++					if (next.id !== void 0 && next.id !== model.id) { const { output, imageGenerationApi, supportsTools, ...rest } = model; model = rest; }
++					if ((next.id !== void 0 && next.id !== model.id || next.name !== void 0 && next.name !== model.name && model.inputCapabilitySource === "name") && model.inputCapabilitySource !== void 0) {
++						const { input, inputCapabilitySource, ...rest } = model;
++						model = rest;
++					}
+ 					const cleared = new Set(Object.entries(next).filter(([, value]) => value === void 0 || value === "").map(([key]) => key));
+ 					return Object.fromEntries(Object.entries({
+ 						...model,
+@@ -692,7 +751,7 @@
+ 				const byId = new Map(models.map((model) => [textOf(model, "id"), model]));
+ 				for (const candidate of candidates) {
+ 					if (!picked.has(candidate.id)) continue;
+-					byId.set(candidate.id, byId.get(candidate.id) ?? adopt(candidate));
++					byId.set(candidate.id, mergeDiscoveredModel(byId.get(candidate.id), candidate));
+ 				}
+ 				onChange([...byId.values()]);
+ 				closePicker();
+@@ -2711,6 +2770,15 @@
+ 			model: "Model",
+ 			modelId: "Model ID",
+ 			modelName: "Display name",
++			modelImageInput: "Accepts image input",
++			modelInputAuto: "Automatic (default)",
++			modelInputForceImage: "Override: text and images",
++			modelInputForceText: "Override: text only",
++			modelInputManual: "Manual override has priority.",
++			modelInputProvider: "Automatically detected: provider metadata",
++			modelInputCatalog: "Automatically detected: installed model catalog",
++			modelInputName: "Name inference: Vision / VL; actual endpoint support may differ.",
++			modelInputUnknown: "Automatic: match the catalog or name; otherwise capability is unconfirmed (text only).",
+ 			modelNamePlaceholder: "Uses the model ID when empty",
+ 			contextWindow: "Context window",
+ 			contextWindowPlaceholder: "Uses the provider default",
+@@ -2731,6 +2799,7 @@
+ 			modelNameInvalid: "Display name cannot be empty.",
+ 			modelContextInvalid: "Context window must be a positive count, like 131072, 256K, or 1M.",
+ 			modelMaxTokensInvalid: "Max output tokens must be a positive count, like 8192, 64K, or 1M.",
++			modelInputInvalid: "Image input must be declared together with text and contain no duplicate modalities.",
+ 			advancedHint: "Other fields live in settings.yaml; edit that section directly.",
+ 			modelCapacityInvalid: "A capacity must be a number, optionally suffixed K or M.",
+ 			modelDuplicate: "Each model ID may appear once.",
+@@ -2818,6 +2887,15 @@
+ 			model: "模型",
+ 			modelId: "模型 ID",
+ 			modelName: "显示名称",
++			modelImageInput: "支持图片输入",
++			modelInputAuto: "自动识别（默认）",
++			modelInputForceImage: "手动覆盖：文本和图片",
++			modelInputForceText: "手动覆盖：仅文本",
++			modelInputManual: "已手动指定，优先于自动识别。",
++			modelInputProvider: "自动识别：供应商能力信息",
++			modelInputCatalog: "自动识别：内置模型目录",
++			modelInputName: "名称推断：Vision / VL；以实际接口支持为准。",
++			modelInputUnknown: "自动匹配目录或名称；无法匹配时能力未确认，暂按仅文本处理。",
+ 			modelNamePlaceholder: "留空时使用模型 ID",
+ 			contextWindow: "上下文窗口",
+ 			contextWindowPlaceholder: "使用提供方默认值",
+@@ -2838,6 +2916,7 @@
+ 			modelNameInvalid: "显示名称不能为空。",
+ 			modelContextInvalid: "上下文窗口必须是正数，例如 131072、256K 或 1M。",
+ 			modelMaxTokensInvalid: "最大输出 token 数必须是正数，例如 8192、64K 或 1M。",
++			modelInputInvalid: "图片输入必须与文本一起声明，且不能包含重复的模态。",
+ 			advancedHint: "其余字段在 settings.yaml 中，请直接编辑对应段。",
+ 			modelCapacityInvalid: "容量需为数字，可加 K 或 M 后缀。",
+ 			modelDuplicate: "每个模型 ID 只能出现一次。",

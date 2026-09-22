@@ -1,0 +1,89 @@
+diff --git a/lib/client.js b/lib/client.js
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -838,11 +838,30 @@
+ 		* @returns the row element.
+ 		*/
+ 		function ProjectRowItem({ group, containsCurrentDescendant = false, onToggle, onCreate, actions, drag, home, t }) {
++            const desktop = new URLSearchParams(window.location?.search ?? "").get("dsh-desktop-experience") === "desktop";
+ 			const row = group;
+ 			const label = row.workspaceId === void 0 ? t("group.ungrouped") : row.label;
+ 			const active = containsCurrentDescendant || group.expanded && group.containsCurrent;
+ 			const [menuOpen, setMenuOpen] = (0, react.useState)(false);
+-			const workspaceMenuItems = [{
++			const openDirectory = () => {
++				if (!desktop || typeof row.cwd !== "string" || row.cwd.trim() === "") return;
++				void fetch("/dsh-desktop/api/open-directory", {
++					method: "POST",
++					headers: { "content-type": "application/json", "x-dsh-workbench-action": "open-directory" },
++					body: JSON.stringify({ path: row.cwd })
++				}).then(async (response) => {
++					if (response.ok) return;
++					const value = await response.json().catch(() => null);
++					console.error("dsh-plugin-desktop: failed to open workspace directory", value);
++				}).catch((cause) => {
++					console.error("dsh-plugin-desktop: failed to open workspace directory", cause);
++				});
++			};
++			const workspaceMenuItems = [...desktop && typeof row.cwd === "string" && row.cwd.trim() !== "" ? [{
++				id: "open-directory",
++				label: document.documentElement.lang?.toLowerCase().startsWith("zh") ? "在资源管理器中打开" : "Open in File Explorer",
++				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpen16, {})
++			}] : [], {
+ 				id: "rename",
+ 				label: t("rename"),
+ 				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutline16, {})
+@@ -855,8 +874,16 @@
+ 			const ownRow = (0, react_jsx_runtime.jsxs)("div", {
+ 				className: clsx(Rows_module_css_default.projectRow, menuOpen && Rows_module_css_default.menuOpen),
+ 				role: "treeitem",
++				"data-dsh-workspace-id": row.workspaceId,
++				"data-dsh-workspace-path": row.cwd,
+ 				"aria-expanded": row.expanded,
+ 				onClick: onToggle,
++				onContextMenu: (event) => {
++					if (!desktop || actions === void 0) return;
++					event.preventDefault();
++					event.stopPropagation();
++					setMenuOpen(true);
++				},
+ 				draggable: drag !== void 0,
+ 				onDragStart: drag === void 0 ? void 0 : (e) => {
+ 					e.dataTransfer.effectAllowed = "move";
+@@ -890,6 +917,10 @@
+ 							items: workspaceMenuItems,
+ 							onSelect: (id) => {
+ 								setMenuOpen(false);
++								if (id === "open-directory") {
++									openDirectory();
++									return;
++								}
+ 								/* v8 ignore next -- Menu can emit only the rename and delete rows supplied above. */
+ 								if (id !== "rename" && id !== "delete") return;
+ 								if (id === "rename") actions.rename();
+@@ -905,9 +936,9 @@
+ 									e.stopPropagation();
+ 									setMenuOpen((v) => !v);
+ 								},
+-								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEllipsisOutline16, {})
+-							})
+-						}), (0, react_jsx_runtime.jsx)("button", {
++									children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEllipsisOutline16, {})
++								})
++							}), (0, react_jsx_runtime.jsx)("button", {
+ 							type: "button",
+ 							className: Rows_module_css_default.iconButton,
+ 							"aria-label": t("actions.newSession.aria", { name: label }),
+@@ -2424,7 +2455,11 @@
+ 											onChange: (e) => {
+ 												setQuery(sanitizeSearchQuery(e.target.value));
+ 											},
+-											onKeyDown: (e) => {
++											onContextMenu: event => {
++                if (row.blank || new URLSearchParams(window.location?.search ?? "").get("dsh-desktop-experience") !== "desktop") return;
++                event.preventDefault(); event.stopPropagation(); setMenuOpen(true);
++            },
++            onKeyDown: (e) => {
+ 												if (e.key !== "Escape") return;
+ 												setQuery("");
+ 												setSearchExpanded(false);

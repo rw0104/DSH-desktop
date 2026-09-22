@@ -143,7 +143,7 @@ corepack yarn install --immutable
 corepack yarn dev
 ```
 
-This integration branch pins Harness `0.1.5-rc.2` and Sidebar `0.19.1`; published downloads retain the versions documented in their respective Release notes. `deepseek-harness/` is an upstream submodule without direct source edits; desktop adaptations live in owned plugins and audited Yarn patches. The root workspace uses Yarn, while the upstream submodule retains its pnpm workspace. Run `corepack yarn check` for the complete headless gate.
+This experimental integration branch pins Harness `0.1.6-alpha.2` and Sidebar `0.19.1`; see the [synchronization ledger](docs/upstream-sync.md) for validation progress. Published downloads retain the versions documented in their respective Release notes. `deepseek-harness/` is an upstream submodule without direct source edits; desktop adaptations live in owned plugins and audited Yarn patches. The root workspace uses Yarn, while the upstream submodule retains its pnpm workspace. Run `corepack yarn check` for the complete headless gate.
 
 ## Community and acknowledgements
 

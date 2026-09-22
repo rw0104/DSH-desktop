@@ -33,10 +33,10 @@ describe('automatic custom-model image capabilities', () => {
   it('retains separate image output capability through both Remote faces and actual editor adoption', async () => {
     const candidates = [{ id: 'qwen/qwen-image-3', inputModalities: ['text', 'image'], outputModalities: ['image'], imageGenerationApi: 'openrouter-images', supportsTools: false }]
     for (const raw of [TYPERT, TYPERT_REMOTE]) {
-      type Method = { method: string; result: { schema: { parse(value: unknown): unknown } } }
+      type Method = { method: string; result: { create(): { parse(value: unknown): unknown } } }
       const value = raw as { invocations?: Method[]; descriptors?: Method[] }
       const method = (value.invocations ?? value.descriptors ?? []).find(method => method.method === 'discoverModels')
-      expect(method?.result.schema.parse(candidates)).toEqual(candidates)
+      expect(method?.result.create().parse(candidates)).toEqual(candidates)
     }
     const adopted = editorSeams().adopt!(candidates[0])
     expect(adopted).toMatchObject({ id: 'qwen/qwen-image-3', output: ['image'], imageGenerationApi: 'openrouter-images' })
@@ -89,8 +89,8 @@ describe('automatic custom-model image capabilities', () => {
       const parsed = PiAi.Config({ providers: { custom: {
         api: 'openai-completions', baseURL: 'https://unused.invalid/v1', models: adopted,
       } } })
-      expect(parsed.providers.custom.models[0].inputModalities).toEqual(['text', 'image'])
-      expect(parsed.providers.custom.models[1].inputModalities).toEqual(['text'])
+      expect(parsed.providers.custom.models[0].inputCapabilitySource).toBe('provider')
+      expect(parsed.providers.custom.models[1].inputCapabilitySource).toBe('unknown')
       await restored.plugin(LlmRuntime)
       await restored.plugin(PiAi, parsed)
       expect((await restored.llm.resolveModelInfo('custom', 'private-visual')).inputModalities).toEqual(['text', 'image'])
@@ -106,7 +106,7 @@ describe('automatic custom-model image capabilities', () => {
       await ctx.plugin(LlmRuntime)
       await ctx.plugin(PiAi, { providers: {} })
       const found = await ctx.llm.discoverModels('llm-pi-ai', { provider: 'google' })
-      expect(found.some(model => model.inputModalities?.includes('image'))).toBe(true)
+      expect(found.some(model => model.inputModalities?.includes('image') && model.inputCapabilitySource === 'catalog')).toBe(true)
       expect(fetch).not.toHaveBeenCalled()
     } finally { await ctx.fiber.dispose() }
   })
@@ -128,7 +128,7 @@ describe('automatic custom-model image capabilities', () => {
       expect(new Headers(fetch.mock.calls[0]?.[1]?.headers).get('anthropic-version')).toBe('2023-06-01')
       expect(models).toEqual([{
         id: 'gateway-vision', name: 'Gateway Vision', contextWindow: 128000, maxTokens: 4096,
-        inputModalities: ['text', 'image'],
+        inputModalities: ['text', 'image'], inputCapabilitySource: 'provider',
       }])
     } finally { await ctx.fiber.dispose() }
   })
@@ -204,10 +204,10 @@ describe('automatic custom-model image capabilities', () => {
   it('preserves detection evidence through the real Remote schemas and the actual editor adoption function', () => {
     const candidates = [{ id: 'private-Vision', inputModalities: ['text', 'image'], inputCapabilitySource: 'name' }]
     for (const raw of [TYPERT, TYPERT_REMOTE]) {
-      type Method = { method: string; result: { schema: { parse(value: unknown): unknown } } }
+      type Method = { method: string; result: { create(): { parse(value: unknown): unknown } } }
       const value = raw as { invocations?: Method[]; descriptors?: Method[] }
       const method = (value.invocations ?? value.descriptors ?? []).find(method => method.method === 'discoverModels')
-      expect(method?.result.schema.parse(candidates)).toEqual(candidates)
+      expect(method?.result.create().parse(candidates)).toEqual(candidates)
     }
     expect(editorSeams().adopt!(candidates[0])).toMatchObject({
       id: 'private-Vision', input: ['text', 'image'], inputCapabilitySource: 'name',

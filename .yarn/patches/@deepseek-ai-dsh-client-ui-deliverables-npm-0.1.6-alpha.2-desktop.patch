@@ -1,0 +1,215 @@
+diff --git a/lib/client.js b/lib/client.js
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -644,7 +644,56 @@
+ 		* @param props - the recorded summary, the review opener, and localized copy.
+ 		* @returns the card.
+ 		*/
+-		function ChangedFiles({ changes, cwd, openReview, t }) {
++        /** Copy through Desktop's existing Host authorization, scoped to this Session and file. */
++        function DesktopDeliverableCopy({ sessionId, path, t }) {
++            const [open, setOpen] = react.useState(false);
++            const [feedback, setFeedback] = react.useState();
++            const generation = react.useRef(0);
++            react.useEffect(() => {
++                generation.current++;
++                setFeedback(void 0); setOpen(false);
++                return () => { generation.current++; };
++            }, [sessionId, path]);
++            const copy = kind => {
++                setOpen(false); setFeedback(void 0);
++                const current = ++generation.current;
++                fetch('/dsh-desktop/api/deliverables/copy', {
++                    method: 'POST',
++                    headers: { 'content-type': 'application/json', 'x-dsh-desktop-action': 'copy-deliverable' },
++                    body: JSON.stringify({ sessionId, path, kind })
++                }).then(response => {
++                    if (!response.ok) throw new Error('deliverable copy failed');
++                    if (generation.current === current) setFeedback(t(kind === 'absolute-path' ? 'produced.copyPathSuccess' : 'produced.copyContentSuccess'));
++                }).catch(() => {
++                    if (generation.current === current) setFeedback(t('produced.copyFailed'));
++                });
++            };
++            const e = react.createElement;
++            return e('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 6, flex: 'none' } },
++                e(_deepseek_ai_dsh_client_ui_primitives.Menu, {
++                    open, onClose: () => setOpen(false), portal: true, compact: true,
++                    items: [
++                        { id: 'absolute-path', label: t('produced.copyAbsolutePath', { name: path }) },
++                        { id: 'text-content', label: t('produced.copyTextContent', { name: path }) }
++                    ],
++                    onSelect: kind => { if (kind === 'absolute-path' || kind === 'text-content') copy(kind); },
++                    anchor: e('button', {
++                        type: 'button', 'aria-label': t('produced.copyActions', { name: path }),
++                        'aria-haspopup': 'menu', 'aria-expanded': open,
++                        style: { border: 0, background: 'transparent', color: 'inherit', cursor: 'pointer', padding: 4 },
++                        onClick: () => setOpen(value => !value)
++                    }, e(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, { size: 12 }))
++                }), feedback !== void 0 && e('span', { role: 'status' }, feedback));
++        }
++        /** Older histories can contain produced paths without the alpha Changes summary. */
++        function DesktopProducedFiles({ paths, sessionId, openFile, canCopy, t }) {
++            const e = react.createElement;
++            return e('div', { 'data-produced-files-row': true }, paths.map(path => e('div', { key: path, style: { display: 'flex', alignItems: 'center', gap: 6 } },
++                e('button', { type: 'button', 'aria-label': t('produced.open', { name: path }), onClick: () => openFile(path) }, basename(path)),
++                canCopy && e(DesktopDeliverableCopy, { sessionId, path, t }))));
++        }
++
++		function ChangedFiles({ changes, cwd, openReview, sessionId, produced, canCopy, t }) {
+ 			const [expanded, setExpanded] = (0, react.useState)(false);
+ 			const foldable = changes.files.length > COLLAPSED_ROWS;
+ 			const rows = foldable && !expanded ? changes.files.slice(0, COLLAPSED_ROWS) : changes.files;
+@@ -679,9 +728,10 @@
+ 					}),
+ 					(0, react_jsx_runtime.jsx)("ul", {
+ 						className: ChangedFiles_module_css_default.list,
+-						children: rows.map((file, index) => (0, react_jsx_runtime.jsx)("li", { children: (0, react_jsx_runtime.jsxs)("button", {
++						children: rows.map((file, index) => (0, react_jsx_runtime.jsxs)("li", { style: { display: "flex", alignItems: "center" }, children: [(0, react_jsx_runtime.jsxs)("button", {
+ 							type: "button",
+ 							className: ChangedFiles_module_css_default.row,
++                            style: { flex: 1, minWidth: 0 },
+ 							title: resolveWorkspacePath(cwd, file.path),
+ 							"aria-label": t("changes.viewDiff", { name: file.display }),
+ 							onClick: () => {
+@@ -698,7 +748,7 @@
+ 									deleted: file.deleted
+ 								})
+ 							})]
+-						}) }, file.display))
++						}), canCopy && produced.includes(file.path) && react.createElement(DesktopDeliverableCopy, { sessionId, path: file.path, t })] }, file.display))
+ 					}),
+ 					foldable && (0, react_jsx_runtime.jsxs)("button", {
+ 						type: "button",
+@@ -1130,8 +1180,10 @@
+ 		*/
+ 		function selectDeliverables(owner) {
+ 			const changes = changesForClosing(owner);
++            const produced = [...new Set((owner.turn.data.get("deliverables")?.produced ?? []).filter(file => file.seq < owner.seq).map(file => file.path))];
+ 			const presented = presentedForClosing(owner);
+-			return changes === null && presented.length === 0 ? null : {
++			return changes === null && presented.length === 0 && produced.length === 0 ? null : {
++                produced,
+ 				changes,
+ 				presented
+ 			};
+@@ -1155,7 +1207,7 @@
+ 		* @param props - matched announcement and files, workspace opener, and localized copy.
+ 		* @returns the closing turn's file rows.
+ 		*/
+-		function Deliverables({ matched, openFile, t, sessionId, useSessions, openPresented, openChangesReview, usePresentedOpen, usePresentedHost, useChangesSummary, reloadPresentedHost, loadChangesSummary }) {
++		function Deliverables({ matched, openFile, t, sessionId, canCopy, useSessions, openPresented, openChangesReview, usePresentedOpen, usePresentedHost, useChangesSummary, reloadPresentedHost, loadChangesSummary }) {
+ 			const [expanded, setExpanded] = (0, react.useState)(false);
+ 			const cwd = useSessions((state) => state.byId[sessionId]?.cwd);
+ 			const states = usePresentedOpen((value) => value);
+@@ -1179,7 +1231,8 @@
+ 			(0, react.useEffect)(() => {
+ 				if (host === null) reloadPresentedHost();
+ 			}, [host, reloadPresentedHost]);
+-			return (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [changes !== null && (0, react_jsx_runtime.jsx)(ChangedFiles, {
++			return (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [changes === null && matched.produced.length > 0 && react.createElement(DesktopProducedFiles, { paths: matched.produced, sessionId, openFile, canCopy, t }), changes !== null && (0, react_jsx_runtime.jsx)(ChangedFiles, {
++                sessionId, canCopy, produced: matched.produced,
+ 				changes,
+ 				cwd,
+ 				t,
+@@ -1938,6 +1991,14 @@
+ 		const NS = "deliverables";
+ 		/** Simplified Chinese dictionary (the key-set source of truth). */
+ 		const zh = {
++            "produced.open": "打开 {name}",
++            "produced.copyActions": "复制 {name}",
++            "produced.copyAbsolutePath": "复制 {name} 的绝对路径",
++            "produced.copyTextContent": "复制 {name} 的文本内容",
++            "produced.copyPathSuccess": "已复制绝对路径",
++            "produced.copyContentSuccess": "已复制文本内容",
++            "produced.copyFailed": "无法复制该产物",
++
+ 			"presented.nativeUnavailable": "此文件没有可用的主机路径，请在侧边栏预览",
+ 			"presented.revealError": "无法在文件管理器中显示，请重试",
+ 			"presented.directoryError": "无法打开所在文件夹，请重试",
+@@ -2008,6 +2069,14 @@
+ 		};
+ 		/** English dictionary (same key set). */
+ 		const en = {
++            "produced.open": "Open {name}",
++            "produced.copyActions": "Copy from {name}",
++            "produced.copyAbsolutePath": "Copy absolute path for {name}",
++            "produced.copyTextContent": "Copy text content from {name}",
++            "produced.copyPathSuccess": "Absolute path copied",
++            "produced.copyContentSuccess": "Text content copied",
++            "produced.copyFailed": "Unable to copy this produced file",
++
+ 			"presented.nativeUnavailable": "This file has no available Host path. Preview it in the sidebar.",
+ 			"presented.revealError": "Could not show in file manager. Try again.",
+ 			"presented.directoryError": "Could not open containing folder. Try again.",
+@@ -2116,6 +2185,7 @@
+ 				id: "@deepseek-ai/dsh-client-ui-deliverables",
+ 				locale: NS,
+ 				inject: () => ({
++                    canCopy: new URLSearchParams(window.location?.search ?? "").get("dsh-desktop-experience") === "desktop",
+ 					hooks: {
+ 						presentedOpen: opener.state,
+ 						presentedHost: opener.host,
+diff --git a/lib/types/client/ChangedFiles.d.ts b/lib/types/client/ChangedFiles.d.ts
+--- a/lib/types/client/ChangedFiles.d.ts
++++ b/lib/types/client/ChangedFiles.d.ts
+@@ -7,12 +7,15 @@
+  * @param props - the recorded summary, the review opener, and localized copy.
+  * @returns the card.
+  */
+-export declare function ChangedFiles({ changes, cwd, openReview, t }: {
++export declare function ChangedFiles({ changes, cwd, openReview, sessionId, produced, canCopy, t }: {
+     /** The served summary with the sequence of the event that announced it. */
+     changes: Pick<ChangesSummary, 'files' | 'total' | 'added' | 'deleted'> & {
+         seq: number;
+     };
+     cwd: string | undefined;
++    sessionId: string;
++    produced: readonly string[];
++    canCopy: boolean;
+     /** Open the turn's review on the file at an original summary index. */
+     openReview: (index: number) => void;
+ } & PropsLocale<typeof NS>): import("react").JSX.Element;
+diff --git a/lib/types/client/Deliverables.d.ts b/lib/types/client/Deliverables.d.ts
+--- a/lib/types/client/Deliverables.d.ts
++++ b/lib/types/client/Deliverables.d.ts
+@@ -7,11 +7,13 @@
+ import type { NS } from './locales.ts';
+ import { type ChangesReviewCoordinates } from '../changes.ts';
+ interface DeliverablesMatch {
++    produced: readonly string[];
+     changes: ChangesTurnData | null;
+     presented: readonly PresentedPath[];
+ }
+ /** Summary reads, native-open callbacks, and shared gesture status supplied by the plugin. */
+ export interface DeliverablesInjected {
++    canCopy: boolean;
+     hooks: {
+         presentedOpen: ObservableSnapshot<ReturnType<PresentedOpenController['state']['getSnapshot']>>;
+         presentedHost: ObservableSnapshot<ReturnType<PresentedOpenController['host']['getSnapshot']>>;
+@@ -43,7 +45,7 @@
+  * @param props - matched announcement and files, workspace opener, and localized copy.
+  * @returns the closing turn's file rows.
+  */
+-export declare function Deliverables({ matched, openFile, t, sessionId, useSessions, openPresented, openChangesReview, usePresentedOpen, usePresentedHost, useChangesSummary, reloadPresentedHost, loadChangesSummary, }: Pick<TurnTailOwnerProps, 'openFile'> & {
++export declare function Deliverables({ matched, openFile, t, sessionId, canCopy, useSessions, openPresented, openChangesReview, usePresentedOpen, usePresentedHost, useChangesSummary, reloadPresentedHost, loadChangesSummary, }: Pick<TurnTailOwnerProps, 'openFile'> & {
+     matched: DeliverablesMatch;
+ } & PropsLocale<typeof NS> & Pick<SessionStandardProps, 'sessionId'> & Pick<GlobalStandardProps, 'useSessions'> & InjectFace<DeliverablesInjected>): import("react").JSX.Element;
+ export {};
+diff --git a/lib/types/client/locales.d.ts b/lib/types/client/locales.d.ts
+--- a/lib/types/client/locales.d.ts
++++ b/lib/types/client/locales.d.ts
+@@ -3,6 +3,14 @@
+ export declare const NS = "deliverables";
+ /** Simplified Chinese dictionary (the key-set source of truth). */
+ export declare const zh: {
++    'produced.open': string;
++    'produced.copyActions': string;
++    'produced.copyAbsolutePath': string;
++    'produced.copyTextContent': string;
++    'produced.copyPathSuccess': string;
++    'produced.copyContentSuccess': string;
++    'produced.copyFailed': string;
++
+     'presented.nativeUnavailable': string;
+     'presented.revealError': string;
+     'presented.directoryError': string;

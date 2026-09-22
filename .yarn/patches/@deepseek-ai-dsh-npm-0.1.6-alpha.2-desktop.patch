@@ -1,0 +1,33 @@
+diff --git a/lib/bin.js b/lib/bin.js
+--- a/lib/bin.js
++++ b/lib/bin.js
+@@ -88,7 +88,7 @@
+ * @param version - version string printed by `--version`.
+ * @returns the resolved invocation.
+ */
+-function parseDshArgs(argv, version) {
++function parseDshArgs(argv, version, desktopPlugin = false) {
+ 	const first = argv[0];
+ 	let resolved;
+ 	const program = new Command();
+@@ -106,7 +106,7 @@
+ 		const plugin = program.command("plugin").description("manage a profile's plugins by forwarding the remaining arguments to pnpm in the profile directory");
+ 		plugin.requiredOption("--profile <name>", "the profile whose plugins to manage (initialized on first use)", selectProfile).allowUnknownOption().argument("[args...]", "pnpm arguments, forwarded verbatim (add <pkg>, remove <pkg>, why <pkg>, ...)").action((args, options) => {
+ 			if (options.profile === "") program.error("error: --profile needs a name");
+-			rejectElectronProfile(plugin, options.profile);
++			if (!desktopPlugin) rejectElectronProfile(plugin, options.profile);
+ 			if (args.length === 0) program.error("error: plugin needs pnpm arguments to forward (e.g. add <package>)");
+ 			resolved = {
+ 				mode: "plugin",
+@@ -197,9 +197,9 @@
+ * Run the public dsh command-line interface.
+ * @returns a promise that settles when the selected command mode finishes.
+ */
+-async function runCli() {
++async function runCli(options) {
+ 	const version = readVersion();
+-	const invocation = parseDshArgs(process.argv.slice(2), version);
++	const invocation = parseDshArgs(process.argv.slice(2), version, options?.desktopPlugin === true);
+ 	switch (invocation.mode) {
+ 		case "profile": {
+ 			const { runProfile } = await import("./profile-boot.js");

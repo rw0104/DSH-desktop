@@ -1,0 +1,124 @@
+diff --git a/lib/client.js b/lib/client.js
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -203,8 +203,11 @@
+ 		* @returns the overlay layer.
+ 		*/
+ 		function DropOverlay({ disabled, labels }) {
++			const target = document.querySelector("[data-dsh-conversation-drop-target]") ?? document.body;
+ 			return (0, react_dom.createPortal)((0, react_jsx_runtime.jsx)("div", {
+ 				className: DropOverlay_module_css_default.mask,
++				"data-dsh-chat-drop-overlay": "",
++				style: { position: target === document.body ? "fixed" : "absolute" },
+ 				role: "status",
+ 				children: (0, react_jsx_runtime.jsxs)("div", {
+ 					className: DropOverlay_module_css_default.wrap,
+@@ -224,7 +227,7 @@
+ 						})
+ 					]
+ 				})
+-			}), document.body);
++			}), target);
+ 		}
+ 		/** Tilted photo-and-note cards (DeepSeek Chat upload illustration). */
+ 		const UploadIllustration = () => (0, react_jsx_runtime.jsxs)("svg", {
+@@ -472,7 +475,29 @@
+ 		* @param props.onClose - dismiss callback owned by the opener.
+ 		* @returns the modal preview dialog.
+ 		*/
+-		function ImageLightbox({ src, alt, labels, onClose }) {
++		// Optional preview-only extension. Intake, rail, gallery and retry remain upstream-owned.
++		let previewRenderer = null;
++		const previewListeners = new Set();
++		const previewSnapshot = () => previewRenderer;
++		const subscribePreview = listener => { previewListeners.add(listener); return () => previewListeners.delete(listener); };
++		function registerPreview(renderer) {
++			if (previewRenderer !== null) throw new Error("attachment preview renderer is already registered");
++			let active = true;
++			previewRenderer = renderer;
++			for (const listener of previewListeners) listener();
++			return () => {
++				if (!active) return;
++				active = false;
++				if (previewRenderer !== renderer) return;
++				previewRenderer = null;
++				for (const listener of previewListeners) listener();
++			};
++		}
++		function ImageLightbox(props) {
++			const renderer = (0, react.useSyncExternalStore)(subscribePreview, previewSnapshot, previewSnapshot);
++			return (0, react_jsx_runtime.jsx)(renderer ?? DefaultImageLightbox, props);
++		}
++		function DefaultImageLightbox({ src, alt, labels, onClose }) {
+ 			const closeRef = (0, react.useRef)(null);
+ 			const restoreRef = (0, react.useRef)(null);
+ 			(0, react.useEffect)(() => {
+@@ -594,6 +619,7 @@
+ 		* @returns cleanup for exactly these listeners.
+ 		*/
+ 		function installDocumentDropEvents(canAcceptDrop, onAddFiles, dragDepth, setDragActive) {
++            const workspaceDropTarget = event => event.target instanceof Element && event.target.closest("[data-dsh-workspace-drop-target]") !== null;
+ 			const fileTransfer = (event) => {
+ 				const dataTransfer = event.dataTransfer;
+ 				if (dataTransfer === null || !dataTransfer.types.includes("Files")) return null;
+@@ -605,6 +631,7 @@
+ 			};
+ 			const onDragEnter = (event) => {
+ 				if (fileTransfer(event) === null) return;
++                if (workspaceDropTarget(event)) { event.preventDefault(); reset(); return; }
+ 				event.preventDefault();
+ 				dragDepth.current += 1;
+ 				setDragActive(true);
+@@ -613,10 +640,11 @@
+ 				const dataTransfer = fileTransfer(event);
+ 				if (dataTransfer === null) return;
+ 				event.preventDefault();
+-				dataTransfer.dropEffect = canAcceptDrop ? "copy" : "none";
++				if (workspaceDropTarget(event)) return reset();
++                dataTransfer.dropEffect = canAcceptDrop ? "copy" : "none";
+ 			};
+ 			const onDragLeave = (event) => {
+-				if (fileTransfer(event) === null) return;
++				if (fileTransfer(event) === null || workspaceDropTarget(event)) return;
+ 				dragDepth.current = Math.max(0, dragDepth.current - 1);
+ 				if (dragDepth.current === 0) setDragActive(false);
+ 				const leftViewport = event.clientX <= 0 || event.clientY <= 0 || event.clientX >= window.innerWidth || event.clientY >= window.innerHeight;
+@@ -627,7 +655,7 @@
+ 				if (dataTransfer === null) return;
+ 				event.preventDefault();
+ 				reset();
+-				if (canAcceptDrop) onAddFiles([...dataTransfer.files]);
++				if (canAcceptDrop && !workspaceDropTarget(event)) onAddFiles([...dataTransfer.files]);
+ 			};
+ 			document.addEventListener("dragenter", onDragEnter);
+ 			document.addEventListener("dragover", onDragOver);
+@@ -925,6 +953,7 @@
+ 		const inject = ["slots"];
+ 		/** Register attachment presentation without exporting React components as package values. */
+ 		function apply(ctx) {
++			ctx.provide("attachmentPresentation", { registerPreview });
+ 			ctx.slots.inject("conversation.input.attachments", () => ctx.slots.register({
+ 				name: "conversation.input.attachments",
+ 				locale: "conversation"
+diff --git a/lib/types/client/index.d.ts b/lib/types/client/index.d.ts
+--- a/lib/types/client/index.d.ts
++++ b/lib/types/client/index.d.ts
+@@ -4,4 +4,16 @@
+ export declare const inject: string[];
+ /** Register attachment presentation without exporting React components as package values. */
+ export declare function apply(ctx: ClientContext): void;
+-//# sourceMappingURL=index.d.ts.map
+\ No newline at end of file
++/** Optional preview-only extension; the plugin retains its intake and gallery components. */
++export interface AttachmentPreviewProps {
++    src: string;
++    alt: string;
++    labels: { dialog: string; close: string };
++    onClose(): void;
++}
++export interface AttachmentPresentation {
++    registerPreview(renderer: import('react').ComponentType<AttachmentPreviewProps>): () => void;
++}
++declare module '@deepseek-ai/cordis' {
++    interface Context { attachmentPresentation: AttachmentPresentation; }
++}

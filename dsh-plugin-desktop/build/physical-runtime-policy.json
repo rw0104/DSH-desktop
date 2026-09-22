@@ -16,7 +16,7 @@
       "id": "packaged-agent-presets",
       "kind": "path-prefix",
       "entries": [
-        "node_modules/@deepseek-ai/dsh/config/agent-presets/"
+        "node_modules/@deepseek-ai/dsh-agent-presets/presets/"
       ],
       "reason": "Agent preset and skill scanners consume ordinary filesystem paths outside Electron's ASAR-aware module loader."
     },

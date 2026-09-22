@@ -6,6 +6,8 @@ import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 // Type convergence: locale/theme/settings/conversation declarations expose the
 // shared client services and slots used by desktop-owned contributions.
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -121,7 +123,7 @@ function installDesktopClient(ctx: ClientContext, environment: DesktopClientEnvi
       create: input => ctx.workspaces.create(input),
       startSession: async workspaceId => {
         const sessionId = await ctx.sessions.create({ workspaceId })
-        ;(ctx as ClientContext & { uiWorkspace: { openSession(target: string): void } }).uiWorkspace.openSession(sessionId)
+        ctx.uiWorkspace.openSession(sessionId)
       },
       ...(environment.platform === 'win32'
         ? { validateDirectory: (path: string) => requestDesktopDirectoryValidation(path) }

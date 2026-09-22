@@ -265,10 +265,10 @@ function recoverableRunner(
 }
 
 describe('npm registry verification', () => {
-  it.each(['dependencies', 'peerDependencies', 'optionalDependencies'] as const)('checks the installed rc.2 runtime for %s, not the retired rc.1 constant', async field => {
+  it.each(['dependencies', 'peerDependencies', 'optionalDependencies'] as const)('checks the installed alpha.2 runtime for %s and rejects a retired runtime', async field => {
     const getJson = vi.fn(async () => ({
       finalUrl: `https://registry.npmjs.org/${packageName}/${version}`,
-      value: { name: packageName, version, repository, [field]: { '@deepseek-ai/dsh-agent': '0.1.5-rc.2' },
+      value: { name: packageName, version, repository, [field]: { '@deepseek-ai/dsh-agent': '0.1.6-alpha.2' },
         dist: { integrity, tarball }, dsh: { bundle: { patch: './cordis.patch.yml' } } },
     }))
     const verifier = createNpmRegistryVerifier({ getJson } as CatalogHttpClient)

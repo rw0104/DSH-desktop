@@ -126,13 +126,13 @@ describe('upstream model capability wire contract', () => {
     }
     for (const contribution of [TYPERT, TYPERT_REMOTE]) {
       type Invocation = {
-        method: string; result: { schema: { parse(value: unknown): unknown } }
+        method: string; result: { create(): { parse(value: unknown): unknown } }
       }
       const value = contribution as { invocations?: Invocation[]; descriptors?: Invocation[] }
       const invocations = value.invocations ?? value.descriptors ?? []
       const method = invocations.find(value => value.method === 'modelCatalog')
       expect(method).toBeDefined()
-      expect(method?.result.schema.parse(catalog)).toEqual(catalog)
+      expect(method?.result.create().parse(catalog)).toEqual(catalog)
     }
   })
 

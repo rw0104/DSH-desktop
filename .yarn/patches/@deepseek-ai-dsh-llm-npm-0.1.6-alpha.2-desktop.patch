@@ -1,0 +1,135 @@
+diff --git a/lib/index.js b/lib/index.js
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -1978,6 +1978,10 @@
+ 					...model.name === void 0 ? {} : { name: model.name },
+ 					...model.contextWindow === void 0 ? {} : { contextWindow: model.contextWindow },
+ 					...model.maxTokens === void 0 ? {} : { maxTokens: model.maxTokens },
++					...model.outputModalities === void 0 ? {} : { outputModalities: [...model.outputModalities] },
++					...model.imageGenerationApi === void 0 ? {} : { imageGenerationApi: model.imageGenerationApi },
++					...model.supportsTools === void 0 ? {} : { supportsTools: model.supportsTools },
++					...model.inputCapabilitySource === void 0 ? {} : { inputCapabilitySource: model.inputCapabilitySource },
+ 					...model.inputModalities === void 0 ? {} : { inputModalities: [...model.inputModalities] }
+ 				});
+ 			}
+@@ -2052,7 +2056,10 @@
+ 					id: model.id,
+ 					name: model.name,
+ 					...model.description === void 0 ? {} : { description: model.description },
+-					...inputModalities === void 0 ? {} : { inputModalities }
++					...inputModalities === void 0 ? {} : { inputModalities },
++					...model.outputModalities === void 0 ? {} : { outputModalities: this.detachedModalities(model.outputModalities) },
++					...model.imageGenerationApi === void 0 ? {} : { imageGenerationApi: model.imageGenerationApi },
++					...model.supportsTools === void 0 ? {} : { supportsTools: model.supportsTools }
+ 				};
+ 			});
+ 		}
+@@ -2089,6 +2096,9 @@
+ 				name: resolved.name,
+ 				...resolved.description === void 0 ? {} : { description: resolved.description },
+ 				...inputModalities === void 0 ? {} : { inputModalities },
++				...resolved.outputModalities === void 0 ? {} : { outputModalities: this.detachedModalities(resolved.outputModalities) },
++				...resolved.imageGenerationApi === void 0 ? {} : { imageGenerationApi: resolved.imageGenerationApi },
++				...resolved.supportsTools === void 0 ? {} : { supportsTools: resolved.supportsTools },
+ 				...context === void 0 ? {} : { context: { contextWindow: context.contextWindow } },
+ 				...defaultMaxTokens === void 0 ? {} : { defaultMaxTokens },
+ 				...resolved.systemPromptUpdate === void 0 ? {} : { systemPromptUpdate: resolved.systemPromptUpdate }
+@@ -2181,10 +2191,13 @@
+ 			let dispatched = false;
+ 			return Object.freeze({
+ 				config: resolvedConfig,
+-				retryPolicy: registration.retryPolicy,
++				retryPolicy: modelInfo.outputModalities?.includes("image") ? resolveRetryPolicy({ mode: "normal", maxRetries: 0 }, "llm: image generation") : registration.retryPolicy,
+ 				adapterDefaults,
+ 				...context === void 0 ? {} : { context },
+ 				...modelInfo.inputModalities === void 0 ? {} : { inputModalities: Object.freeze([...modelInfo.inputModalities]) },
++				...modelInfo.outputModalities === void 0 ? {} : { outputModalities: Object.freeze([...modelInfo.outputModalities]) },
++				...modelInfo.imageGenerationApi === void 0 ? {} : { imageGenerationApi: modelInfo.imageGenerationApi },
++				...modelInfo.supportsTools === void 0 ? {} : { supportsTools: modelInfo.supportsTools },
+ 				...modelInfo.systemPromptUpdate === void 0 ? {} : { systemPromptUpdate: modelInfo.systemPromptUpdate },
+ 				stream: (options) => {
+ 					if (dispatched) throw new LlmError("a prepared LLM call can only be dispatched once", "INVALID_PREPARED_CALL");
+diff --git a/lib/typert.host.js b/lib/typert.host.js
+--- a/lib/typert.host.js
++++ b/lib/typert.host.js
+@@ -17,6 +17,10 @@
+   'contextWindow': z.number().optional(),
+   'maxTokens': z.number().optional(),
+   'inputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).optional(),
++  'outputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).optional(),
++  'imageGenerationApi': z.string().optional(),
++  'supportsTools': z.boolean().optional(),
++  'inputCapabilitySource': z.union([z.literal("provider"), z.literal("catalog"), z.literal("name"), z.literal("unknown")]).optional(),
+ })))
+ let _deepseek_ai_dsh_llm_llm_listConfigurableProviders_result$schema$value
+ const _deepseek_ai_dsh_llm_llm_listConfigurableProviders_result$schema = () => (_deepseek_ai_dsh_llm_llm_listConfigurableProviders_result$schema$value ??= z.array(z.object({
+@@ -354,7 +358,7 @@
+           },
+           {
+             "name": "LlmModelInfo",
+-            "declaration": "export interface LlmModelInfo {\n    provider: string;\n    id: string;\n    name: string;\n    description?: string;\n    inputModalities?: readonly ModelModality[];\n}"
++            "declaration": "export interface LlmModelInfo {\n    provider: string;\n    id: string;\n    name: string;\n    description?: string;\n    inputModalities?: readonly ModelModality[];\n    outputModalities?: readonly ModelModality[];\n    imageGenerationApi?: string;\n    supportsTools?: boolean;\n}"
+           },
+           {
+             "name": "LlmModelReasoningInfo",
+@@ -410,7 +414,7 @@
+           },
+           {
+             "name": "PreparedLlmCall",
+-            "declaration": "export interface PreparedLlmCall {\n    readonly config: LlmCallConfig;\n    readonly retryPolicy: ResolvedRetryPolicy;\n    readonly context?: LlmModelContext;\n    readonly inputModalities?: readonly ModelModality[];\n    readonly systemPromptUpdate?: SystemPromptUpdate;\n    readonly adapterDefaults: LlmCallConfigAdapterDefaults;\n    stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}"
++            "declaration": "export interface PreparedLlmCall {\n    readonly config: LlmCallConfig;\n    readonly retryPolicy: ResolvedRetryPolicy;\n    readonly context?: LlmModelContext;\n    readonly inputModalities?: readonly ModelModality[];\n    readonly outputModalities?: readonly ModelModality[];\n    readonly imageGenerationApi?: string;\n    readonly supportsTools?: boolean;\n    readonly systemPromptUpdate?: SystemPromptUpdate;\n    readonly adapterDefaults: LlmCallConfigAdapterDefaults;\n    stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}"
+           },
+           {
+             "name": "ProviderRequestId",
+diff --git a/lib/typert.remote-client.js b/lib/typert.remote-client.js
+--- a/lib/typert.remote-client.js
++++ b/lib/typert.remote-client.js
+@@ -17,6 +17,10 @@
+   'contextWindow': z.number().optional(),
+   'maxTokens': z.number().optional(),
+   'inputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).optional(),
++  'outputModalities': z.array(z.union([z.literal("text"), z.literal("image")])).optional(),
++  'imageGenerationApi': z.string().optional(),
++  'supportsTools': z.boolean().optional(),
++  'inputCapabilitySource': z.union([z.literal("provider"), z.literal("catalog"), z.literal("name"), z.literal("unknown")]).optional(),
+ })))
+ let _deepseek_ai_dsh_llm_llm_listConfigurableProviders_result$schema$value
+ const _deepseek_ai_dsh_llm_llm_listConfigurableProviders_result$schema = () => (_deepseek_ai_dsh_llm_llm_listConfigurableProviders_result$schema$value ??= z.array(z.object({
+diff --git a/lib/types/index.d.ts b/lib/types/index.d.ts
+--- a/lib/types/index.d.ts
++++ b/lib/types/index.d.ts
+@@ -99,6 +99,9 @@
+     readonly context?: LlmModelContext;
+     /** Exact model modalities captured with the adapter dispatch generation. */
+     readonly inputModalities?: readonly ModelModality[];
++    readonly outputModalities?: readonly ModelModality[];
++    readonly imageGenerationApi?: string;
++    readonly supportsTools?: boolean;
+     /** Exact model system prompt update mode captured with the adapter dispatch generation. */
+     readonly systemPromptUpdate?: SystemPromptUpdate;
+     /** Config fields materialized by the captured adapter rather than proposed by the caller. */
+diff --git a/lib/types/types.d.ts b/lib/types/types.d.ts
+--- a/lib/types/types.d.ts
++++ b/lib/types/types.d.ts
+@@ -278,6 +278,11 @@
+  * a surface adopting one of these still owes the capacities its adapter needs.
+  */
+ export interface LlmDiscoveredModel {
++    /** Output capability and input evidence added by the Desktop adapter. */
++    outputModalities?: readonly ModelModality[];
++    imageGenerationApi?: string;
++    supportsTools?: boolean;
++    inputCapabilitySource?: 'provider' | 'catalog' | 'name' | 'unknown';
+     /** Model id the endpoint accepts. */
+     id: string;
+     /** Human-readable name when the endpoint supplies one. */
+@@ -301,6 +306,9 @@
+     description?: string;
+     /** Accepted request modalities; absent means unknown, while an explicit omission is negative capability. */
+     inputModalities?: readonly ModelModality[];
++    outputModalities?: readonly ModelModality[];
++    imageGenerationApi?: string;
++    supportsTools?: boolean;
+ }
+ /** Provider-owned context capacity for one exact provider/model route. */
+ export interface LlmModelContext {

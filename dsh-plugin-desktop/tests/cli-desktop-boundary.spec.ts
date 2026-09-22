@@ -22,9 +22,10 @@ describe('published CLI Desktop-only plugin capability', () => {
       const probe = `
         import childProcess from 'node:child_process';
         import { syncBuiltinESMExports } from 'node:module';
-        childProcess.spawnSync = (command, args, options) => {
+        const originalSpawn = childProcess.spawn;
+        childProcess.spawn = (command, args, options) => {
           process.stdout.write(JSON.stringify({ command, args, cwd: options.cwd, hidden: options.windowsHide }));
-          return { status: 17 };
+          return originalSpawn(process.execPath, ['-e', 'process.exit(17)'], { ...options, shell: false, windowsVerbatimArguments: false });
         };
         syncBuiltinESMExports();
         process.argv = [process.execPath, 'dsh', ...${JSON.stringify(argv)}];
@@ -35,8 +36,13 @@ describe('published CLI Desktop-only plugin capability', () => {
         env: { ...process.env, DSH_HOME: home }, encoding: 'utf8', timeout: 15_000, windowsHide: true,
       })
       expect(result.error).toBeUndefined()
-      expect(result.status).toBe(code)
-      if (spawn) expect(JSON.parse(result.stdout)).toEqual({ command: 'pnpm', args: ['list'], cwd: profile, hidden: true })
+      expect(result.status, result.stderr).toBe(code)
+      if (spawn) {
+        const invoked = JSON.parse(result.stdout)
+        expect(invoked).toMatchObject({ cwd: profile, hidden: true })
+        expect([invoked.command, ...invoked.args].join(' ')).toMatch(/pnpm/iu)
+        expect(invoked.args.join(' ')).toContain('list')
+      }
       else {
         expect(result.stdout).toBe('')
         expect(result.stderr).toContain('managed exclusively by the Electron application')

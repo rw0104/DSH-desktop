@@ -5,6 +5,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-trajectory/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { DesktopImagePreview } from './experience-images.tsx'
 import { installExperienceStyles } from './experience-styles.ts'
 import { showContentMenu, closeContentMenu } from './content-menu.ts'
 import { installConversationContextMenu } from './conversation-context-menu.ts'
@@ -125,9 +126,9 @@ export function installClientExperience(ctx: Context): void {
     return { controller, language }
   }
   ctx.effect(installExperienceStyles, 'desktop: file interaction styles')
-  // Alpha.2 owns attachment presentation in the conversation bundle; the old
-  // attachmentPresentation service was removed. Keep the desktop image helper
-  // export for callers that still render an explicit native preview.
+  ctx.inject(['attachmentPresentation'], previewCtx => {
+    previewCtx.effect(() => previewCtx.attachmentPresentation.registerPreview(DesktopImagePreview), 'desktop: original image preview actions')
+  })
   ctx.effect(() => { const off = installConversationContextMenu(() => language.getSnapshot() === 'zh'); return () => { off(); controllers.clear(); closeContentMenu() } }, 'desktop: conversation content actions')
   ctx.slots.inject('conversation.input.add', () => ctx.slots.register({ name: 'conversation.input.add', inject: forSession }, AddButton))
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({ name: 'conversation.input.dock', id: 'desktop-upload-status', inject: forSession }, UploadStatus))

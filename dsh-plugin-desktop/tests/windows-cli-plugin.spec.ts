@@ -23,23 +23,27 @@ describe('the actual published CLI plugin entry', () => {
         import childProcess from 'node:child_process';
         import { syncBuiltinESMExports } from 'node:module';
         let captured;
-        childProcess.spawnSync = (command, args, options) => {
-          if (command !== 'pnpm') throw new Error('Unexpected subprocess');
-          captured = { command, args, options }; return { status: 17 };
+        const originalSpawn = childProcess.spawn;
+        childProcess.spawn = (command, args, options) => {
+          captured = { command, args, options };
+          return originalSpawn(process.execPath, ['-e', 'process.exit(17)'], { ...options, shell: false, windowsVerbatimArguments: false });
         };
         syncBuiltinESMExports();
         const { runPlugin } = await import(${JSON.stringify(pathToFileURL(join(lib, active[0]!)).href)});
-        const exit = runPlugin('isolated-cli', ['list', '--depth=0']);
+        const exit = await runPlugin('isolated-cli', ['list', '--depth=0']);
         process.stdout.write(JSON.stringify({ exit, captured }));
       `)
       const output = execFileSync(process.execPath, [probe], {
         cwd: fixture, env: { ...process.env, DSH_HOME: home }, encoding: 'utf8', windowsHide: true,
         stdio: ['ignore', 'pipe', 'pipe'], timeout: 20_000,
       })
-      expect(JSON.parse(output)).toMatchObject({ exit: 17, captured: {
-        command: 'pnpm', args: ['list', '--depth=0'],
-        options: { cwd: profile, stdio: 'inherit', shell: process.platform === 'win32', windowsHide: true },
+      const result = JSON.parse(output)
+      expect(result).toMatchObject({ exit: 17, captured: {
+        options: { cwd: profile, stdio: ['inherit', 'inherit', 'inherit'], windowsHide: true },
       } })
+      expect([result.captured.command, ...result.captured.args].join(' ')).toMatch(/pnpm/iu)
+      expect(result.captured.args.join(' ')).toContain('list')
+      expect(result.captured.args.join(' ')).toContain('--depth=0')
     } finally {
       rmSync(fixture, { recursive: true, force: true })
     }
