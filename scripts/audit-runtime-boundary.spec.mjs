@@ -57,7 +57,8 @@ test('detects a hard link that shares checkout bytes with the protected Profile'
   await link(source, profileCopy)
   const report = await auditRuntimeBoundary(f)
   assert.equal(report.hardLinks, 1)
-  assert.ok(report.issues.some(issue => issue.kind === 'hardlink' && issue.path === profileCopy))
+  assert.equal(report.workspaceHardLinks, 1)
+  assert.ok(report.issues.some(issue => issue.kind === 'workspace-hardlink' && issue.path === profileCopy))
   assert.equal(await readFile(source, 'utf8'), 'shared bytes')
 }))
 
