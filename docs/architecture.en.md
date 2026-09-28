@@ -59,7 +59,7 @@ The launcher-private `desktopRuntime`, `desktopPnpmBootstrap`, Electron executab
 
 ## Packaging and runtime closure
 
-Release artifacts use Electron Builder and `app.asar`, while dependencies that must be physical (for example pnpm, node-pty, and Windows ACL/native files) live under `app.asar.unpacked`. The packaged-runtime gate checks both archive entries and physical runtime entries; profile fallback links must not target virtual ASAR paths that Node cannot resolve.
+Release artifacts use Electron Builder and `app.asar`. The reviewed physical-runtime policy places required resources such as pnpm, node-pty, and Windows ACL/native files under `app.asar.unpacked`. The packaged-runtime gate checks archive entries and physical files. Host and Client resolution follows the current installation and actual Profile package ownership; the official in-memory generation bypasses historical shared projections. Desktop no longer writes dependency links into shared `profiles/node_modules`. Third-party plugins retain local resolution for their private dependencies.
 
 The outer workspace uses Yarn. The pinned `deepseek-harness/` submodule keeps its own pnpm workspace. Desktop source, tests, packaging, and release scripts belong to `dsh-plugin-desktop/`; the upstream submodule is not edited from Desktop branches.
 
