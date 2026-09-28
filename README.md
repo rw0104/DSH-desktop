@@ -2,20 +2,20 @@
 
 <p align="center"><strong>把对话、语音、图片与代码工作区放在同一个桌面应用中。</strong><br>基于 DeepSeek Harness 的开源桌面工作台，桌面本身也是插件。</p>
 
-<p align="center"><a href="https://github.com/rw0104/DSH-desktop/releases/download/v2.2.7/DSH-Desktop-2.2.7-x64-Setup.exe">下载 Windows v2.2.7</a> · <a href="#features">功能一览</a> · <a href="#getting-started">开始使用</a> · <a href="README.en.md">English</a></p>
+<p align="center"><a href="https://github.com/rw0104/DSH-desktop/releases/download/v2.2.9/DSH-Desktop-2.2.9-x64-Setup.exe">下载 Windows v2.2.9</a> · <a href="#features">功能一览</a> · <a href="#getting-started">开始使用</a> · <a href="README.en.md">English</a></p>
 
 <p align="center"><img src="assets/desktop-hero-zh.png" alt="DSH Desktop：基于 DeepSeek Harness 的开源桌面客户端" width="100%"></p>
 
 DSH Desktop 将 Agent 会话、模型、终端、Git、文件编辑和可选插件组合成桌面应用。你可以输入任务、用语音继续讨论、让支持图片的模型看图或生成图片，并在同一工作区查看 Agent 的文件改动与执行过程。
 
-公开下载仍为 **v2.2.7**；本分支的 **2.2.8 测试版**统一文件操作和语音体验，以下外观说明以新实现为准。测试版尚未作为 GitHub Release 发布。DSH Desktop 由社区独立维护，与 DeepSeek 无隶属、授权或背书关系。
+**v2.2.9** 修复 Profile 依赖与开发目录交叉引用导致的启动失败，并统一日常桌面的文件、图片和语音能力。本版内置 Harness **0.1.6-alpha.2** 与 Better Sidebar **0.19.1**；Desktop 的正式发布不改变上游内核的 alpha 标记。DSH Desktop 由社区独立维护，与 DeepSeek 无隶属、授权或背书关系。
 
 ## 下载
 
 | 平台 | 获取方式 | 状态 |
 | --- | --- | --- |
-| Windows x64 | [下载 2.2.7 安装器](https://github.com/rw0104/DSH-desktop/releases/download/v2.2.7/DSH-Desktop-2.2.7-x64-Setup.exe) · [Release 与更新说明](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.7) | 正式版 / Latest，约 224 MB |
-| macOS | [从 v2.2.7 源码构建](https://github.com/rw0104/DSH-desktop/tree/v2.2.7) | 保留构建支持，尚未提供签名与公证的 DMG |
+| Windows x64 | [下载 2.2.9 安装器](https://github.com/rw0104/DSH-desktop/releases/download/v2.2.9/DSH-Desktop-2.2.9-x64-Setup.exe) · [Release 与更新说明](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.9) | 正式版 / Latest，未签名 |
+| macOS / Linux | [v2.2.9 源码](https://github.com/rw0104/DSH-desktop/tree/v2.2.9) | 本次未发布原生安装包；源码构建支持不等于原生验收通过 |
 
 Windows 安装器内置所需运行环境，无需预装 Node.js；支持选择安装目录、开始菜单和桌面快捷方式。安装器目前未进行 Authenticode 签名，Windows 可能显示 SmartScreen / Unknown Publisher 提示。
 
@@ -48,7 +48,7 @@ Windows 安装器内置所需运行环境，无需预装 Node.js；支持选择�
 
 字幕可独立滚动，阅读历史时暂停自动跟随；任务开始后，语音窗口可收起为可拖动的小型控制条，继续显示状态并提供静音、结束和恢复操作。收起窗口不会结束通话，也不会自动批准 Agent 操作。
 
-[配置 Qwen / 豆包凭据](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/user-guide-realtime-voice-credentials.md)
+[配置 Qwen / 豆包凭据](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/user-guide-realtime-voice-credentials.md)
 
 ### 从看图到生成、保存原图
 
@@ -63,7 +63,7 @@ Windows 安装器内置所需运行环境，无需预装 Node.js；支持选择�
 
 原有附件栏、多图显示、滚动与失败重试继续保留。图片生成已接入可复用的供应商协议，包括已适配的阿里云 Qwen-Image 路径；实际可用性仍取决于提供方接口、模型和账号权限。仅添加一个模型名称不会自动接入新的图片协议。
 
-[图片协议接入说明](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/plugin-image-protocols.md)
+[图片协议接入说明](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/plugin-image-protocols.md)
 
 ### 把资料带进工作区
 
@@ -76,13 +76,13 @@ Windows 安装器内置所需运行环境，无需预装 Node.js；支持选择�
 
 ### 在同一个工作台完成代码任务
 
-本集成分支采用维护中的 **Better Sidebar 0.19.1**，提供 Explorer、编辑器、统一文件变动与 Git/diff、浏览器、终端、子 Agent 和后台任务面板。
+本版采用维护中的 **Better Sidebar 0.19.1**，提供 Explorer、编辑器、统一文件变动与 Git/diff、浏览器、终端、子 Agent 和后台任务面板。
 
 - **Sidechat**：从会话延展侧边讨论，正确区分继承历史和父会话待处理输入；重载后恢复模型选择。
 - **固定终端**：支持工作区级或全局固定，跨会话继续使用同一终端；Ctrl/Cmd+Click 打开受支持的链接。
 - **Markdown 预览**：拆分预览支持本地图片引用，包括相对路径、中文与空格。
 - **Git worktree**：用受管工作树为任务提供独立的工作目录，并查看对应改动。
-- **会话阅读**：过程内容折叠、宽度与字号调节、历史导航、用量和耗时信息沿用 Harness RC1。
+- **会话阅读**：过程内容折叠、宽度与字号调节、历史导航、用量和耗时信息沿用内置 Harness。
 
 ### 通过插件扩展工作台
 
@@ -90,18 +90,20 @@ Windows 安装器内置所需运行环境，无需预装 Node.js；支持选择�
 
 桌面壳本身也以 DSH 插件运行。兼容所固定 Runtime 的模型、工具和界面插件可按组合机制接入；Desktop 提供 Profile、插件管理及原生桌面服务。社区互操作 RFC 仍在演进，不能把提案中的合同当作已实现功能。
 
-[插件市场](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/dsh-community-market/README.zh.md) · [插件开发](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/plugin-development.md) · [一起建设插件生态](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/plugin-ecosystem.md)
+[插件市场](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/dsh-community-market/README.zh.md) · [插件开发](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/plugin-development.md) · [一起建设插件生态](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/plugin-ecosystem.md)
 
-## 2.2.7 最近改进
+## 2.2.9 最近改进
 
-- 高级模式新增图片/文件添加入口、原图保存和会话内容菜单；普通聊天与语音获得准确的桌面产品上下文。
-- 修复 Sidebar Markdown 本地图片显示、Sidechat 历史继承和模型冷恢复。
-- 改善窗口边缘、窄窗口中的子菜单定位，以及键盘关闭后的焦点恢复。
-- Windows 插件安装和非交互子进程隐藏后台控制台；临时目录清理不跟随目录链接。
+- 内置核心与插件从当前安装包解析，避免共享 Profile 中的旧版、新版或断裂开发链接造成 Zod/codec 混版与启动失败。
+- 启动不再向共享 Profile 依赖目录写入运行时投影；当前 Profile 真正安装的第三方插件仍可使用其私有依赖。
+- 系统窗口与原生桌面外观提供相同的文件、图片、语音和工作台能力；改进多会话引用、草稿及标签页的隔离。
+- 开发启动使用可丢弃的独立数据目录，并在构建、运行前检查真实 Profile 是否引用当前开发目录。
 
-[完整更新说明、兼容边界与验证结果](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.7)
+**已有用户升级前请完全退出应用并备份 Harness home、Electron 用户数据和工作区。** 默认位置分别为 `%USERPROFILE%\.dsh` 与 `%APPDATA%\DSH Desktop`，自定义位置也要备份。本次修复不删除旧链接、用户插件或会话，不自动备份或回滚。旧版本可执行文件不包含此修复；回退应使用升级前备份的独立副本，不要直接复用升级后的数据目录。与新内核不兼容的第三方插件仍需单独更新。
 
-## 窗口外观与平台（2.2.8 测试版）
+[完整更新说明与升级边界](docs/releases/v2.2.9.md) · [GitHub Release](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.9)
+
+## 窗口外观与平台
 
 | 项目 | 说明 |
 | --- | --- |
@@ -109,7 +111,7 @@ Windows 安装器内置所需运行环境，无需预装 Node.js；支持选择�
 | Agent 标准 / PTC / 创造预设 | 独立决定 Agent 工具组合，不是桌面功能等级 |
 | 上游原始界面 | 托盘 → 故障排查中的临时诊断入口；不覆盖日常外观或消耗安装恢复事务 |
 | 共同基础 | 受管 Runtime/Profile、桌面原生文本菜单、Host 产品上下文与插件组合 |
-| Windows / macOS | Windows 提供正式安装器与 Mica；macOS 保留源码构建与 vibrancy 支持，未发布 DMG |
+| Windows / macOS / Linux | 本次发布 Windows x64 安装器；macOS 与 Linux 未发布原生包，也未完成本次原生验收 |
 
 手机远程控制、Channels，以及尚未审查的上游文件操作和预览增强不属于当前功能。Qwen 原生语音 Agent 的实验标记不因桌面版本正式发布而改变。
 
@@ -117,7 +119,7 @@ Windows 安装器内置所需运行环境，无需预装 Node.js；支持选择�
 
 ## 开始使用
 
-1. [下载 Windows 2.2.7 安装器](https://github.com/rw0104/DSH-desktop/releases/download/v2.2.7/DSH-Desktop-2.2.7-x64-Setup.exe)，选择目录并安装。
+1. [下载 Windows 2.2.9 安装器](https://github.com/rw0104/DSH-desktop/releases/download/v2.2.9/DSH-Desktop-2.2.9-x64-Setup.exe)，选择目录并安装。
 2. 打开 **设置 → 模型**，配置提供方、凭据和可用模型。
 3. 选择或创建工作区，开始会话；按需添加图片或上传文件。
 4. 需要语音时，再配置 **设置 → 实时语音** 中的凭据与模式。
@@ -128,22 +130,25 @@ Windows 安装器内置所需运行环境，无需预装 Node.js；支持选择�
 
 | 目标 | 入口 |
 | --- | --- |
-| 安装、会话、Profile、终端与插件 | [2.2.7 用户指南](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/user-guide.md) |
-| 配置实时语音 | [Qwen / 豆包凭据指南](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/user-guide-realtime-voice-credentials.md) |
-| 扩展模型、工具或桌面能力 | [插件开发](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/plugin-development.md) · [Desktop 服务](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/dsh-plugin-desktop/docs/plugin-services.md) |
-| 理解产品边界 | [架构](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/architecture.md) · [为什么做 Desktop](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/why-desktop.md) |
-| 查找更多文档 | [文档索引](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/README.md) · [参与贡献](CONTRIBUTING.md) |
+| 安装、会话、Profile、终端与插件 | [2.2.9 用户指南](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/user-guide.md) |
+| 配置实时语音 | [Qwen / 豆包凭据指南](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/user-guide-realtime-voice-credentials.md) |
+| 扩展模型、工具或桌面能力 | [插件开发](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/plugin-development.md) · [Desktop 服务](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/dsh-plugin-desktop/docs/plugin-services.md) |
+| 理解产品边界 | [架构](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/architecture.md) · [为什么做 Desktop](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/why-desktop.md) |
+| 查找更多文档 | [文档索引](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/README.md) · [参与贡献](CONTRIBUTING.md) |
 
-从与正式安装器对应的 **v2.2.7 tag** 开始运行，避免把默认分支的历史代码误当作最新发布版。开发环境需要 Node.js `^22.19.0` 或 `>=24.0.0`，通过 Corepack 使用根 Yarn：
+从与正式安装器对应的 **v2.2.9 tag** 开始运行，避免把默认分支的历史代码误当作最新发布版。开发环境需要 Node.js `^22.19.0` 或 `>=24.0.0`，通过 Corepack 使用根 Yarn：
 
 ```sh
-git clone --branch v2.2.7 --recurse-submodules https://github.com/rw0104/DSH-desktop.git
+git clone --branch v2.2.9 --recurse-submodules https://github.com/rw0104/DSH-desktop.git
 cd DSH-desktop
+corepack yarn check:runtime-boundary
 corepack yarn install --immutable
 corepack yarn dev
 ```
 
-本实验集成分支固定 Harness `0.1.6-alpha.2` 和 Sidebar `0.19.1`，接入验收进度见[同步台账](docs/upstream-sync.md)。已发布下载的版本以对应 Release 说明为准。`deepseek-harness/` 是未直接修改的上游子模块；桌面适配位于自有插件和受审查的 Yarn patch。根工作区使用 Yarn，上游子模块保留自己的 pnpm 工作区。运行 `corepack yarn check` 执行完整无界面检查。
+`corepack yarn dev` 会先构建再启动；`corepack yarn start` 使用已有构建。两者均为明确的图形启动操作，先审计运行时边界，再使用独立的 Harness home、Electron user-data、临时目录和工作目录；退出后删除这次开发运行的数据，不能用来保留日常会话。修改代码、依赖或清理构建树前，先运行只读的 `check:runtime-boundary`；若发现真实 Profile 引用待修改目录，先停止并制定恢复方案，不直接清理用户依赖。自定义 Harness home 使用 `--home <绝对路径>`。
+
+本版固定 Harness `0.1.6-alpha.2` 和 Sidebar `0.19.1`，版本依据见[同步台账](docs/upstream-sync.md)。`deepseek-harness/` 是未直接修改的上游子模块；桌面适配位于自有插件和受审查的 Yarn patch。根工作区使用 Yarn，上游子模块保留自己的 pnpm 工作区。运行 `corepack yarn check` 执行完整无界面检查。
 
 ## 社区与致谢
 

@@ -18,7 +18,7 @@ Profile selection is desktop-owned state under Electron user data, not another f
 
 Before Loader entries mount, the launcher registers the generation-scoped `ctx.desktopProfiles` service. Its immutable `current` value contains the active profile's `name` and absolute `dir`; `list()` performs read-only discovery, while `select(name)` serializes persistence-before-restart switching without changing the live generation in place. The service is a Desktop Host capability, not a renderer bridge or an active-profile API supplied by current upstream DSH.
 
-Bare Cordis plugin imports resolve from the persistent profile. A narrow Node resolve hook applies only to imports issued by `@deepseek-ai/cordis-plugin-loader`, so profile-local third-party packages and the healed launcher fallback use the same resolution path even when packaged Electron does not expose Node's internal ESM loader.
+The official `PluginPackages` service owns a process-scoped Profile resolution generation anchored to the current installation. Built-in Loader imports resolve from that installation first; a third-party root is eligible only when it is actually installed in the selected Profile. Third-party packages retain their own private dependencies, with missing shared dependencies resolved through the installation. Historical shared `profiles/node_modules` projections and Desktop module-fallback stubs do not establish package ownership. Host preparation and Client module discovery no longer create or repair shared dependency links. This prevents development or version changes from silently replacing the built-in runtime through those historical projections; it does not make an incompatible third-party plugin compatible.
 
 Before profile preparation and Cordis boot, a packaged macOS or Linux launch runs the configured account shell in interactive login mode and recovers its exported `PATH`. This repairs the minimal `PATH` commonly supplied by Finder, LaunchServices, and other graphical launchers. It also fills only missing locale, toolchain, package-manager, and virtual-environment exports from a fixed allowlist; `PATH` alone always uses the shell value. Recovery supports absolute `zsh`, `bash`, and `fish` paths. Bash follows its standard login behavior, so `.bashrc` contributes only when a login profile sources it. Windows and unpackaged or development launches skip recovery. An unavailable or unsupported shell, timeout, capture failure, or missing `PATH` silently retains the inherited process environment.
 
@@ -61,8 +61,9 @@ On macOS the native window uses a transparent hidden-inset title bar, positioned
 This package is managed by the Yarn workspace at the repository root. The sibling `deepseek-harness/` checkout remains an independent upstream pnpm project and is not part of the Yarn workspace. Install and verify DSH Desktop from the repository root:
 
 ```sh
-yarn install
-yarn check
+corepack yarn check:runtime-boundary
+corepack yarn install --immutable
+corepack yarn check
 ```
 
 The check verifies that every required first-party peer in the production graph is declared by the desktop deploy root. Headless Loader smokes activate the launcher-owned desktop row and a profile-local third-party row, then boot the published Web profile and inspect its loopback root and client manifest. Unit and type tests cover both profile compositions, restart fencing, client environment validation, desktop layout state, and platform-native window options.
@@ -70,10 +71,10 @@ The check verifies that every required first-party peer in the production graph 
 Start the desktop application explicitly when a graphical session is available:
 
 ```sh
-yarn dev
+corepack yarn dev
 ```
 
-`dev` builds before launching. It does not require a separate manual build.
+`dev` builds before launching; `corepack yarn start` uses the existing build. Both audit the incoming Harness home read-only before any build or runtime import. They then establish disposable absolute `DSH_HOME`, `TEMP`, `TMP`, `TMPDIR`, Electron user-data, and working directories. State is removed after the application finally exits, including after managed restarts; do not use it for everyday sessions. Before editing code/dependencies or cleaning a tree, run `corepack yarn check:runtime-boundary` (with `--home <absolute-path>` for a custom home). If installed data references that tree, stop mutations affecting it and arrange authorized recovery. Tests and smokes use `scripts/run-isolated-check.mjs`; starting a probe from another working directory alone is not isolation.
 
 The headless-safe launcher surfaces can be exercised without importing or starting Electron:
 
@@ -155,7 +156,7 @@ Closing the window hides it while the Host Cordis tree continues running. The tr
 
 ## Packaging
 
-`yarn package:dir` creates an unpacked directory for the current host platform. The packaged-runtime gate rejects an application archive that omits the desktop update and terminal modules, the DSH CLI bootstrap, the bundled pnpm entry, or the physical deployment package. Electron Builder emits the root manifest, desktop runtime, and complete dependency tree under `app.asar.unpacked`; both Host profile boot and the CLI bootstrap use this physical tree so DSH profile-fallback symlinks never target a virtual ASAR directory. `build/app-icon.png` remains the unmodified iOS Default source and the Windows/Linux application icon. The build runs `scripts/generate-mac-app-icon.mjs` to center that artwork at 824 by 824 pixels on a transparent 1024 by 1024 canvas; macOS packaging and the live Dock both use the generated `build/app-icon-mac.png`. `build/tray-icon.svg` is the brand-blue tray source: the build derives a macOS template image that the system colors automatically and fixed brand-blue Windows and Linux tray images.
+`yarn package:dir` creates an unpacked directory for the current host platform. The packaged-runtime gate rejects an application archive that omits the desktop update and terminal modules, the DSH CLI bootstrap, the bundled pnpm entry, or the physical deployment package. The package keeps its complete runtime family within the installation. Electron Builder places JavaScript dependencies in ASAR and unpacks launcher files, pnpm, native binaries, and other resources required by the reviewed physical-runtime policy. Host and Client resolution use that installation without creating shared Profile projections; CLI subprocesses use the appropriate archived or physical entry. `build/app-icon.png` remains the unmodified iOS Default source and the Windows/Linux application icon. The build runs `scripts/generate-mac-app-icon.mjs` to center that artwork at 824 by 824 pixels on a transparent 1024 by 1024 canvas; macOS packaging and the live Dock both use the generated `build/app-icon-mac.png`. `build/tray-icon.svg` is the brand-blue tray source: the build derives a macOS template image that the system colors automatically and fixed brand-blue Windows and Linux tray images.
 
 ### WSL Linux headless checks
 
@@ -184,7 +185,7 @@ corepack.cmd yarn dist:win
 
 Python and Visual Studio C++ Build Tools are not required. The Windows command uses `node-pty`'s bundled x64 Node-API binaries instead of asking Electron Builder to rebuild them from source, and the packaged-runtime gate rejects an installer staging tree that omits those binaries.
 
-`dist:win` refuses non-Windows and non-x64 hosts, runs a Windows-safe gate containing the build, all TypeScript compiler faces, packaging and native-shell focused tests, and the runtime-closure verifier, then builds an assisted NSIS installer and verifies both generated PE files. The full cross-platform suite remains CI-owned because some POSIX execution tests are not Windows programs. The installer allows a per-user or elevated all-users installation, permits changing the installation directory, creates Start Menu and desktop shortcuts, and preserves DSH user data when the application is uninstalled. Version `2.0.1` is written to `dsh-plugin-desktop\dist\DSH-Desktop-2.0.1-x64-Setup.exe`; the unpacked application remains at `dsh-plugin-desktop\dist\win-unpacked\DSH Desktop.exe` for smoke testing.
+`dist:win` refuses non-Windows and non-x64 hosts, runs a Windows-safe gate containing the build, all TypeScript compiler faces, packaging and native-shell focused tests, and the runtime-closure verifier, then builds an assisted NSIS installer and verifies both generated PE files. The full cross-platform suite remains CI-owned because some POSIX execution tests are not Windows programs. The installer allows a per-user or elevated all-users installation, permits changing the installation directory, creates Start Menu and desktop shortcuts, and preserves DSH user data when the application is uninstalled. Version `2.2.9` is written to `dsh-plugin-desktop\dist\DSH-Desktop-2.2.9-x64-Setup.exe`; the unpacked application remains at `dsh-plugin-desktop\dist\win-unpacked\DSH Desktop.exe` for smoke testing.
 
 This local command deliberately strips Windows certificate variables and sets `signExecutable=false`. Its output is installable for testing but has no Authenticode publisher, so Windows can display an Unknown publisher or SmartScreen warning. A signed Windows release, certificate verification, installer upgrade/uninstall testing, and native UI/sandbox smoke remain separate release gates.
 
@@ -196,7 +197,7 @@ Use `yarn dist:win-portable` on a native Windows x64 machine to create an unsign
 corepack.cmd yarn dist:win-portable
 ```
 
-The output is `dsh-plugin-desktop\\dist\\DSH-Desktop-2.0.1-x64-Portable.zip`. Extract it to any writable directory and launch `DSH Desktop.exe` without an installer, administrator access, Start Menu registration, or uninstall step. The application still keeps its profiles, logs, and caches in the normal Windows user-data directory, so this is portable distribution rather than a self-contained data sandbox. Portable archives are not handed to the NSIS updater and must be replaced manually when a new version is released. Local builds are unsigned and may trigger an Unknown publisher or SmartScreen warning; signed portable artifacts remain a release gate.
+The output is `dsh-plugin-desktop\\dist\\DSH-Desktop-2.2.9-x64-Portable.zip`. Extract it to any writable directory and launch `DSH Desktop.exe` without an installer, administrator access, Start Menu registration, or uninstall step. The application still keeps its profiles, logs, and caches in the normal Windows user-data directory, so this is portable distribution rather than a self-contained data sandbox. Portable archives are not handed to the NSIS updater and must be replaced manually when a new version is released. Local builds are unsigned and may trigger an Unknown publisher or SmartScreen warning; signed portable artifacts remain a release gate.
 
 ### macOS DMG smoke
 
@@ -216,5 +217,5 @@ The everyday desktop supplies the same product, version, appearance and capabili
 - `dshmarket@1.2.3` remains an optional user-installed third-party package, not a bundled marketplace. Preinstallation is deferred until an audited release consumes the optional Desktop services while preserving ordinary DSH fallback and includes the complete license notice required for redistribution.
 - The update handoff validates the download container, not publisher identity. macOS still requires the user to replace the application from the opened DMG; Windows runs the downloaded NSIS installer but the local `dist:win` artifact is unsigned. Signed artifacts, Authenticode/publisher verification, SmartScreen reputation, and native upgrade testing remain release gates.
 - The shared carrier is loopback HTTP and WebSocket, not Electron IPC. Replacing it requires transport extension points in upstream DSH and is outside this standalone package.
-- This experimental integration pins the published DSH `0.1.6-alpha.2` family, its corresponding official `deepseek-harness/` source, and Better Sidebar `0.19.1`. Product builds resolve published package interfaces rather than linking the source checkout. See the synchronization ledger for validation status; this does not announce a public release.
+- DSH Desktop 2.2.9 pins the published DSH `0.1.6-alpha.2` family, its corresponding official `deepseek-harness/` source, and Better Sidebar `0.19.1`. The Desktop release is stable; upstream Harness remains alpha. Product builds resolve published package interfaces rather than linking the source checkout. See the [release notes](../docs/releases/v2.2.9.md) for upgrade and platform boundaries.
 - `package:dir` is an unpacked smoke artifact. `dist:win` adds an unsigned NSIS test installer but does not establish Authenticode identity or SmartScreen reputation. Installation and upgrade behavior, native notifications and terminals, the Windows ACL sandbox, and native-material appearance remain target-platform verification boundaries.
