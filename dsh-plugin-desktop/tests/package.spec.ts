@@ -284,7 +284,7 @@ describe('published package surface', () => {
     const exitCoordinator = main.indexOf('createDesktopExitCoordinator(')
     const ready = main.indexOf('await app.whenReady()')
     const markClean = main.indexOf('desktopRun?.markClean()')
-    const nativeExit = main.indexOf('app.exit(code)')
+    const nativeExit = main.indexOf('app.exit(', exitCoordinator)
 
     expect(startCrashReporter).toBeGreaterThanOrEqual(0)
     expect(beginRun).toBeGreaterThan(startCrashReporter)

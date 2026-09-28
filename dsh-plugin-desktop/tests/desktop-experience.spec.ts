@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { desktopRelaunchArguments, resolveDesktopPresentation } from '../src/desktop-experience.ts'
+import { desktopRelaunchArguments, isolatedDevelopmentRelaunchExitCode, resolveDesktopPresentation } from '../src/desktop-experience.ts'
 
 describe('complete desktop capabilities with independent window style', () => {
   it.each([
@@ -30,4 +30,10 @@ describe('complete desktop capabilities with independent window style', () => {
     expect(() => resolveDesktopPresentation({ windowStyle: 'advanced' })).toThrow('windowStyle')
     expect(() => resolveDesktopPresentation({ mode: 'bad' })).toThrow('legacy mode')
   })
+})
+it('keeps installed relaunch independent from the isolated development supervisor', () => {
+  expect(isolatedDevelopmentRelaunchExitCode(true, '1', false)).toBeUndefined()
+  expect(isolatedDevelopmentRelaunchExitCode(false, undefined, false)).toBeUndefined()
+  expect(isolatedDevelopmentRelaunchExitCode(false, '1', false)).toBe(75)
+  expect(isolatedDevelopmentRelaunchExitCode(false, '1', true)).toBe(76)
 })

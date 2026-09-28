@@ -6,7 +6,7 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { boot } from '@deepseek-ai/dsh-app-boot'
+import { boot, createProfileResolutionGeneration, PluginPackages } from '@deepseek-ai/dsh-app-boot'
 import {
   createLaunchEnvironmentSnapshot,
   DSH_LAUNCH_ENVIRONMENT_KEY,
@@ -14,7 +14,7 @@ import {
 import { marketRoutes } from 'dsh-community-market'
 import { installDesktopPnpmRuntime } from '../lib/desktop-runtime-environment.js'
 import { installProfilePackageResolver } from '../lib/module-resolution.js'
-import { prepareDesktopProfile } from '../lib/profile.js'
+import { prepareDesktopProfile, desktopInstallAnchor } from '../lib/profile.js'
 
 const BIN_NAME = 'dsh-plugin-desktop-loader-smoke'
 const THIRD_PARTY_NAME = 'dsh-desktop-loader-smoke-plugin'
@@ -127,6 +127,11 @@ try {
       { id: 'third-party-smoke', name: THIRD_PARTY_NAME },
     ] }],
     async (host) => {
+      await host.plugin(PluginPackages, {
+        generation: await createProfileResolutionGeneration({
+          installAnchor: desktopInstallAnchor(), home, profile: prepared.profile,
+        }),
+      })
       await host.plugin(SystemPrompt)
       // Packaged Electron does not expose Node's internal ESM loader.
       host.loader.internal = undefined

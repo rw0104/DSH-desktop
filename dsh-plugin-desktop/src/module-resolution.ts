@@ -1,7 +1,8 @@
 /** Profile-relative package resolution for Electron's restricted Node runtime. */
 
 import { createRequire, isBuiltin, registerHooks } from 'node:module'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { localProfilePackageManifest } from './profile-package-ownership.ts'
 
 const LOADER_ENTRY_URL = import.meta.resolve('@deepseek-ai/cordis-plugin-loader')
 const DESKTOP_ENTRY_URL = new URL('../lib/index.js', import.meta.url).href
@@ -25,6 +26,7 @@ export function installProfilePackageResolver(
   const profileDirectoryUrl = new URL('.', profileBaseUrl).href
   const installationRequire = createRequire(installationBaseUrl)
   const profileRequire = createRequire(profileBaseUrl)
+  const ownsLocalPackage = (specifier: string): boolean => localProfilePackageManifest(fileURLToPath(profileDirectoryUrl), specifier) !== undefined
   const hooks = registerHooks({
     resolve(specifier, context, nextResolve) {
       const fromLoader = context.parentURL === LOADER_ENTRY_URL
@@ -49,6 +51,7 @@ export function installProfilePackageResolver(
             filename = installationRequire.resolve(specifier)
           } catch (cause) {
             if (!isMissingModule(cause)) throw cause
+            if (!ownsLocalPackage(specifier)) throw cause
             filename = profileRequire.resolve(specifier)
           }
           return { shortCircuit: true, url: pathToFileURL(filename).href }
@@ -57,6 +60,7 @@ export function installProfilePackageResolver(
           return nextResolve(specifier, { ...context, parentURL: installationBaseUrl })
         } catch (cause) {
           if (!isMissingModule(cause)) throw cause
+          if (!ownsLocalPackage(specifier)) throw cause
           return nextResolve(specifier, { ...context, parentURL: profileBaseUrl })
         }
       }

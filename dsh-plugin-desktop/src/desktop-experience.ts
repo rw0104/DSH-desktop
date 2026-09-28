@@ -43,3 +43,10 @@ export function desktopRelaunchArguments(argv: readonly string[], diagnostic: bo
   const args = argv.filter(value => value !== UPSTREAM_DIAGNOSTIC_ARGUMENT)
   return diagnostic ? [...args, UPSTREAM_DIAGNOSTIC_ARGUMENT] : args
 }
+
+/** Let the isolated development supervisor retain ownership across restarts. */
+export function isolatedDevelopmentRelaunchExitCode(
+  isPackaged: boolean, marker: string | undefined, diagnostic: boolean,
+): 75 | 76 | undefined {
+  return !isPackaged && marker === '1' ? diagnostic ? 76 : 75 : undefined
+}

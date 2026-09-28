@@ -9,6 +9,10 @@ const hooks = vi.hoisted(() => ({
   deregister: vi.fn(),
 }))
 
+vi.mock('../src/profile-package-ownership.ts', () => ({
+  localProfilePackageManifest: (_profile: string, name: string) => name === 'profile-only' ? 'profile-only/package.json' : undefined,
+}))
+
 vi.mock('node:module', async (importOriginal) => ({
   ...await importOriginal<typeof import('node:module')>(),
   registerHooks: vi.fn((definition: { resolve: typeof hooks.resolve }) => {
@@ -105,6 +109,16 @@ describe('installProfilePackageResolver', () => {
     })
     expect(() => hooks.resolve?.('broken', { parentURL: loaderEntryUrl }, nextResolve))
       .toThrow('invalid package exports')
+  })
+
+  it('does not search the legacy shared tree for an absent Loader package', () => {
+    installProfilePackageResolver('file:///C:/Users/test/profiles/desktop/package.json')
+    const missing = Object.assign(new Error('installation has no package'), { code: 'ERR_MODULE_NOT_FOUND' })
+    const nextResolve = vi.fn(() => { throw missing })
+    expect(() => hooks.resolve?.('shared-only', {
+      parentURL: import.meta.resolve('@deepseek-ai/cordis-plugin-loader'),
+    }, nextResolve)).toThrow(missing)
+    expect(nextResolve).toHaveBeenCalledTimes(1)
   })
 
   it('deregisters hooks only once even if the disposer is reused', () => {

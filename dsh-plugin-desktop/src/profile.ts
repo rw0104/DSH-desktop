@@ -8,7 +8,6 @@ import { evaluate, isJsExpr, type EntryOptions } from '@deepseek-ai/cordis-plugi
 import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 import {
   composeEntries,
-  healProfilesModuleFallback,
   initProfile,
   loadOptionalPatches,
   loadOverlayPatches,
@@ -29,7 +28,7 @@ import FileSettingsProvider, {
 } from '@deepseek-ai/dsh-settings-file'
 import { parseDocument } from 'yaml'
 import { unpackedAsarPath } from './packaged-runtime-path.ts'
-import { ensurePackagedClientModuleFallback } from './client-module-fallback.ts'
+import { localProfilePackageManifest } from './profile-package-ownership.ts'
 import type { DesktopShellMode } from './runtime.ts'
 import { desktopWindowStyle, resolveDesktopPresentation, type DesktopWindowStyle, type DesktopExperience } from './desktop-experience.ts'
 import {
@@ -392,8 +391,12 @@ function assertUniqueEntryIds(rows: readonly EntryOptions[]): void {
 
 /** Find one package manifest using the selected profile's dependency graph. */
 function packageManifestFromProfile(name: string, profilePackageUrl: string): string | undefined {
+  // Query only the selected Profile's own package roots. Node's normal parent
+  // walk can otherwise mistake a stale shared fallback for an installed plugin.
+  const localManifest = localProfilePackageManifest(fileURLToPath(new URL('.', profilePackageUrl)), name)
+  if (localManifest !== undefined) return localManifest
   try {
-    return findPackageJSON(name, profilePackageUrl)
+    return findPackageJSON(name, pathToFileURL(INSTALL_ANCHOR).href)
   } catch (cause) {
     if ((cause as NodeJS.ErrnoException).code === 'ERR_MODULE_NOT_FOUND') return undefined
     throw cause
@@ -470,14 +473,9 @@ export function prepareDesktopProfile(
   const profileDir = profileName === DESKTOP_PROFILE_NAME
     ? ensureDesktopProfile(home)
     : resolveProfileDir(profileName, home)
-  // Electron's patched filesystem can resolve installation bundles directly
-  // from app.asar. The packaged resolver hook supplies their peers to
-  // profile-local plugins without recreating the full dependency tree.
-  if (/[\\/]app\.asar[\\/]/u.test(INSTALL_ANCHOR)) {
-    ensurePackagedClientModuleFallback(INSTALL_ANCHOR, home)
-  } else {
-    void healProfilesModuleFallback({ installAnchor: INSTALL_ANCHOR, home }).catch(() => {})
-  }
+  // PluginPackages installs the official in-memory generation before Loader boot.
+  // Never materialize installation/development dependencies in the shared home:
+  // those links survive version switches and can change another app's runtime.
   const disabledBundles = pluginStatePath === undefined
     ? new Set<string>()
     : readDesktopDisabledBundles(pluginStatePath, profileName)

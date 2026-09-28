@@ -5,6 +5,7 @@ import { removeIsolatedTree } from '../../scripts/remove-isolated-tree.mjs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { boot } from '@deepseek-ai/dsh-app-boot'
 import { assembleContextFor } from '@deepseek-ai/dsh-agent'
@@ -20,6 +21,7 @@ import { prepareDesktopProfile } from '../lib/profile.js'
 import { installDesktopProfileLive } from '../lib/profile-live.js'
 import { DesktopProfileService } from '../lib/profile-service.js'
 import { verifyClientRegistrations } from './verify-client-bundles.ts'
+import { seedPollutedSharedProfile, seedPrivateHostDependency } from '../tests/fixtures/polluted-profile.ts'
 
 const BIN_NAME = 'dsh-plugin-desktop-profile-smoke'
 const HOST_SERVICE_PLUGIN_NAME = 'dsh-desktop-host-services-smoke-plugin'
@@ -30,6 +32,7 @@ const expectedMode = diagnostic ? 'compatibility' : requestedMode
 const uiStatePath = process.env.DSH_UI_STATE_FILE
 const rendererReports = []
 const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-profile-'))
+const contamination = seedPollutedSharedProfile(home)
 let ctx
 let profileLive
 let releasePackageResolver
@@ -63,6 +66,7 @@ try {
     process.env.DEEPSEEK_API_KEY = 'isolated-surface-fixture'
   }
   const prepared = prepareDesktopProfile('1', home, 'win32', 'desktop', undefined, { experience: diagnostic ? 'upstream-diagnostic' : 'desktop' })
+  contamination.assertUnchanged()
   const hostServicePluginDir = join(
     prepared.profile.dir,
     'node_modules',
@@ -75,6 +79,7 @@ try {
       hostServicePluginDir,
       { recursive: true, force: false, errorOnExist: true },
     )
+    seedPrivateHostDependency(hostServicePluginDir)
   }
   const patches = [
     // Deliberately compose the consumer before the desktop-pnpm provider row.
@@ -200,9 +205,31 @@ try {
     prepared.bareModuleBaseUrl,
   )
   profileLive.commitReady()
+  function assertRuntimeBoundary(stage) {
+    contamination.assertUnchanged()
+    const official = new Set([...ctx.loader.entries()].map(entry => entry.options.name)
+      .filter(name => typeof name === 'string' && name.startsWith('@deepseek-ai/dsh-')))
+    assert.ok(official.size > 40, 'The boundary check must cover the assembled official Host/Client family')
+    for (const name of official) {
+      const actual = ctx.pluginPackages.packageOf(name, prepared.bareModuleBaseUrl)
+      assert.ok(actual, `Official package metadata missing: ${name}`)
+      assert.equal(actual.manifest.version, '0.1.6-alpha.2', `${stage}: mixed official version for ${name}`)
+      assert.ok(!actual.dir.startsWith(home), `${stage}: official package escaped into Profile storage: ${name}`)
+    }
+    if (!diagnostic) {
+      const probe = ctx.get(HOST_SERVICE_PROBE_KEY)
+      assert.equal(probe?.privateEsm, 'profile-private-esm', `${stage}: Profile private ESM dependency was lost`)
+      assert.equal(probe?.privateCjs, 'profile-private-cjs', `${stage}: Profile private CJS dependency was lost`)
+      for (const [name, url] of Object.entries(probe.runtimeUrls)) {
+        assert.equal(url, import.meta.resolve(name), `${stage}: Profile plugin imported another runtime's ${name}`)
+      }
+    }
+    console.log(`verify-profile-boundary: ${stage}, ${official.size} official packages use the installation; shared bytes/links/metadata unchanged.`)
+  }
   if (ctx.get('pluginManager') === undefined || ctx.get('pluginPackages') === undefined || ctx.get('hmr') === undefined) {
     throw new Error('assembled Profile is missing official live plugin-management services')
   }
+  assertRuntimeBoundary('boot')
   if (!diagnostic) {
     const entry = (await ctx.pluginManager.listPlugins()).find(value => value.moduleName === HOST_SERVICE_PLUGIN_NAME)
     if (!entry || entry.readOnlyReason !== undefined) throw new Error('Live Profile fixture is not manageable')
@@ -215,6 +242,7 @@ try {
       throw new Error(`Official live enable failed: ${JSON.stringify(enabled)}`)
     }
     console.log('verify-profile-live: official plugin manager disabled and re-enabled a real Host plugin.')
+    assertRuntimeBoundary('live toggle')
     if (process.argv.includes('--plugin-install')) {
       // An actual local pnpm add, with no registry dependency and no user Profile.
       const packageDir = join(home, 'install-fixture')
@@ -236,6 +264,7 @@ try {
       const refused = await ctx.pluginManager.setPluginEnabled(entry.entryId, false)
       if (refused.application !== 'failed' || ctx.get(HOST_SERVICE_PROBE_KEY) === undefined) throw new Error('A pending install allowed another profile mutation')
       console.log('verify-profile-install: real offline pnpm add, live activation, four-file WAL and restart gate passed.')
+      assertRuntimeBoundary('live installation')
     }
   }
   if (uiStatePath) {
@@ -384,6 +413,7 @@ try {
     verifyClientRegistrations(await bundle.text(), batch.entries, batch.url)
   }
   console.log(`verify-profile-client-batches: ${graph.batches.length} HTTP batches parsed and registered.`)
+  assertRuntimeBoundary('Client manifest and batches')
   const ids = new Set(graph.entries.map(entry => entry.id))
   if (!diagnostic && !ids.has(HOST_SERVICE_PLUGIN_NAME)) {
     throw new Error('Profile-local client plugin disappeared after live disable/re-enable')

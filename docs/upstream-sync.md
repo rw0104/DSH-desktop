@@ -1,5 +1,43 @@
 # Upstream synchronization ledger
 
+## 2026-09-27 2.2.9 Profile 依赖隔离修复前审计
+
+本修复以用户已确认的 Harness `0.1.6-alpha.2` 接入分支为基础，产品版本升至 `2.2.9`。
+用户明确要求通过完整验收后正式发布；不合并主分支，发行 tag 指向独立修复分支。
+
+| 权威来源 | Git HEAD | npm 当前版本/标签 | 本次采用 |
+| --- | --- | --- | --- |
+| deepseek-ai/deepseek-harness | `21638c56315ae6a2b552d6091945d3144c9af32e` | latest/next `0.1.7-rc.2`，alpha `0.1.7-alpha.2` | 保持 `ddefc45fbc7f8e46dd73185e68295696d1297887` / `0.1.6-alpha.2` |
+| omdsh-dev/DSH-better-sidebar | `9b5834f74ad197534c821c35b8357edac1ad3919` | latest `0.22.1`，alpha `0.21.0-rc.1` | 保持已审查 `0.19.1` 和版本化patch |
+| anywhere-labs/deepseek-harness-desktop | `f9ff3dc31d0b1c7726530894ea8d68cc5e17d557` | `dsh-plugin-desktop` latest `2.0.0` | 只读参考，不作为运行时依赖 |
+
+三个 `git -c http.proxy=http://127.0.0.1:10808 ls-remote --symref <repository> HEAD <heads/tags>`
+与官方registry `npm view <package> dist-tags version --json` 均成功。远程产品最新正式版是
+`v2.2.7`，内置 `0.1.2-rc.1`。更高上游的Session、plugin resolver和Sidebar桥接尚未完成
+本产品兼容验收；下一迁移步骤是独立重放补丁、确认完整包族并跑升级/回退矩阵，不能用
+其移动HEAD替换本次确认的修复基线。
+
+本次故障证据是共享Profile中遗留的工作区依赖链接；安装包文件匹配自身清单也不能证明
+运行时来自自身版本。修复将去除Desktop的共享依赖投影写入，由官方进程内generation
+处理Host/Worker和客户端元数据，保留真正Profile局部插件及其私有依赖。发布验收必须
+包含受污染的共享目录及其测试前后完整性，不仅测试全新空Profile。
+
+### 2.2.9 发布前内置市场来源回放
+
+使用生产restricted HTTP client和每个内置来源的精确表示。两个来源均返回HTTP 200、
+application/json及gzip；User-Agent=dsh-community-market/0.1、Accept-Encoding=gzip, identity。
+未放宽网络、大小、条目或分页边界；每个adapter都消费与下面计数/哈希相同的单次完整响应。
+
+| Endpoint | provider→normalized | 压缩/解码 bytes | 耗时ms | body限制；解码余量 | item限制；normalized余量 | 页数 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `https://deepseek1024.com/api/v1/plugins` | 500→500 | 384,494/2,466,929 | 2365.04 | 16,777,216；14,310,287 | 10000/25000；24500 | 5 |
+| `https://api.dshfind.com/v1/catalog` | 16141→16140 | 2,379,838/16,290,046 | 5846.13 | 33,554,432；17,264,386 | 25000/25000；8860 | 162 |
+
+- dsh-1024store：采样 `2026-09-28T05:24:43.275Z`，解码表示 SHA-256 `fee8b7fb424b5714c8807d495e0a14b3d789e7bd091f9e9cc153cafc8798117f`。
+- dshfind：采样 `2026-09-28T05:24:49.360Z`，解码表示 SHA-256 `4fcb87c45202ef62733bdc7034a341c9ef4e27cfe17aa1add8061b5756bdb8b3`。
+
+单页上限100、最多10,001页；dshfind在同一表示中规范化过滤1条。限额及gzip/代理例外仍仅适用于精确已审查的内置来源。
+
 ## 2026-09-22 alpha.2 最终本地交付验收
 
 源码提交 `20135e0dc5c7e9f45f1ccc3f3d53f62e5d8caf3a` 已完成 Windows x64 实验候选。

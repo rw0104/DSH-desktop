@@ -6,8 +6,9 @@ import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Worker, getEnvironmentData } from 'node:worker_threads'
 import { Context } from '@deepseek-ai/cordis'
-import { PluginPackages } from '@deepseek-ai/dsh-app-boot'
+import { boot, PluginPackages } from '@deepseek-ai/dsh-app-boot'
 import { ClientModuleRegistry } from '@deepseek-ai/dsh-client-modules'
+import { installProfilePackageResolver } from '../../lib/module-resolution.js'
 
 const root = mkdtempSync(join(tmpdir(), 'profile-resolution-runtime-'))
 const profilesDir = join(root, 'profiles')
@@ -120,4 +121,71 @@ try {
   sentinel.deregister()
 }
 assert.ok(hookCalls > 0)
+
+// Exercise the actual no-internals Loader path used by packaged Electron. A
+// locally installed package with the same name must not split a mounted Host
+// from the client package whose manifest the registry subsequently discovers.
+const collisionName = 'fixture-desktop-client-collision'
+// Node caches package scopes. This installation must have its final self-export
+// manifest before any resolution, independently from the earlier resolver cases.
+const collisionAnchor = join(root, 'collision-installation/package.json')
+const collisionEntry = name => ({
+  name, scope: 'installation', version: '1.0.0', declarer: collisionAnchor,
+  packageDir: join(dirname(collisionAnchor), 'node_modules', name),
+})
+json(collisionAnchor, { name: 'installation', private: true, type: 'module', exports: {
+  '.': './index.js', './client': './client.js',
+}, dsh: { client: { platform: 'web' } } })
+for (const [dir, marker] of [
+  [collisionEntry(collisionName).packageDir, 'installation'],
+  [join(profileDir, 'node_modules', collisionName), 'profile-local'],
+]) {
+  pkg(dir, collisionName, marker, { dsh: { client: { platform: 'web' } }, exports: {
+    '.': './index.js', './client': './client.js',
+  } })
+  file(join(dir, 'index.js'), `export const marker = ${JSON.stringify(marker)}; export function apply(ctx) { ctx.provide('fixtureCollisionOwner', marker) }`)
+  file(join(dir, 'client.js'), `export const marker = ${JSON.stringify(marker)}`)
+}
+const localClientName = 'fixture-desktop-local-client'
+const localClientDir = join(profileDir, 'node_modules', localClientName)
+pkg(localClientDir, localClientName, 'profile-only', { dsh: { client: { platform: 'web' } }, exports: {
+  '.': './index.js', './client': './client.js',
+} })
+file(join(localClientDir, 'index.js'), `import { marker } from '${collisionName}'; export function apply(ctx) { ctx.provide('fixturePrivateOwner', marker) }`)
+file(join(localClientDir, 'client.js'), 'export const marker = "profile-only"')
+pkg(join(localClientDir, 'node_modules', collisionName), collisionName, 'private')
+file(join(dirname(collisionAnchor), 'index.js'), 'export function apply(ctx) { ctx.provide("fixtureApplicationOwner", "installation-root") }')
+file(join(dirname(collisionAnchor), 'client.js'), 'export const marker = "installation-root"')
+pkg(join(profileDir, 'node_modules/installation'), 'installation', 'profile-root-collision')
+const collisionGeneration = { profilesDir, profileDir, localPackageNames: [collisionName, localClientName, 'installation'],
+  entries: [collisionEntry(collisionName), { ...collisionEntry('installation'), packageDir: dirname(collisionAnchor) }] }
+const rootConfig = join(profileDir, 'cordis.yml')
+file(rootConfig, '[]\n')
+const releaseDesktopResolver = installProfilePackageResolver(url(profileAnchor), url(collisionAnchor))
+let collisionContext
+try {
+  collisionContext = await boot('desktop-client-collision', rootConfig, [{ insert: [
+    { id: 'collision', name: collisionName }, { id: 'profile-only', name: localClientName }, { id: 'app-root', name: 'installation' },
+  ] }], async host => {
+    host.loader.internal = undefined
+    host.provide('profileContext', { installAnchor: collisionAnchor, dir: profileDir })
+    await host.plugin(PluginPackages, { generation: collisionGeneration })
+  }, url(profileAnchor))
+  assert.equal(collisionContext.get('fixtureCollisionOwner'), 'installation', 'The real Desktop Loader must select the shipped Host')
+  assert.equal(collisionContext.get('fixturePrivateOwner'), 'private-esm', 'Profile plugins retain their private dependency versions')
+  assert.equal(collisionContext.get('fixtureApplicationOwner'), 'installation-root', 'The application self-export remains installation-owned')
+  const registry = { ctx: collisionContext }
+  assert.deepEqual(ClientModuleRegistry.prototype.locatePkgJson.call(registry, collisionName, url(profileAnchor)), {
+    path: join(collisionEntry(collisionName).packageDir, 'package.json'), packageName: collisionName,
+  }, 'Client metadata must belong to the same package as the Host actually loaded')
+  assert.deepEqual(ClientModuleRegistry.prototype.locatePkgJson.call(registry, localClientName, url(profileAnchor)), {
+    path: join(localClientDir, 'package.json'), packageName: localClientName,
+  }, 'A Profile-only Host retains its own client manifest')
+  assert.deepEqual(ClientModuleRegistry.prototype.locatePkgJson.call(registry, 'installation', url(profileAnchor)), {
+    path: collisionAnchor, packageName: 'installation',
+  }, 'Application self-export metadata cannot be replaced by a Profile package of the same name')
+} finally {
+  await collisionContext?.fiber.dispose()
+  releaseDesktopResolver()
+}
 console.log(JSON.stringify({ runtime: process.versions.electron ? `Electron ${process.versions.electron}` : `Node ${process.versions.node}`, status: 'passed' }))

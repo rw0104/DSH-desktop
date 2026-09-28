@@ -3,7 +3,7 @@
 import { app, crashReporter, dialog } from 'electron'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { desktopRelaunchArguments, UPSTREAM_DIAGNOSTIC_ARGUMENT } from './desktop-experience.ts'
+import { desktopRelaunchArguments, isolatedDevelopmentRelaunchExitCode, UPSTREAM_DIAGNOSTIC_ARGUMENT } from './desktop-experience.ts'
 import { inspectDesktopProfileStartup } from './profile-manager.ts'
 import {
   boot,
@@ -297,11 +297,15 @@ async function start(): Promise<void> {
     electronLogger.error(`${BIN_NAME}: active run tracking unavailable: ${cause instanceof Error ? cause.message : String(cause)}`)
   }
   removeChildProcessLogging = installDesktopChildProcessLogging(app, electronLogger)
+  let supervisedRelaunchExitCode: 75 | 76 | undefined
   const nativeExit = createDesktopExitCoordinator(
     {
       prepareToQuit: () => { runtime.prepareToQuit() },
-      relaunch: () => { app.relaunch({ args: desktopRelaunchArguments(process.argv.slice(1), nextDiagnostic) }) },
-      exit: code => { app.exit(code) },
+      relaunch: () => {
+        supervisedRelaunchExitCode = isolatedDevelopmentRelaunchExitCode(app.isPackaged, process.env.DSH_DESKTOP_ISOLATED_DEV, nextDiagnostic)
+        if (supervisedRelaunchExitCode === undefined) app.relaunch({ args: desktopRelaunchArguments(process.argv.slice(1), nextDiagnostic) })
+      },
+      exit: code => { app.exit(code === 0 ? supervisedRelaunchExitCode ?? code : code) },
     },
     () => {
       removeShutdownRequests?.()
@@ -823,8 +827,11 @@ async function handleFatalLauncherFailure(cause: unknown): Promise<void> {
     })
     const result = await recoveryWindow.run()
     if (result === 'restart') {
-      app.relaunch()
-      app.exit(0)
+      const supervisedCode = isolatedDevelopmentRelaunchExitCode(
+        app.isPackaged, process.env.DSH_DESKTOP_ISOLATED_DEV, process.argv.includes(UPSTREAM_DIAGNOSTIC_ARGUMENT),
+      )
+      if (supervisedCode === undefined) app.relaunch()
+      app.exit(supervisedCode ?? 0)
     } else {
       app.exit(1)
     }

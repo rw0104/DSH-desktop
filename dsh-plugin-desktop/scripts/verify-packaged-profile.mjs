@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { extractFile } from '@electron/asar'
+import { seedPollutedSharedProfile } from '../tests/fixtures/polluted-profile.ts'
 
 /** The sealed package must carry the same reviewed, current-platform license record. */
 export function assertPackagedNotices(actual, expected) {
@@ -54,6 +55,7 @@ export function verifyPackagedProfile(appOutDir, environment = process.env) {
     'package.json',
   ), 'utf8'))
   const probeRoot = mkdtempSync(join(tmpdir(), 'dsh-packaged-profile-probe-'))
+  const contamination = seedPollutedSharedProfile(probeRoot)
   try {
     writeFileSync(join(probeRoot, 'package.json'), '{"private":true}\n')
     const cliEntry = join(resources, 'app.asar', 'lib', 'desktop-cli.js')
@@ -113,6 +115,7 @@ export function verifyPackagedProfile(appOutDir, environment = process.env) {
     }
     if (profile.standardPreset !== 'standard') throw new Error('packaged Standard preset was not verified')
     if (profile.profileResolution !== 'active') throw new Error('packaged official Profile resolver was not verified')
+    contamination.assertUnchanged()
     return { cliVersion, pnpmVersion, profile }
   } finally {
     rmSync(probeRoot, { recursive: true, force: true })
