@@ -2,20 +2,20 @@
 
 <p align="center"><strong>Chat, voice, images, and your code workspace in one desktop app.</strong><br>An open-source workbench built on DeepSeek Harness. The desktop itself is a plugin.</p>
 
-<p align="center"><a href="https://github.com/rw0104/DSH-desktop/releases/download/v2.2.9/DSH-Desktop-2.2.9-x64-Setup.exe">Download Windows v2.2.9</a> · <a href="#features">Features</a> · <a href="#getting-started">Get started</a> · <a href="README.md">中文</a></p>
+<p align="center"><a href="https://github.com/rw0104/DSH-desktop/releases/download/v2.2.10/DSH-Desktop-2.2.10-x64-Setup.exe">Download Windows v2.2.10</a> · <a href="#features">Features</a> · <a href="#getting-started">Get started</a> · <a href="README.md">中文</a></p>
 
 <p align="center"><img src="assets/desktop-hero-en.png" alt="DSH Desktop, an open-source desktop client built on DeepSeek Harness" width="100%"></p>
 
 DSH Desktop brings Agent sessions, models, terminals, Git, file editing, and optional plugins into a desktop app. Type a task, continue the discussion by voice, analyze or generate images with a capable model, and inspect the Agent's file changes and execution in the same workspace.
 
-**v2.2.9** fixes startup failures caused by Profile dependencies that point into development directories, and unifies everyday file, image, and voice capabilities. It includes Harness **0.1.6-alpha.2** and Better Sidebar **0.19.1**; a stable Desktop release does not change the upstream kernel’s alpha status. DSH Desktop is independently maintained by the community and is not affiliated with, authorized by, or endorsed by DeepSeek.
+**v2.2.10** fixes 2.2.9 on Windows, where `pwsh`, `glob`, and `grep` all failed; users on 2.2.9 must install 2.2.10 to restore these three subprocess tools. It continues to include Harness **0.1.6-alpha.2** and Better Sidebar **0.19.1**, with no upstream kernel upgrade and no submodule pin move; a stable Desktop release does not change the upstream kernel’s alpha status. DSH Desktop is independently maintained by the community and is not affiliated with, authorized by, or endorsed by DeepSeek.
 
 ## Download
 
 | Platform | Get it | Status |
 | --- | --- | --- |
-| Windows x64 | [Download 2.2.9 installer](https://github.com/rw0104/DSH-desktop/releases/download/v2.2.9/DSH-Desktop-2.2.9-x64-Setup.exe) · [Release notes](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.9) | Stable / Latest, unsigned |
-| macOS / Linux | [v2.2.9 source](https://github.com/rw0104/DSH-desktop/tree/v2.2.9) | No native packages published for this release; source build support is not native acceptance |
+| Windows x64 | [Download 2.2.10 installer](https://github.com/rw0104/DSH-desktop/releases/download/v2.2.10/DSH-Desktop-2.2.10-x64-Setup.exe) · [Release notes](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.10) | Stable / Latest, approximately 334 MB, unsigned |
+| macOS / Linux | [v2.2.10 source](https://github.com/rw0104/DSH-desktop/tree/v2.2.10) | No native packages published for this release; source build support is not native acceptance |
 
 The Windows installer includes its runtime, so Node.js is not required. It supports choosing an installation directory and creating Start menu and desktop shortcuts. The installer is currently unsigned; Windows may display SmartScreen or Unknown Publisher prompts.
 
@@ -48,7 +48,7 @@ Configure a provider and enable the entry in **Settings → Realtime voice**, th
 
 Captions scroll independently and pause automatic following while you read history. During a task, the voice window can collapse into a draggable compact bar with status, mute, end, and restore controls. Collapsing does not end the call or approve Agent operations automatically.
 
-[Configure Qwen / Doubao credentials (Chinese)](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/user-guide-realtime-voice-credentials.md)
+[Configure Qwen / Doubao credentials (Chinese)](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/user-guide-realtime-voice-credentials.md)
 
 ### From image input to generation and original-image saving
 
@@ -63,7 +63,7 @@ Image input and image output are separate capabilities:
 
 The original attachment rail, multi-image display, scrolling, and retry behavior remain available. Image generation uses reusable provider protocols, including the integrated Aliyun Qwen-Image path. Availability depends on the provider API, model, and account permissions. Adding a model name alone does not integrate a new image protocol.
 
-[Image protocol integration (Chinese)](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/plugin-image-protocols.md)
+[Image protocol integration (Chinese)](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/plugin-image-protocols.md)
 
 ### Bring documents into the workspace
 
@@ -90,18 +90,18 @@ Open **Plugin Market** in the left sidebar to discover and search, inspect detai
 
 The desktop shell itself runs as a DSH plugin. Models, tools, and interfaces compatible with the pinned Runtime can join through the composition mechanism; Desktop exposes profile, plugin-management, and native services. The community interoperability RFC is still evolving, and proposed contracts are not all implemented.
 
-[Plugin marketplace](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/dsh-community-market/README.md) · [Plugin development](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/plugin-development.en.md) · [Build the plugin ecosystem together](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/plugin-ecosystem.en.md)
+[Plugin marketplace](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/dsh-community-market/README.md) · [Plugin development](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/plugin-development.en.md) · [Build the plugin ecosystem together](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/plugin-ecosystem.en.md)
 
-## Recent improvements in 2.2.9
+## Recent improvements in 2.2.10
 
-- Built-in core packages and plugins resolve from the current installation, avoiding Zod/codec mismatches and startup failures caused by older, newer, or broken development links in shared Profile dependencies.
-- Startup no longer writes runtime projections into the shared Profile dependency directory. Third-party plugins actually installed in the selected Profile retain their private dependencies.
-- System and native window appearances provide the same file, image, voice, and workbench capabilities; session references, drafts, and tabs have improved isolation.
-- Development launches use disposable, separate data directories and check whether the real Profile references the current checkout before building or running.
+- Fixes 2.2.9 on Windows, where `pwsh` (including `echo hello`), `glob`, and `grep` all failed: under Electron the Job runner lacked `ELECTRON_RUN_AS_NODE`, so it started as a second desktop instance, exited, and returned no result.
+- Two minimal, auditable Yarn patches inject that variable at the runner launch point so the helper process runs in plain Node mode; the variable applies only to the helper process, leaving user commands and the Host process environment unchanged.
+- Users on 2.2.9 must install 2.2.10 to restore these three subprocess tools; tools that do not spawn a subprocess (read, write, edit, and so on) were unaffected.
+- This release keeps Harness `0.1.6-alpha.2` and Better Sidebar `0.19.1` pinned, with no upstream kernel upgrade and no submodule pin move; the installer is unsigned.
 
-**Before upgrading, fully quit the application and back up your Harness home, Electron user data, and workspaces.** Default locations are `%USERPROFILE%\.dsh` and `%APPDATA%\DSH Desktop`; include custom locations too. This fix does not delete old links, user plugins, or sessions, and does not perform automatic backup or rollback. Older executables do not inherit the fix. Roll back with a separate copy of the backup made before upgrading, rather than reusing the upgraded data directory. Third-party plugins incompatible with the new kernel still need their own updates.
+**Before upgrading, fully quit the application and back up your Harness home, Electron user data, and workspaces.** Default locations are `%USERPROFILE%\.dsh` and `%APPDATA%\DSH Desktop`; include custom locations too. This fix does not delete old links, user plugins, or sessions, and does not perform automatic backup or rollback. Older executables do not inherit the fix. Roll back with a separate copy of the backup made before upgrading, rather than reusing the upgraded data directory.
 
-[Full release notes and upgrade boundaries (Chinese)](docs/releases/v2.2.9.md) · [GitHub Release](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.9)
+[Full release notes and upgrade boundaries (Chinese)](docs/releases/v2.2.10.md) · [GitHub Release](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.10)
 
 ## Window appearance and platforms
 
@@ -119,7 +119,7 @@ Mobile remote control, Channels, and unreviewed upstream file operations and pre
 
 ## Get started
 
-1. [Download the Windows 2.2.9 installer](https://github.com/rw0104/DSH-desktop/releases/download/v2.2.9/DSH-Desktop-2.2.9-x64-Setup.exe), choose a directory, and install.
+1. [Download the Windows 2.2.10 installer](https://github.com/rw0104/DSH-desktop/releases/download/v2.2.10/DSH-Desktop-2.2.10-x64-Setup.exe), choose a directory, and install.
 2. Open **Settings → Models** to configure a provider, credentials, and available models.
 3. Select or create a workspace and start a session. Add images or upload files as needed.
 4. To use voice, configure credentials and a mode in **Settings → Realtime voice**.
@@ -130,16 +130,16 @@ Harness Runtime and Better Sidebar are included. Native image capabilities do no
 
 | Goal | Entry point |
 | --- | --- |
-| Installation, sessions, profiles, terminals, and plugins | [2.2.9 user guide](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/user-guide.en.md) |
-| Configure realtime voice | [Qwen / Doubao credentials (Chinese)](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/user-guide-realtime-voice-credentials.md) |
-| Extend models, tools, or desktop capabilities | [Plugin development](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/plugin-development.en.md) · [Desktop services](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/dsh-plugin-desktop/docs/plugin-services.md) |
-| Understand the product boundary | [Architecture](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/architecture.en.md) · [Why Desktop](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/why-desktop.en.md) |
-| Find more documentation | [Documentation index](https://github.com/rw0104/DSH-desktop/blob/v2.2.9/docs/README.en.md) · [Contributing](CONTRIBUTING.en.md) |
+| Installation, sessions, profiles, terminals, and plugins | [2.2.10 user guide](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/user-guide.en.md) |
+| Configure realtime voice | [Qwen / Doubao credentials (Chinese)](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/user-guide-realtime-voice-credentials.md) |
+| Extend models, tools, or desktop capabilities | [Plugin development](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/plugin-development.en.md) · [Desktop services](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/dsh-plugin-desktop/docs/plugin-services.md) |
+| Understand the product boundary | [Architecture](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/architecture.en.md) · [Why Desktop](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/why-desktop.en.md) |
+| Find more documentation | [Documentation index](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/README.en.md) · [Contributing](CONTRIBUTING.en.md) |
 
-Start from the **v2.2.9 tag** corresponding to the release, rather than assuming the default branch contains the latest published code. Development requires Node.js `^22.19.0` or `>=24.0.0`, with the root Yarn release through Corepack:
+Start from the **v2.2.10 tag** corresponding to the release, rather than assuming the default branch contains the latest published code. Development requires Node.js `^22.19.0` or `>=24.0.0`, with the root Yarn release through Corepack:
 
 ```sh
-git clone --branch v2.2.9 --recurse-submodules https://github.com/rw0104/DSH-desktop.git
+git clone --branch v2.2.10 --recurse-submodules https://github.com/rw0104/DSH-desktop.git
 cd DSH-desktop
 corepack yarn check:runtime-boundary
 corepack yarn install --immutable
