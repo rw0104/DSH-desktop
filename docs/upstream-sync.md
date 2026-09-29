@@ -1,5 +1,101 @@
 # Upstream synchronization ledger
 
+## 2026-09-28 windows-subprocess-runner-fix 上游与依赖核查（2.2.10 修复前）
+
+本条目为 spec `windows-subprocess-runner-fix`（任务 2）在改动任何依赖或 Yarn patch **之前**的
+只读上游核查。产品身份与主要下载/仓库链接仍指向 `rw0104/DSH-desktop`，本次不改任何 README、
+不升级 `@deepseek-ai/dsh-*` 包族（保持 `0.1.6-alpha.2`）、不移动子模块 pin（保持
+`ddefc45fbc7f8e46dd73185e68295696d1297887` = `dsh-v0.1.6-alpha.2`）。
+
+核查方式：`git ls-remote --symref`（三条权威 GitHub URL，经本机代理 `127.0.0.1:10808`）取
+HEAD/tags；GitHub git-tree/raw API 取上游较新 tag 的相关源码逐文件判断；npm 版本改用官方
+registry HTTP 元数据（`https://registry.npmjs.org/<pkg>`，`application/vnd.npm.install-v1+json`），
+因本机 shell 下 `npm view` CLI 输出不稳定，未依赖其 CLI 结果。每条网络命令带 15s 连接 / 40s
+传输上限并加 45s 硬超时；无网络失败。
+
+| 权威来源 | 实时 HEAD | 最新 tag | 相对本产品基线 |
+| --- | --- | --- | --- |
+| [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) | `master=4878cdabd87d4041bdaff61d04c966883b9fd07a` | `dsh-v0.2.0-rc.1`=`4878cdabd8`（=HEAD）；序列 `dsh-v0.1.6-alpha.2`(`ddefc45f`, 当前 pin) → `dsh-v0.1.7-alpha.1`(`c36a83ff`) → `dsh-v0.1.7-alpha.2`(`00102833`) → `dsh-v0.1.7-rc.1`(`46a7f68b`) → `dsh-v0.1.7-rc.2`(`477b4f42`) → `dsh-v0.2.0-rc.1`(`4878cdabd8`) | 上游远超当前 pin；保持 `0.1.6-alpha.2` 不变（见下修复结论） |
+| [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | `main=492661a3ea304ad151611de70e7412494be234da` | — | 仅记录，本 spec 不涉及 Sidebar 改动 |
+| [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop) | `master=c5d340d3aafbfb8cebd464f1a53efba7d37700d0`（仓库已更名重定向至 `anywhere-labs/dsh-desktop`） | 至 `v2.0.15-next`(`08f17949`)、稳定 `v2.0.9`(`63e160ab`) 等 | 只读参考，非运行时依赖 |
+
+npm 已发布版本（`@deepseek-ai` 包族，本次核查两个受影响包）：
+
+| 包 | dist-tags | 最新已发布版本 | 当前采用 |
+| --- | --- | --- | --- |
+| `@deepseek-ai/dsh-subprocess-local` | `latest=0.0.1-rc.1`（异常滞后）、`alpha=0.1.7-alpha.2`、`next=0.2.0-rc.1` | `0.2.0-rc.1` | 保持 `0.1.6-alpha.2` |
+| `@deepseek-ai/dsh-ptc-runtime-node` | `latest=0.1.6-alpha.1`、`alpha=0.1.7-alpha.2`、`next=0.2.0-rc.1` | `0.2.0-rc.1` | 保持 `0.1.6-alpha.2` |
+
+注：两包的 `latest` dist-tag 明显滞后（`0.0.1-rc.1` / `0.1.6-alpha.1`），真实最新以 `next` 及
+git tag = `0.2.0-rc.1` 为准；不能以 CLI `latest` 推断实际最新。
+
+### 上游是否已修复 execPath-as-Node 的结论：**未修复**
+
+对上游最新 tag `dsh-v0.2.0-rc.1`（= HEAD，= 最新已发布 `next`）的 `subprocess-local` 源码逐文件核查
+（`packages/subprocess/subprocess-local/src/` 的 `windows-job.ts`、`runner-launch.ts`、`spawn-runner.ts`）：
+
+- `windows-job.ts` 的 `launchWindowsJob()` 仍以 `env: runnerEnvironment(WINDOWS_RUNNER_SELECTION, invocation)`
+  启动私有 Windows Job runner —— 与 `0.1.6-alpha.2` 同构。
+- `runner-launch.ts` 的 `spawnRunnerInvocation()` 仍返回 `[process.execPath, …]`（以 `process.execPath` 充当
+  Node 解释器）。
+- `runnerEnvironment()` 仍**不**注入 `ELECTRON_RUN_AS_NODE`；三个源文件对 `ELECTRON_RUN_AS_NODE`
+  / `process.versions.electron` / `ELECTRON` 的匹配为 **0**（该包对 Electron 运行形态无感知）。
+- 现场同一错误串 `subprocess-local: Windows Job runner exited with … before proving its managed range empty`
+  仍存在于 `windows-job.ts`。
+
+因此 Electron Host 下 `process.execPath` 指向桌面可执行文件时的 execPath-as-Node 缺陷在上游最新版
+**依旧存在**，本产品仍需以 Desktop_Patch 注入 `ELECTRON_RUN_AS_NODE`。
+
+**受影响契约**：`@deepseek-ai/dsh-subprocess-local` 的 `launchWindowsJob` / `runnerEnvironment` /
+`spawnRunnerInvocation`（parent 侧 runner 启动）；连带 `@deepseek-ai/dsh-ptc-runtime-node` 的
+`nodeExecutable ?? process.execPath` 默认路径（条件性，见本 spec Audit_Record #2 / A6）。
+
+**后续事项：**
+
+- **F1（上游迁移）**：上游最新版仍未修复，当前无可直接升级以移除 Desktop_Patch 的目标版本。保持
+  `@deepseek-ai/dsh-*` 于 `0.1.6-alpha.2`、子模块 pin `ddefc45f` 不变；本 spec 的 subprocess-local
+  Desktop_Patch 需保留。待上游在 `subprocess-local` 中注入 `ELECTRON_RUN_AS_NODE`（或使其感知
+  Electron 运行形态）后，再按完整包族与重放 patch 的迁移步骤原子升级并移除本 patch，子模块 pin
+  更新单独提交、跑升级/回退矩阵后方可移动。
+- **F2（上游问题报告）**：向 `deepseek-ai/deepseek-harness` 报告 Electron Host 下的 execPath-as-Node
+  缺陷（`windows-job.ts::launchWindowsJob` + `runner-launch.ts::runnerEnvironment` 未注入
+  `ELECTRON_RUN_AS_NODE`；`spawnRunnerInvocation` 以 `process.execPath` 充当 Node），附最小复现
+  （Host 运行于 Electron main、`process.execPath` 为 Electron 可执行文件）。
+- **不确定 / 待复查**：本结论基于最新 tag `dsh-v0.2.0-rc.1` 的源码；若上游后续发布高于
+  `0.2.0-rc.1` 的版本，需重新核查 `windows-job.ts` / `runner-launch.ts` 是否已引入 Electron 感知。
+
+**参考实现对比（best-effort）**：`anywhere-labs/deepseek-harness-desktop`（已更名重定向至
+`anywhere-labs/dsh-desktop`，只读参考、非运行时依赖）在采样的 `dsh-plugin-desktop/src` 的
+launch/env/bootstrap 文件中未见对 subprocess Job runner 注入 `ELECTRON_RUN_AS_NODE`；其
+`host-bootstrap.ts` 标注为“isolated Host”实验方向（Host 与 Electron 主进程环境相互隔离），并保留
+`windows-acl-runner.ts` trampoline 与 `verify-electron-fuses.ts` 中对 `RunAsNode` fuse 启用的校验
+（间接支持本 spec A5/B3 关于打包应用 `RunAsNode` fuse 处于启用的推断）。该对比为部分采样，未穷尽整仓；
+详细命令与原始判断见本地调查记录 `docs/local/windows-subprocess-runner-fix/upstream-check.md`（不提交）。
+
+### 修复落地与 2.2.10 状态（同一 spec 后续追加）
+
+在上述"改动前"上游核查之后，本 spec 的修复已在 Fix_Branch 落地，此处补记结论以保持账本与实际
+应用变更一致（不改上表核查数据，不改产品身份与下载/仓库链接，仍指向 `rw0104/DSH-desktop`）：
+
+- **应用的变更**：新增两个受审查 Desktop_Patch，经根 `package.json` `resolutions`（各含
+  `npm:0.1.6-alpha.2` 与 `npm:^0.1.6-alpha.2` 两条）应用——
+  `@deepseek-ai/dsh-subprocess-local`（在 `launchWindowsJob` 仅 Electron 下给 runner 自身注入
+  规范 `ELECTRON_RUN_AS_NODE=1`）与 `@deepseek-ai/dsh-ptc-runtime-node`（精确守卫：仅 Electron 且
+  解释器等于 `process.execPath` 时注入，已配置 `nodeExecutable` 时不变）。**包族保持
+  `0.1.6-alpha.2`、子模块 pin 保持 `ddefc45fbc7f8e46dd73185e68295696d1297887` 不变**。
+- **产品版本**：根 `package.json` 与 `dsh-plugin-desktop/package.json` 由 `2.2.9` 递增到
+  `2.2.10`；README 产品身份与主要下载/仓库链接未改。
+- **验证**：单元 + 5 项属性测试（各 ≥100 次迭代）、真实 Electron 回归（复现原始失败 + 修复后
+  `pwsh`/`glob`/`grep` 恢复）、打包冒烟（构建产物 `pwsh`/`glob`/`grep` 恢复、`RunAsNode` fuse
+  确认启用，A5 成立、B3 未触发）均通过。发布说明见 `docs/releases/v2.2.10.md`。
+- **F1（上游迁移）状态未变**：上游最新 `dsh-v0.2.0-rc.1` 仍未修复，暂无可升级以移除 patch 的目标
+  版本；保留两个 Desktop_Patch，待上游注入 `ELECTRON_RUN_AS_NODE` 后按完整包族原子升级并移除，
+  子模块 pin 更新单独提交。
+- **F2（上游问题报告）**：待向 `deepseek-ai/deepseek-harness` 报告该 Electron Host execPath-as-Node
+  缺陷并附最小复现（后续事项，未在本 spec 内提交）。
+- **Community Market 在线源回放不适用**：本次未触碰 `dsh-community-market/` 或任何内置 catalog
+  适配器与受限 catalog HTTP 客户端，故 live-source 回放纪律不适用。
+
 ## 2026-09-27 2.2.9 Profile 依赖隔离修复前审计
 
 本修复以用户已确认的 Harness `0.1.6-alpha.2` 接入分支为基础，产品版本升至 `2.2.9`。
