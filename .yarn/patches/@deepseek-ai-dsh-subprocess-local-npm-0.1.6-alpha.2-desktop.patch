@@ -1,0 +1,39 @@
+diff --git a/lib/index.js b/lib/index.js
+index d984d813e73bdc47b58f31a391276d516ed615dc..76104f993c049724c6241c8627aec18a00269a50 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -579,6 +579,25 @@ var WindowsJobOwner = class {
+ 	}
+ };
+ /**
++* Desktop patch: run the Windows Job runner as Node when the Host is Electron.
++* In a plain Node process this returns the alpha.2 environment unchanged; under
++* Electron it copies the env, drops any case variant of ELECTRON_RUN_AS_NODE, and
++* sets only the canonical key so the runner executes as Node. The variable stays on
++* the runner's own process env only; the Target_Command is spawned from the separate
++* IPC targetEnv and process.env is never mutated.
++* @param env - runner environment produced by runnerEnvironment().
++* @returns the runner environment, augmented only under Electron.
++*/
++function withElectronRunAsNode(env) {
++	if (process.versions.electron === void 0) return env;
++	const next = { ...env };
++	for (const name of Object.keys(next)) {
++		if (name.toUpperCase() === "ELECTRON_RUN_AS_NODE") Reflect.deleteProperty(next, name);
++	}
++	next.ELECTRON_RUN_AS_NODE = "1";
++	return next;
++}
++/**
+ * Launch one target through a runner that uniquely owns its Job handle.
+ * @param spec - ordinary target request.
+ * @param targetEnv - validated complete target environment.
+@@ -598,7 +617,7 @@ function launchWindowsJob(spec, targetEnv, internals = {}) {
+ 		], {
+ 			cwd: process.cwd(),
+ 			windowsHide: true,
+-			env: runnerEnvironment(WINDOWS_RUNNER_SELECTION, invocation),
++			env: withElectronRunAsNode(runnerEnvironment(WINDOWS_RUNNER_SELECTION, invocation)),
+ 			stdio: runnerStdio(spec, true, ignoredStdinFd ?? "pipe")
+ 		});
+ 	} finally {

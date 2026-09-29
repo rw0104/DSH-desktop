@@ -1,0 +1,22 @@
+diff --git a/lib/index.js b/lib/index.js
+index 687c2cfab6bf631ed7726a050e047dbd7f28d6a4..c42a91284c33ba3b15ee6bd8a4d8c365ec650b2a 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -958,6 +958,17 @@ var NodePtcRuntime = class extends PtcRuntime {
+ 				env.DSH_PTC_RUNTIME_NODE = "1";
+ 				env.NODE_OPTIONS = heapFlag;
+ 			}
++			/**
++			* Desktop patch: run the managed Node worker as Node when the Host is Electron
++			* and the resolved interpreter is the Electron binary itself (nodeExecutable
++			* defaulted to process.execPath). When nodeExecutable is explicitly configured,
++			* resolveExecutable returns that absolute path unchanged, so executable differs
++			* from process.execPath and nothing is injected — the alpha.2 environment handling
++			* (host-failures.spec) is preserved. Under plain Node this is a no-op. The canonical
++			* key is set on the child env only; process.env is never mutated, and the env builder
++			* above already dropped every case variant of ELECTRON_RUN_AS_NODE.
++			*/
++			if (process.versions.electron !== void 0 && executable === process.execPath) env.ELECTRON_RUN_AS_NODE = "1";
+ 			handle = this.ctx.subprocess.spawn({
+ 				argv: confined?.argv ?? argv,
+ 				cwd: spec.cwd,

@@ -3281,7 +3281,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deepseek-ai/dsh-ptc-runtime-node@npm:^0.1.6-alpha.2":
+"@deepseek-ai/dsh-ptc-runtime-node@npm:0.1.6-alpha.2":
   version: 0.1.6-alpha.2
   resolution: "@deepseek-ai/dsh-ptc-runtime-node@npm:0.1.6-alpha.2"
   dependencies:
@@ -3297,6 +3297,25 @@ __metadata:
     "@deepseek-ai/dsh-subprocess": ^0.1.6-alpha.2
     "@deepseek-ai/dsh-timeout": ^0.1.6-alpha.2
   checksum: 10c0/c70d7c58002bbf43540ab88bf21745cbc24d56e882839918cad73322fb132deb5690ac51a8bc172d9841cf2d5944fa69a7b6705ad4a0e5c271a869bfb56faef3
+  languageName: node
+  linkType: hard
+
+"@deepseek-ai/dsh-ptc-runtime-node@patch:@deepseek-ai/dsh-ptc-runtime-node@npm%3A0.1.6-alpha.2#./.yarn/patches/@deepseek-ai-dsh-ptc-runtime-node-npm-0.1.6-alpha.2-desktop.patch::locator=deepseek-harness-desktop%40workspace%3A.":
+  version: 0.1.6-alpha.2
+  resolution: "@deepseek-ai/dsh-ptc-runtime-node@patch:@deepseek-ai/dsh-ptc-runtime-node@npm%3A0.1.6-alpha.2#./.yarn/patches/@deepseek-ai-dsh-ptc-runtime-node-npm-0.1.6-alpha.2-desktop.patch::version=0.1.6-alpha.2&hash=973b60&locator=deepseek-harness-desktop%40workspace%3A."
+  dependencies:
+    "@deepseek-ai/dsh-util-values": "npm:^0.1.6-alpha.2"
+    "@deepseek-ai/schemastery": "npm:^3.18.2"
+  peerDependencies:
+    "@deepseek-ai/cordis": ^4.0.2
+    "@deepseek-ai/dsh-fs": ^0.1.6-alpha.2
+    "@deepseek-ai/dsh-ptc-runtime": ^0.1.6-alpha.2
+    "@deepseek-ai/dsh-sandbox": ^0.1.6-alpha.2
+    "@deepseek-ai/dsh-sandbox-policy": ^0.1.6-alpha.2
+    "@deepseek-ai/dsh-session": ^0.1.6-alpha.2
+    "@deepseek-ai/dsh-subprocess": ^0.1.6-alpha.2
+    "@deepseek-ai/dsh-timeout": ^0.1.6-alpha.2
+  checksum: 10c0/35eca1a4305a8fccebcbae8ce2bb172da0d930ac1f6d8814b71836a6703c08ee6ef86d638cbd81bfe5165be04cb6ff10de6191848d4d5dbd7f1ec21b04574cf1
   languageName: node
   linkType: hard
 
@@ -4177,7 +4196,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deepseek-ai/dsh-subprocess-local@npm:^0.1.6-alpha.2":
+"@deepseek-ai/dsh-subprocess-local@npm:0.1.6-alpha.2":
   version: 0.1.6-alpha.2
   resolution: "@deepseek-ai/dsh-subprocess-local@npm:0.1.6-alpha.2"
   dependencies:
@@ -4190,6 +4209,22 @@ __metadata:
     "@deepseek-ai/dsh-subprocess": ^0.1.6-alpha.2
     "@deepseek-ai/dsh-timeout": ^0.1.6-alpha.2
   checksum: 10c0/ac5030c1ab0246f15e31d162a29b77909fb08ee01c9cadae79693604355aa7d94414ab750715ad65a83b2777d6e0f79161eb99f025a1aa0b8b8b113db09e246b
+  languageName: node
+  linkType: hard
+
+"@deepseek-ai/dsh-subprocess-local@patch:@deepseek-ai/dsh-subprocess-local@npm%3A0.1.6-alpha.2#./.yarn/patches/@deepseek-ai-dsh-subprocess-local-npm-0.1.6-alpha.2-desktop.patch::locator=deepseek-harness-desktop%40workspace%3A.":
+  version: 0.1.6-alpha.2
+  resolution: "@deepseek-ai/dsh-subprocess-local@patch:@deepseek-ai/dsh-subprocess-local@npm%3A0.1.6-alpha.2#./.yarn/patches/@deepseek-ai-dsh-subprocess-local-npm-0.1.6-alpha.2-desktop.patch::version=0.1.6-alpha.2&hash=2d10bc&locator=deepseek-harness-desktop%40workspace%3A."
+  dependencies:
+    "@deepseek-ai/dsh-lazy-require": "npm:^0.1.6-alpha.2"
+    "@deepseek-ai/dsh-win32-process": "npm:^0.1.6-alpha.2"
+    koffi: "npm:^3.1.0"
+    node-pty: "npm:1.2.0-beta.15"
+  peerDependencies:
+    "@deepseek-ai/cordis": ^4.0.2
+    "@deepseek-ai/dsh-subprocess": ^0.1.6-alpha.2
+    "@deepseek-ai/dsh-timeout": ^0.1.6-alpha.2
+  checksum: 10c0/9c3952870feef9ccb82c2c2a5d04dd4ce0c5030181016de4c5cd370c47565984ddec32e84fd75bb366b64fda645d66a3d9936a88ca2970aa58c09a9f20c87e00
   languageName: node
   linkType: hard
 
