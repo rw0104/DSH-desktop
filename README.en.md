@@ -2,20 +2,20 @@
 
 <p align="center"><strong>Chat, voice, images, and your code workspace in one desktop app.</strong><br>An open-source workbench built on DeepSeek Harness. The desktop itself is a plugin.</p>
 
-<p align="center"><a href="https://github.com/rw0104/DSH-desktop/releases/download/v2.2.7/DSH-Desktop-2.2.7-x64-Setup.exe">Download Windows v2.2.7</a> · <a href="#features">Features</a> · <a href="#getting-started">Get started</a> · <a href="README.md">中文</a></p>
+<p align="center"><a href="https://github.com/rw0104/DSH-desktop/releases/download/v2.2.10/DSH-Desktop-2.2.10-x64-Setup.exe">Download Windows v2.2.10</a> · <a href="#features">Features</a> · <a href="#getting-started">Get started</a> · <a href="README.md">中文</a></p>
 
 <p align="center"><img src="assets/desktop-hero-en.png" alt="DSH Desktop, an open-source desktop client built on DeepSeek Harness" width="100%"></p>
 
 DSH Desktop brings Agent sessions, models, terminals, Git, file editing, and optional plugins into a desktop app. Type a task, continue the discussion by voice, analyze or generate images with a capable model, and inspect the Agent's file changes and execution in the same workspace.
 
-This page describes the published **v2.2.7** release. DSH Desktop is independently maintained by the community and is not affiliated with, authorized by, or endorsed by DeepSeek.
+This page describes the published **v2.2.10** release. DSH Desktop is independently maintained by the community and is not affiliated with, authorized by, or endorsed by DeepSeek.
 
 ## Download
 
 | Platform | Get it | Status |
 | --- | --- | --- |
-| Windows x64 | [Download 2.2.7 installer](https://github.com/rw0104/DSH-desktop/releases/download/v2.2.7/DSH-Desktop-2.2.7-x64-Setup.exe) · [Release notes](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.7) | Stable / Latest, approximately 224 MB |
-| macOS | [Build from v2.2.7 source](https://github.com/rw0104/DSH-desktop/tree/v2.2.7) | Build support retained; no signed and notarized DMG published |
+| Windows x64 | [Download 2.2.10 installer](https://github.com/rw0104/DSH-desktop/releases/download/v2.2.10/DSH-Desktop-2.2.10-x64-Setup.exe) · [Release notes](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.10) | Stable / Latest, approximately 334 MB |
+| macOS | [Build from v2.2.10 source](https://github.com/rw0104/DSH-desktop/tree/v2.2.10) | Build support retained; no signed and notarized DMG published |
 
 The Windows installer includes its runtime, so Node.js is not required. It supports choosing an installation directory and creating Start menu and desktop shortcuts. The installer is currently unsigned; Windows may display SmartScreen or Unknown Publisher prompts.
 
@@ -48,7 +48,7 @@ Configure a provider and enable the entry in **Settings → Realtime voice**, th
 
 Captions scroll independently and pause automatic following while you read history. During a task, the voice window can collapse into a draggable compact bar with status, mute, end, and restore controls. Collapsing does not end the call or approve Agent operations automatically.
 
-[Configure Qwen / Doubao credentials (Chinese)](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/user-guide-realtime-voice-credentials.md)
+[Configure Qwen / Doubao credentials (Chinese)](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/user-guide-realtime-voice-credentials.md)
 
 ### From image input to generation and original-image saving
 
@@ -63,7 +63,7 @@ Image input and image output are separate capabilities:
 
 The original attachment rail, multi-image display, scrolling, and retry behavior remain available. Image generation uses reusable provider protocols, including the integrated Aliyun Qwen-Image path. Availability depends on the provider API, model, and account permissions. Adding a model name alone does not integrate a new image protocol.
 
-[Image protocol integration (Chinese)](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/plugin-image-protocols.md)
+[Image protocol integration (Chinese)](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/plugin-image-protocols.md)
 
 ### Bring documents into the workspace
 
@@ -76,13 +76,13 @@ In Advanced mode, select **+ → Upload files to workspace**. Files are saved in
 
 ### Complete code tasks in one workbench
 
-The maintained **Better Sidebar 0.18.0** supplies Explorer, the editor, unified file changes and Git/diffs, browser tabs, terminals, subagents, and background tasks.
+The maintained **Better Sidebar 0.19.1** supplies Explorer, the editor, unified file changes and Git/diffs, browser tabs, terminals, subagents, and background tasks.
 
 - **Sidechat:** extend a session into a side conversation, distinguish inherited history from the parent's pending input, and restore model selection after reloading.
 - **Pinned terminals:** keep a terminal at workspace or global scope across session switches; open supported links with Ctrl/Cmd+Click.
 - **Markdown preview:** split preview supports local image references, including relative paths, Chinese characters, and spaces.
 - **Git worktrees:** give tasks separate working directories through managed worktrees and inspect their changes.
-- **Session reading:** Harness RC1 supplies collapsible process content, width and font controls, history navigation, and usage and timing information.
+- **Session reading:** the bundled Harness supplies collapsible process content, width and font controls, history navigation, and usage and timing information.
 
 ### Extend the workbench with plugins
 
@@ -90,16 +90,16 @@ Open **Plugin Market** in the left sidebar to discover and search, inspect detai
 
 The desktop shell itself runs as a DSH plugin. Models, tools, and interfaces compatible with the pinned Runtime can join through the composition mechanism; Desktop exposes profile, plugin-management, and native services. The community interoperability RFC is still evolving, and proposed contracts are not all implemented.
 
-[Plugin marketplace](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/dsh-community-market/README.md) · [Plugin development](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/plugin-development.en.md) · [Build the plugin ecosystem together](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/plugin-ecosystem.en.md)
+[Plugin marketplace](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/dsh-community-market/README.md) · [Plugin development](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/plugin-development.en.md) · [Build the plugin ecosystem together](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/plugin-ecosystem.en.md)
 
-## Recent improvements in 2.2.7
+## Recent improvements in 2.2.10
 
-- Advanced mode adds image/file entry points, original-image saving, and conversation context actions. Ordinary chat and voice receive accurate desktop product context.
-- Fixes cover local Markdown images, Sidechat history inheritance, and model selection after a cold resume.
-- Submenus fit window edges and narrow windows better, with focus restored after keyboard dismissal.
-- Windows plugin installation and non-interactive subprocesses hide background consoles; temporary-directory cleanup does not follow directory links.
+- Fixes a 2.2.9 regression where `pwsh`, `glob`, and `grep` all failed on Windows: under Electron the Job runner lacked `ELECTRON_RUN_AS_NODE`, so the helper process could not run as Node.
+- Two minimal Yarn patches inject the variable at the runner's startup point only, scoped to the helper process itself so it never leaks into user commands or the session environment.
+- Users on 2.2.9 must install 2.2.10 to restore these tools; updating straight to 2.2.10 is recommended.
+- Still pins Harness `0.1.6-alpha.2` and Sidebar `0.19.1`, with no kernel upgrade and no submodule pin move; the installer remains unsigned.
 
-[Full release notes, compatibility boundaries, and verification](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.7)
+[Full release notes, compatibility boundaries, and verification](https://github.com/rw0104/DSH-desktop/releases/tag/v2.2.10)
 
 ## Modes and platforms
 
@@ -116,7 +116,7 @@ Mobile remote control, Channels, and unreviewed upstream file operations and pre
 
 ## Get started
 
-1. [Download the Windows 2.2.7 installer](https://github.com/rw0104/DSH-desktop/releases/download/v2.2.7/DSH-Desktop-2.2.7-x64-Setup.exe), choose a directory, and install.
+1. [Download the Windows 2.2.10 installer](https://github.com/rw0104/DSH-desktop/releases/download/v2.2.10/DSH-Desktop-2.2.10-x64-Setup.exe), choose a directory, and install.
 2. Open **Settings → Models** to configure a provider, credentials, and available models.
 3. Select or create a workspace and start a session. Add images or upload files as needed.
 4. To use voice, configure credentials and a mode in **Settings → Realtime voice**.
@@ -127,22 +127,22 @@ Harness Runtime and Better Sidebar are included. Native image capabilities do no
 
 | Goal | Entry point |
 | --- | --- |
-| Installation, sessions, profiles, terminals, and plugins | [2.2.7 user guide](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/user-guide.en.md) |
-| Configure realtime voice | [Qwen / Doubao credentials (Chinese)](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/user-guide-realtime-voice-credentials.md) |
-| Extend models, tools, or desktop capabilities | [Plugin development](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/plugin-development.en.md) · [Desktop services](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/dsh-plugin-desktop/docs/plugin-services.md) |
-| Understand the product boundary | [Architecture](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/architecture.en.md) · [Why Desktop](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/why-desktop.en.md) |
-| Find more documentation | [Documentation index](https://github.com/rw0104/DSH-desktop/blob/v2.2.7/docs/README.en.md) · [Contributing](CONTRIBUTING.en.md) |
+| Installation, sessions, profiles, terminals, and plugins | [2.2.10 user guide](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/user-guide.en.md) |
+| Configure realtime voice | [Qwen / Doubao credentials (Chinese)](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/user-guide-realtime-voice-credentials.md) |
+| Extend models, tools, or desktop capabilities | [Plugin development](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/plugin-development.en.md) · [Desktop services](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/dsh-plugin-desktop/docs/plugin-services.md) |
+| Understand the product boundary | [Architecture](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/architecture.en.md) · [Why Desktop](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/why-desktop.en.md) |
+| Find more documentation | [Documentation index](https://github.com/rw0104/DSH-desktop/blob/v2.2.10/docs/README.en.md) · [Contributing](CONTRIBUTING.en.md) |
 
-Start from the **v2.2.7 tag** corresponding to the release, rather than assuming the default branch contains the latest published code. Development requires Node.js `^22.19.0` or `>=24.0.0`, with the root Yarn release through Corepack:
+Start from the **v2.2.10 tag** corresponding to the release, rather than assuming the default branch contains the latest published code. Development requires Node.js `^22.19.0` or `>=24.0.0`, with the root Yarn release through Corepack:
 
 ```sh
-git clone --branch v2.2.7 --recurse-submodules https://github.com/rw0104/DSH-desktop.git
+git clone --branch v2.2.10 --recurse-submodules https://github.com/rw0104/DSH-desktop.git
 cd DSH-desktop
 corepack yarn install --immutable
 corepack yarn dev
 ```
 
-The release pins Harness `0.1.2-rc.1` and Sidebar `0.18.0`. `deepseek-harness/` is an upstream submodule without direct source edits; desktop adaptations live in owned plugins and audited Yarn patches. The root workspace uses Yarn, while the upstream submodule retains its pnpm workspace. Run `corepack yarn check` for the complete headless gate.
+The release pins Harness `0.1.6-alpha.2` and Sidebar `0.19.1`. `deepseek-harness/` is an upstream submodule without direct source edits; desktop adaptations live in owned plugins and audited Yarn patches. The root workspace uses Yarn, while the upstream submodule retains its pnpm workspace. Run `corepack yarn check` for the complete headless gate.
 
 ## Community and acknowledgements
 
